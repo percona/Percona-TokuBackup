@@ -12,7 +12,8 @@ class backup_copier {
     std::vector<char *> m_todo;
 public:
     backup_copier();
-    void copy(const char *source, const char *dest);
+    void set_directories(const char *source, const char *dest);
+    void start_copy();
     void copy_path(const char *source, const char* dest, const char *file);
     void copy_file(const char *file);
 };

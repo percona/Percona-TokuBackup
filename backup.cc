@@ -10,6 +10,8 @@
 #include "backup.h"
 #include "backup_manager.h"
 #include "real_syscalls.h"
+#include "backup_debug.h"
+
 
 backup_manager manager;
 
@@ -19,7 +21,7 @@ backup_manager manager;
 int open(const char* file, int oflag, ...)
 {
     int r = 0;
-    printf("open called.\n");
+    if (DEBUG) printf("open called.\n");
     if (oflag & O_CREAT) {
         va_list ap;
         va_start(ap, oflag);
@@ -38,7 +40,7 @@ int open(const char* file, int oflag, ...)
 int close(int fd)
 {
     int r = 0;
-    printf("close called.\n");
+    if (DEBUG) printf("close called.\n");
     r = call_real_close(fd);
     manager.close_descriptor(fd);
     return r;
@@ -47,7 +49,7 @@ int close(int fd)
 ssize_t write(int fd, const void *buf, size_t nbyte)
 {
     ssize_t r = 0;
-    printf("write called.\n");
+    if (DEBUG) printf("write called.\n");
     r = call_real_write(fd, buf, nbyte);
     manager.write_to_descriptor(fd, buf, nbyte);
     return r;
@@ -56,7 +58,7 @@ ssize_t write(int fd, const void *buf, size_t nbyte)
 int rename(const char *oldpath, const char *newpath)
 {
     int r = 0;
-    printf("rename called.\n");
+    if (DEBUG) printf("rename called.\n");
     r = call_real_rename(oldpath, newpath);
     manager.rename_file(oldpath, newpath);
     return r;
@@ -67,4 +69,10 @@ void start_backup(const char *source_dir_arg, const char *dest_dir_arg)
 {
     manager.start_backup();
     manager.add_directory(source_dir_arg, dest_dir_arg);
+}
+
+// TODO: Separate the API for initiating, stopping and altering backup.
+void stop_backup(const char *source_dir_arg, const char *dest_dir_arg)
+{
+    manager.stop_backup();
 }

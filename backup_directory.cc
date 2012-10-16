@@ -3,9 +3,21 @@
 
 #include "backup_directory.h"
 #include "file_description.h"
+#include "backup_debug.h"
 
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
+
+
+void *start_copying(void * copier)
+{
+    void *r = 0;
+    if (DEBUG) printf(">>> pthread: copy started\n");
+    backup_copier *c = (backup_copier*)copier;
+    c->start_copy();
+    return r;
+}
 
 backup_directory::backup_directory()
     : m_source_length(0), m_dest_length(0)
@@ -79,7 +91,17 @@ void backup_directory::set_directories(const char *source, const char *dest)
 // Copies all files and subdirectories to the destination.
 void backup_directory::start_copy()
 {
-    m_copier.copy(m_source_dir, m_dest_dir);
+    int r = 0;
+    m_copier.set_directories(m_source_dir, m_dest_dir);
+    
+    r = pthread_create(&m_thread, NULL, &start_copying, (void*)&m_copier);
+    r ? assert(!"pthread failure????!!!!\n") : (void)0;
+    //start_copying(&m_copier);
+}
+
+void backup_directory::wait_for_copy_to_finish()
+{
+    pthread_join(m_thread, NULL);
 }
 
 void backup_directory::grow_fds_array(int fd)

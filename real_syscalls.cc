@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 #define NULL 0
 

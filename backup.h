@@ -12,5 +12,6 @@ int rename (const char *oldpath, const char *newpath);
 }
 
 void start_backup(const char*, const char*);
+void stop_backup(const char*, const char*);
 
 #endif // end of header guardian.
