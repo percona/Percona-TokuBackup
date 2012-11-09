@@ -15,3 +15,4 @@
 #define MGR_DBG 1
 
 #endif // End of header guardian.
+

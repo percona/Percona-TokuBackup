@@ -1,14 +1,20 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 
-#include <stdio.h>
+#include "backup.h"
+
+#include <stdio.h> // rename(),
 #include <assert.h>
-#include <fcntl.h>
+
+#include <fcntl.h> // open()
+#include <unistd.h> // close(), write(), read(), unlink(), truncate(), etc.
+
+
 //#include <sys/types.h>
 #include <dlfcn.h>
 #include <stdarg.h>
 
-#include "backup.h"
+
 #include "backup_manager.h"
 #include "real_syscalls.h"
 #include "backup_debug.h"
@@ -31,7 +37,7 @@ backup_manager manager;
 //     Either creates or opens a file in both the source directory
 // and the backup directory.
 //
-int open(const char* file, int oflag, ...)
+int open64(const char* file, int oflag, ...)
 {
     int fd = 0;
     if (DEBUG) printf("open called.\n");

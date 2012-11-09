@@ -19,3 +19,4 @@ private:
     std::vector<file_description *> m_map;
     void grow_array(int fd);
 };
+

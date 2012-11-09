@@ -7,16 +7,16 @@
 #include <sys/types.h>
 
 extern "C" {
-int open(const char *file, int oflag, ...);
-int close(int fd);
-ssize_t write(int fd, const void *buf, size_t nbyte);
+    //int open(const char *file, int oflag, ...);
+    //int close(int fd);
+    //ssize_t write(int fd, const void *buf, size_t nbyte);
 //ssize_t pread(int d, void *buf, size_t nbyte, off_t offset);
-ssize_t read(int fildes, void *buf, size_t nbyte);
-ssize_t pwrite(int fildes, const void *buf, size_t nbyte, off_t offset);
-int ftruncate(int fildes, off_t length);
-int truncate(const char *path, off_t length);
-int unlink(const char *path);
-int rename (const char *oldpath, const char *newpath);
+//ssize_t read(int fildes, void *buf, size_t nbyte);
+//ssize_t pwrite(int fildes, const void *buf, size_t nbyte, off_t offset);
+//    int ftruncate(int fildes, off_t length) throw();
+//    int truncate(const char *path, off_t length) throw();
+    //   int unlink(const char *path) throw();
+    //    int rename (const char *oldpath, const char *newpath) throw();
 }
 
 void start_backup(const char*, const char*);
