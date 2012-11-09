@@ -28,6 +28,7 @@ backup_manager manager;
 //***************************************
 
 
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // open() -
@@ -37,6 +38,34 @@ backup_manager manager;
 //     Either creates or opens a file in both the source directory
 // and the backup directory.
 //
+int open(const char* file, int oflag, ...)
+{
+    int fd = 0;
+    if (DEBUG) printf("open called.\n");
+    if (oflag & O_CREAT) {
+        va_list ap;
+        va_start(ap, oflag);
+        mode_t mode = va_arg(ap, mode_t);
+        va_end(ap);
+        fd = call_real_open(file, oflag, mode);
+        if (fd < 0) { 
+            perror("Interposed open() w/ O_CREAT failed.");
+        } else {
+            manager.create(fd, file);
+        }
+    } else {
+        fd = call_real_open(file, oflag);
+        if (fd < 0) {
+            perror("Interposed open failed."); 
+        } else {
+            manager.open(fd, file, oflag);
+        }
+    }
+
+    return fd;
+}
+
+/// ???
 int open64(const char* file, int oflag, ...)
 {
     int fd = 0;
@@ -63,6 +92,10 @@ int open64(const char* file, int oflag, ...)
 
     return fd;
 }
+
+///
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //
