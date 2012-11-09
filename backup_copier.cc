@@ -10,14 +10,16 @@
 #include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
-
+#include <errno.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// is_dot():
+// is_dot() -
 //
-// Description: Helper function that returns true if the given directory 
-// entry is either of the special cases ".." and ".".
+// Description: 
+//
+//     Helper function that returns true if the given directory 
+// entry is either of the special cases: ".." or ".".
 //
 static bool is_dot(struct dirent *entry)
 {
@@ -31,7 +33,9 @@ static bool is_dot(struct dirent *entry)
 //
 // backup_copier() - 
 //
-// Description: Constructor for this copier object.
+// Description:
+//
+//     Constructor for this copier object.
 //
 backup_copier::backup_copier()
 : m_source(0), m_dest(0)
@@ -39,95 +43,28 @@ backup_copier::backup_copier()
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// copy_path() - 
+// set_directories() -
 //
-// Description: Copies the given source file, or directory, to our backup
-// directory, using the given source and destination prefixes to determine
-// the relative location of the file in the directory heirarchy.
+// Description: 
 //
-void backup_copier::copy_path(const char *source,
-                              const char* dest,
-                              const char *file)
+//     Adds a directory heirarchy to be copied from the given source
+// to the given destination.
+//
+void backup_copier::set_directories(const char *source, const char *dest)
 {
-    if (DEBUG) printf("---entering copy path()....");
-    int r = 0;
-    struct stat sbuf;
-    r = stat(source, &sbuf);
-    // See if the path is a directory or a real file.
-    if (S_ISREG(sbuf.st_mode)) {
-        if (DEBUG) printf("....regular file...\n");
-        int srcfd = call_real_open(source, O_RDONLY);
-        assert(srcfd >= 0);
-        int destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
-        assert(destfd >= 0);
-        // This section actually copies all the data from the source
-        // copy to our newly created backup copy.
-        ssize_t n_read;
-        const size_t buf_size = 1024 * 1024;
-        char buf[buf_size];
-        ssize_t n_wrote_now = 0;
-        while ((n_read = read(srcfd, buf, buf_size))) {
-            assert(n_read >= 0);
-            ssize_t n_wrote_this_buf = 0;
-            while (n_wrote_this_buf < n_read) {
-                n_wrote_now = call_real_write(destfd,
-                                              buf + n_wrote_this_buf,
-                                              n_read - n_wrote_this_buf);
-                assert(n_wrote_now > 0);
-                n_wrote_this_buf += n_wrote_now;
-            }
-        }
-        r = call_real_close(srcfd);
-        assert(r == 0);
-        r = call_real_close(destfd);
-        assert(r == 0);
-    } else if (S_ISDIR(sbuf.st_mode)) {
-        if (DEBUG) printf("....directory...\n");
-        // 1. Make the directory of the destination.
-        r = mkdir(dest,0777);
-        if (r < 0) {
-            perror("---Cannot create directory in destination.");
-            printf("---dest=%s\n", dest);
-            assert(r == 0);
-        }
-
-        // 2. Open the directory to be copied (source).
-        DIR *dir = opendir(source);
-        assert(dir);
-
-        // 3. Loop through each entry, adding directories and regular
-        // files to our copy 'todo' list.
-        struct dirent entry;
-        struct dirent *result;
-        r = readdir_r(dir, &entry, &result);
-        if (DEBUG) printf("---r = %d\n", r);
-        while (r == 0 && result != 0) {
-            if (DEBUG) printf("---result %s\n", result->d_name);
-            if (DEBUG) printf("---entry.dname %s\n", entry.d_name);
-            if (is_dot(&entry)) {
-                printf("---skipping %s\n", entry.d_name);                
-            } else if (strcmp(file, "") == 0) {
-                if (DEBUG) printf("---pushing %s\n", entry.d_name);
-                m_todo.push_back(strdup(entry.d_name));
-            } else {
-                if (DEBUG) printf("---catting to make: %s/%s\n", file ,entry.d_name);
-                int len = strlen(file) + strlen(entry.d_name) + 2;
-                char new_name[len + 1];
-                int l = 0;
-                l = snprintf(new_name, len + 1, "%s/%s", file, entry.d_name);
-                assert(l + 1 == len);
-                m_todo.push_back(strdup(new_name));
-            }
-            r = readdir_r(dir, &entry, &result);
-            if (DEBUG) printf("---r = %d\n", r);
-        }
-    }
+    m_source = source;
+    m_dest = dest;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 // start_copy() -
 //
+// Description: 
+//
+//     Loops through all files and subdirectories of the current 
+// directory that has been selected for backup.
 //
 void backup_copier::start_copy()
 {
@@ -136,22 +73,25 @@ void backup_copier::start_copy()
     char *fname = 0;
     while(m_todo.size()) {
         fname = m_todo.back();
-        printf("---Doing backup %s\n", fname);
-        printf("---size1 = %lu\n", m_todo.size());
+        if (CPY_DBG) printf("---Doing backup %s\n", fname);
+        if (CPY_DBG) printf("---size1 = %lu\n", m_todo.size());
         m_todo.pop_back();
-        printf("---size2 = %lu\n", m_todo.size());
+        if (CPY_DBG) printf("---size2 = %lu\n", m_todo.size());
         this->copy_file(fname);
-        printf("---size3 = %lu\n", m_todo.size());
+        if (CPY_DBG) printf("---size3 = %lu\n", m_todo.size());
     }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 // copy_file() -
 //
-// Description: Copy's the given file, using this copier object's source and
-// desitnation directory members to determine the exact location of the file
-// in both the original and backup locations.
+// Description: 
+//
+//     Copy's the given file, using this copier object's source and
+// desitnation directory members to determine the exact location
+// of the file in both the original and backup locations.
 //
 void backup_copier::copy_file(const char *file)
 {
@@ -172,15 +112,96 @@ void backup_copier::copy_file(const char *file)
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 //
-// set_directories() -
+// copy_path() - 
 //
-// Description: Adds a directory heirarchy to be copied from the given source
-// to the given destination.
+// Description: 
 //
-void backup_copier::set_directories(const char *source, const char *dest)
+//     Copies the given source file, or directory, to our backup
+// directory, using the given source and destination prefixes to
+// determine the relative location of the file in the directory
+// heirarchy.
+//
+void backup_copier::copy_path(const char *source,
+                              const char* dest,
+                              const char *file)
 {
-    m_source = source;
-    m_dest = dest;
+    if (CPY_DBG) printf("---entering copy path()....\n");
+    int r = 0;
+    struct stat sbuf;
+    r = stat(source, &sbuf);
+    // See if the path is a directory or a real file.
+    if (S_ISREG(sbuf.st_mode)) {
+        if (CPY_DBG) printf("....regular file...\n");
+        int srcfd = call_real_open(source, O_RDONLY);
+        assert(srcfd >= 0);
+        int destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
+        assert(destfd >= 0);
+        // This section actually copies all the data from the source
+        // copy to our newly created backup copy.
+        ssize_t n_read;
+        const size_t buf_size = 1024 * 1024;
+        char buf[buf_size];
+        ssize_t n_wrote_now = 0;
+        while ((n_read = call_real_read(srcfd, buf, buf_size))) {
+            assert(n_read >= 0);
+            ssize_t n_wrote_this_buf = 0;
+            while (n_wrote_this_buf < n_read) {
+                n_wrote_now = call_real_write(destfd,
+                                              buf + n_wrote_this_buf,
+                                              n_read - n_wrote_this_buf);
+                assert(n_wrote_now > 0);
+                n_wrote_this_buf += n_wrote_now;
+            }
+        }
+        r = call_real_close(srcfd);
+        assert(r == 0);
+        r = call_real_close(destfd);
+        assert(r == 0);
+    } else if (S_ISDIR(sbuf.st_mode)) {
+        if (CPY_DBG) printf("....directory...\n");
+        // 1. Make the directory of the destination.
+        r = mkdir(dest,0777);
+        if (r < 0) {
+            perror("---Cannot create directory in destination.");
+            printf("---dest=%s\n", dest);
+            if (errno != EEXIST) {
+            
+                assert(r == 0);
+            }
+        }
+
+        // 2. Open the directory to be copied (source).
+        DIR *dir = opendir(source);
+        assert(dir);
+
+        // 3. Loop through each entry, adding directories and regular
+        // files to our copy 'todo' list.
+        struct dirent entry;
+        struct dirent *result;
+        r = readdir_r(dir, &entry, &result);
+        if (CPY_DBG) printf("---r = %d\n", r);
+        while (r == 0 && result != 0) {
+            if (CPY_DBG) printf("---result %s\n", result->d_name);
+            if (CPY_DBG) printf("---entry.dname %s\n", entry.d_name);
+            if (is_dot(&entry)) {
+                printf("---skipping %s\n", entry.d_name);                
+            } else if (strcmp(file, "") == 0) {
+                if (CPY_DBG) printf("---pushing %s\n", entry.d_name);
+                m_todo.push_back(strdup(entry.d_name));
+            } else {
+                if (CPY_DBG) printf("---catting to make: %s/%s\n", file ,entry.d_name);
+                int len = strlen(file) + strlen(entry.d_name) + 2;
+                char new_name[len + 1];
+                int l = 0;
+                l = snprintf(new_name, len + 1, "%s/%s", file, entry.d_name);
+                assert(l + 1 == len);
+                m_todo.push_back(strdup(new_name));
+            }
+            r = readdir_r(dir, &entry, &result);
+            if (CPY_DBG) printf("---r = %d\n", r);
+        }
+    }
 }

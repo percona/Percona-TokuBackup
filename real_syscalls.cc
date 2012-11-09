@@ -7,10 +7,6 @@
 #include <stdarg.h>
 #include <unistd.h>
 
-#ifndef NULL
-#define NULL 0
-#endif
-
 // **************************************************************************
 //
 // These are wrappers for the file system calls.  Our library
@@ -58,6 +54,51 @@ ssize_t call_real_write(int fd, const void *buf, size_t nbyte) {
         assert(real_write != NULL);
     }
     return real_write(fd, buf, nbyte);
+}
+
+static ssize_t (*real_read)(int fildes, const void *buf, size_t nbyte) = NULL;
+ssize_t call_real_read(int fildes, const void *buf, size_t nbyte) {
+    if (real_read == NULL) {
+        real_read = (ssize_t(*)(int,const void*,size_t))dlsym(RTLD_NEXT, "read");
+        assert(real_read != NULL);
+    }
+    return real_read(fildes, buf, nbyte);
+}
+
+static ssize_t (*real_pwrite)(int fildes, const void *buf, size_t nbyte, off_t offset) = NULL;
+ssize_t call_real_pwrite(int fildes, const void *buf, size_t nbyte, off_t offset) {
+    if (real_pwrite == NULL) {
+        real_pwrite = (ssize_t(*)(int,const void*,size_t,off_t))dlsym(RTLD_NEXT, "pwrite");
+        assert(real_pwrite != NULL);
+    }
+    return real_pwrite(fildes, buf, nbyte, offset);
+}
+
+static int (*real_ftruncate)(int fildes,  off_t length) = NULL;
+int call_real_ftruncate(int fildes, off_t length) {
+    if (real_ftruncate == NULL) {
+        real_ftruncate = (int(*)(int,off_t))dlsym(RTLD_NEXT, "ftruncate");
+        assert(real_ftruncate);
+    }
+    return real_ftruncate(fildes, length);
+}
+
+static int (*real_truncate)(const char *path, off_t length) = NULL;
+int call_real_truncate(const char *path, off_t length) {
+    if (real_truncate == NULL) {
+        real_truncate = (int(*)(const char *,off_t))dlsym(RTLD_NEXT, "truncate");
+        assert(real_truncate);
+    }
+    return real_truncate(path, length);
+}
+
+static int (*real_unlink)(const char* path) = NULL;
+int call_real_unlink(const char *path) {
+    if (real_unlink == NULL) {
+        real_unlink = (int(*)(const char*))dlsym(RTLD_NEXT, "unlink");
+        assert(real_unlink);
+    }
+    return real_unlink(path);
 }
 
 static int (*real_rename)(const char *oldpath, const char *newpath) = NULL;

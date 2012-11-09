@@ -14,8 +14,8 @@ public:
     backup_copier();
     void set_directories(const char *source, const char *dest);
     void start_copy();
-    void copy_path(const char *source, const char* dest, const char *file);
     void copy_file(const char *file);
+    void copy_path(const char *source, const char* dest, const char *file);
 };
 
 #endif // End of header guardian.

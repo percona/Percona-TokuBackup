@@ -7,7 +7,74 @@
 
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
+#include <sys/stat.h>
 
+//class path_creator {
+//private:
+//    size_t index;
+//    const char slash;
+//    char directory[256];
+//public:
+//    path_creator() : index(0), slash('/'), directory("\0") {};
+//    const char *get_next_directory(const char *path);
+//};
+//
+/////////////////////////////////////////////////////////////////////////////////
+////
+//// ():
+////
+//const char *path_creator::get_next_directory(const char *path) {
+//    const char *r = 0;
+//    char *postiion = 0;
+//    postiion = strchr(path, this->slash);
+//    if (postiion) {
+//        
+//    }
+//    /*****************
+//    
+//    ******************/
+//    return r;
+//}
+
+static void create_path(const char *path)
+{
+    // Find directory string
+    bool done = false;
+    const char slash = '/';
+    char directory[256];
+    
+    while(!done) {
+        char *slash_position = NULL;
+        slash_position = strchr(path, slash);
+        if (slash_position == NULL) {
+            done = true;
+            continue;
+        }
+        size_t end = (size_t) (slash_position - path);
+        strncpy(directory, path, end);
+        int r = mkdir(directory, 0777);
+        if (r) { 
+            perror("making backup subdirectory failed.");
+            // For now, just ignore already existing dir,
+            // this is a race between the backup copier
+            // and intercepted open() calls.
+            if (errno != EEXIST) {
+                assert(0);
+            }
+        }
+
+        path += end + 1;
+    }
+    
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// start_copying():
+//
+// Description: 
+//
 void *start_copying(void * copier)
 {
     void *r = 0;
@@ -17,31 +84,27 @@ void *start_copying(void * copier)
     return r;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// backup_directory():
+//
+// Description: 
+//
 backup_directory::backup_directory()
-    : m_source_length(0), m_dest_length(0)
 {
 }
 
-// Returns the file description for the given file descriptor.
-file_description* backup_directory::get_file_description(int fd)
-{
-    file_description *r = 0;
-    //    r = this->descriptions.fetch_unchecked(fd);
-    r = m_descriptions.at(fd);
-    if (r == 0) {
-        // TODO: Do we want to support writing to a file when it has
-        // not been opened (via backup)? 
-        // 1. allocate new description.
-        // 2. store it in the array.
-        // 3. update its offset based on the current position. (is
-        // this thread safe?)
-    }
-
-    return r;
-}
 
 
-// Determines if the given file name is within our source directory or not.
+////////////////////////////////////////////////////////////////////////////////
+//
+// is_prefix():
+//
+// Description: 
+//
+//     Determines if the given file name is within our source
+// directory or not.
+//
 bool backup_directory::is_prefix(const char *file)
 {
     for (int i = 0; true; i++) {
@@ -50,9 +113,58 @@ bool backup_directory::is_prefix(const char *file)
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+void backup_directory::open(file_description * const description)
+{    
+    // See if the file exists in the backup copy already...
+    bool exists = this->does_file_exist(description->name);
+    
+    if (!exists) {
+        this->create_subdirectories(description->name);
+    }
+}
+
+void backup_directory::create_subdirectories(const char *file)
+{
+    create_path(file);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// create() -
+//
+// Description: 
+//
+//     ...
+//
+void backup_directory::create(int fd, const char *file)
+{
+    // Create new file name based on master file prefix.
+    char *new_name = this->translate_prefix(file);
+    if (DEBUG) { printf("new_name = %s\n", new_name); }
+    
+    // See if the path exists in the backup or not.
+    // TODO:...
+//    const char *path = NULL;
+//    
+//    bool exists = false;
+//    exists = this->does_file_exist(file);
+//    
+//    if (!exists) {
+//        this->create_subdirectories(file);
+//    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// translate_prefix():
+//
+// Description: 
+//
 char* backup_directory::translate_prefix(const char *file)
 {
-    // TODO: Don't we have a copy of these lengths already?
+    // TODO: Should we have a copy of these lengths already?
     size_t len_op = strlen(m_source_dir);
     size_t len_np = strlen(m_dest_dir);
     size_t len_s = strlen(file);
@@ -60,51 +172,73 @@ char* backup_directory::translate_prefix(const char *file)
     size_t new_len = len_s - len_op + len_np;
     char *new_string = 0;
     new_string = (char *)calloc(new_len + 1, sizeof(char));
-    //char *XMALLOC_N(new_len+1, new_string);
     memcpy(new_string, m_dest_dir, len_np);
+    
     // Copy the file name from the directory with the newline at the end.
     memcpy(new_string + len_np, file + len_op, len_s - len_op + 1);
     return new_string;
 }
 
-void backup_directory::add_description(int fd, file_description *description)
+///////////////////////////////////////////////////////////////////////////////
+//
+bool backup_directory::does_file_exist(const char *file)
 {
-    this->grow_fds_array(fd);
-    std::vector<file_description*>::iterator it;
-    it = m_descriptions.begin();
-    it += fd;
-    m_descriptions.insert(it, description);
+    bool result = false;
+    struct stat sb;
+    // We use stat to determine if the file does not exist.
+    int r = stat(file, &sb);
+    if (r < 0) {
+        // We want to catch all other errors.
+        if (errno != ENOENT) {
+            perror("stat() failed, no backup file information.");
+            assert(0);
+        }
+    } else {
+        result = true;
+    }
+    
+    return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// set_directories():
+//
+// Description: 
+//
 void backup_directory::set_directories(const char *source, const char *dest)
 {
-    size_t len_op = strlen(source);
-    size_t len_np = strlen(dest);
-    m_source_length = len_op;
-    m_dest_length = len_np;
     m_source_dir = source;
     m_dest_dir = dest;
 }
 
-// Copies all files and subdirectories to the destination.
+///////////////////////////////////////////////////////////////////////////////
+//
+// start_copy():
+//
+// Description: 
+//
+//     Copies all files and subdirectories to the destination.
+//
 void backup_directory::start_copy()
 {
     int r = 0;
     m_copier.set_directories(m_source_dir, m_dest_dir);
-    
     r = pthread_create(&m_thread, NULL, &start_copying, (void*)&m_copier);
-    if (r != 0) { assert(0); }
+    if (r != 0) {
+        perror("Cannot create backup copy thread.");
+        assert(0);
+     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//
+// wait_for_copy_to_finish():
+//
+// Description: 
+//
 void backup_directory::wait_for_copy_to_finish()
 {
     pthread_join(m_thread, NULL);
 }
 
-void backup_directory::grow_fds_array(int fd)
-{
-    assert(fd >= 0);
-    while(m_descriptions.size() <= fd) {
-        m_descriptions.push_back(0);
-    }
-}

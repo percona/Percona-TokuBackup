@@ -5,6 +5,7 @@
 #define BACKUP_DIRECTORY_H
 
 #include "file_description.h"
+#include "file_descriptor_map.h"
 #include "backup_copier.h"
 
 #include <pthread.h>
@@ -16,22 +17,22 @@ class backup_directory
 private:
     const char *m_source_dir;
     const char *m_dest_dir;
-    int m_source_length;
-    int m_dest_length;
-    std::vector<file_description*> m_descriptions;
     backup_copier m_copier;
     pthread_t m_thread;
 public:
     backup_directory();
-    file_description* get_file_description(int fd);
+    void open(file_description * const description);
+    void create(int fd, const char* file);
+    
     bool is_prefix(const char *file);
     char* translate_prefix(const char *file);
-    void add_description(int fd, file_description *description);
     void set_directories(const char *source, const char *dest);
     void start_copy();
     void wait_for_copy_to_finish();
 private:
-    void grow_fds_array(int fd);
+    bool does_file_exist(const char *file);
+    void create_subdirectories(const char *file);
+
 };
 
 #endif // End of header guardian.

@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     setup_source();
     setup_destination();
     start_backup(SRC, DST);
-    /*
+    
     int fd = 0;
     fd = open(SRC "/bar.data", O_WRONLY);
     assert(fd >= 0);
@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     assert(result == 8);
     result = close(fd);
     assert(result == 0);
-    */
-    stop_backup(SRC, DST);
+
+    stop_backup();
     return result;
 }

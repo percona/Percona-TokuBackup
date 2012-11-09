@@ -1,5 +1,6 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
+
 #include <stdio.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -12,67 +13,218 @@
 #include "real_syscalls.h"
 #include "backup_debug.h"
 
-
 backup_manager manager;
 
+//***************************************
 //
 // Interposed public API:
 //
+//***************************************
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// open() -
+//
+// Description: 
+//
+//     Either creates or opens a file in both the source directory
+// and the backup directory.
+//
 int open(const char* file, int oflag, ...)
 {
-    int r = 0;
+    int fd = 0;
     if (DEBUG) printf("open called.\n");
     if (oflag & O_CREAT) {
         va_list ap;
         va_start(ap, oflag);
         mode_t mode = va_arg(ap, mode_t);
         va_end(ap);
-        r = call_real_open(file, oflag, mode);
-        manager.create_file(file);
+        fd = call_real_open(file, oflag, mode);
+        if (fd < 0) { 
+            perror("Interposed open() w/ O_CREAT failed.");
+        } else {
+            manager.create(fd, file);
+        }
     } else {
-        r = call_real_open(file, oflag);
-        manager.open_file(file, oflag, r);
+        fd = call_real_open(file, oflag);
+        if (fd < 0) {
+            perror("Interposed open failed."); 
+        } else {
+            manager.open(fd, file, oflag);
+        }
     }
 
-    return r;
+    return fd;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// close() -
+//
+// Description: 
+//
+//     Closes the file associated with the provided file descriptor
+// in both the source and backup directories.
+//
 int close(int fd)
 {
     int r = 0;
     if (DEBUG) printf("close called.\n");
     r = call_real_close(fd);
-    manager.close_descriptor(fd);
+    manager.close(fd);
     return r;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// write() -
+//
+// Description: 
+//
+//     Writes to the file associated with the given file descriptor
+// in both the source and backup directories.
+//
 ssize_t write(int fd, const void *buf, size_t nbyte)
 {
     ssize_t r = 0;
     if (DEBUG) printf("write called.\n");
     r = call_real_write(fd, buf, nbyte);
-    manager.write_to_descriptor(fd, buf, nbyte);
+    // <CER> this *SHOULD* seek in the backup copy as part of the
+    // write() to the backup file...
+    manager.write(fd, buf, nbyte);
     return r;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// read() -
+//
+// Description: 
+//
+//     Reads data into the given buffer from the source directory.
+// 
+// Note:
+//
+//     The backup manager needs to know that the offset for the 
+// given file descriptor has changed, even though no bytes are
+// read from the backup copy of the same file.
+//
+ssize_t read(int fd, void *buf, size_t nbyte)
+{
+    ssize_t r = 0;
+    if (DEBUG) printf("read called.\n");
+    r = call_real_read(fd, buf, nbyte);
+    if (r < 0) { perror("real read() call failed."); assert(0);}
+    manager.seek(fd, nbyte);
+    return r;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// pwrite() -
+//
+// Description: 
+//
+//     Writes to the file associated with the given file descriptor
+// in both the source and backup directories.
+//
+ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
+{
+    ssize_t r = 0;
+    if (DEBUG) printf("pwrite called.\n");
+    r = call_real_pwrite(fd, buf, nbyte, offset);
+    manager.pwrite(fd, buf, nbyte, offset);
+    return r;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// ftruncate() -
+//
+// Description: 
+//
+//     Deletes a portion of the file based on the given file descriptor.
+//
+int ftruncate(int fd, off_t length)
+{
+    int r = 0;
+    if (DEBUG) printf("ftruncate called.\n");
+    r = call_real_ftruncate(fd, length);
+    manager.ftruncate(fd, length);
+    return r;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// truncate() -
+//
+// Description: 
+//
+//     Deletes a portion of the given file based on the given length.
+//
+int truncate(const char *path, off_t length)
+{
+    int r = 0;
+    if (DEBUG) printf("truncate called.\n");
+    r = call_real_truncate(path, length);
+    manager.truncate(path, length);
+    return r;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// unlink() -
+//
+// Description: 
+//
+int unlink(const char *path)
+{
+    int r = 0;
+    if (DEBUG) printf("unlink called.\n");
+    r = call_real_unlink(path);
+    return r;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// rename() -
+//
+// Description: 
+//
 int rename(const char *oldpath, const char *newpath)
 {
     int r = 0;
     if (DEBUG) printf("rename called.\n");
     r = call_real_rename(oldpath, newpath);
-    manager.rename_file(oldpath, newpath);
+    manager.rename(oldpath, newpath);
     return r;
 }
 
 // TODO: Separate the API for initiating, stopping and altering backup.
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// start_backup() -
+//
+// Description:
+//
+//     
+//
 void start_backup(const char *source_dir_arg, const char *dest_dir_arg)
 {
-    manager.start_backup();
+    setbuf(stdout, NULL);
     manager.add_directory(source_dir_arg, dest_dir_arg);
+    manager.start_backup();
 }
 
-// TODO: Separate the API for initiating, stopping and altering backup.
-void stop_backup(const char *source_dir_arg, const char *dest_dir_arg)
+////////////////////////////////////////////////////////////////////////////////
+//
+// stop_backup() -
+//
+// Description: 
+//
+void stop_backup()
 {
     manager.stop_backup();
 }
