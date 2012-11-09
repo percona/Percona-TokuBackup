@@ -7,8 +7,6 @@
 
 #include <string.h>
 #include <assert.h>
-#include <pthread.h>
-
 
 void *start_copying(void * copier)
 {
@@ -95,8 +93,7 @@ void backup_directory::start_copy()
     m_copier.set_directories(m_source_dir, m_dest_dir);
     
     r = pthread_create(&m_thread, NULL, &start_copying, (void*)&m_copier);
-    r ? assert(!"pthread failure????!!!!\n") : (void)0;
-    //start_copying(&m_copier);
+    if (r != 0) { assert(0); }
 }
 
 void backup_directory::wait_for_copy_to_finish()

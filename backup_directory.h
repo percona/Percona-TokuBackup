@@ -9,6 +9,7 @@
 
 #include <pthread.h>
 #include <vector>
+#include <pthread.h>
 
 class backup_directory
 {

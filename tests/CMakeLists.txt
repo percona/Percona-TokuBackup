@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(BackupTests)
 include_directories(..)
+find_package( Threads )
 add_executable(Test1 test1.cc)
-target_link_libraries(Test1 ${CMAKE_DL_LIBS} Backup)
+target_link_libraries(Test1 ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} Backup)
