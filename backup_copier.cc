@@ -165,12 +165,10 @@ void backup_copier::copy_path(const char *source,
         // 1. Make the directory of the destination.
         r = mkdir(dest,0777);
         if (r < 0) {
+            int temp = errno;
             perror("---Cannot create directory in destination.");
             printf("---dest=%s\n", dest);
-            if (errno != EEXIST) {
-            
-                assert(r == 0);
-            }
+            assert(temp == EEXIST);
         }
 
         // 2. Open the directory to be copied (source).
