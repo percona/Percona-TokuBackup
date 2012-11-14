@@ -23,7 +23,7 @@ public:
     backup_directory();
     void open(file_description * const description);
     void create(int fd, const char* file);
-    
+    bool directories_set();
     bool is_prefix(const char *file);
     char* translate_prefix(const char *file);
     void set_directories(const char *source, const char *dest);

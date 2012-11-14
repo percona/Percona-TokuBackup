@@ -87,6 +87,9 @@ void backup_manager::stop_backup()
 void backup_manager::add_directory(const char *source_dir,
                                    const char *dest_dir)
 {
+    assert(source_dir);
+    assert(dest_dir);
+    
     // TODO: assert that the directory's are not the same.
     // TODO: assert that the destination directory is empty.
     
@@ -289,6 +292,11 @@ backup_directory* backup_manager::get_directory(int fd)
 backup_directory* backup_manager::get_directory(const char *file)
 {
     if (MGR_DBG) printf("entering create_file() with file name = %s\n", file);
+    
+    if (!m_dir.directories_set())
+    {
+        return NULL;
+    }
     
     // See if file is in backup directory or not...
     if (!m_dir.is_prefix(file)) {

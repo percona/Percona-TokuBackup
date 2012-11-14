@@ -128,7 +128,7 @@ void backup_copier::copy_path(const char *source,
                               const char* dest,
                               const char *file)
 {
-    if (CPY_DBG) printf("---entering copy path()....\n");
+    if (CPY_DBG) printf("---entering copy path()\n");
     int r = 0;
     struct stat sbuf;
     r = stat(source, &sbuf);

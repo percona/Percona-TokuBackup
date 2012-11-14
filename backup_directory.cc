@@ -91,9 +91,26 @@ void *start_copying(void * copier)
 // Description: 
 //
 backup_directory::backup_directory()
+: m_source_dir(NULL), m_dest_dir(NULL)
 {
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// directories_set():
+//
+// Description: 
+//
+//     Determines if the source and destination directories have been
+// set for this backup_directory object.
+//
+bool backup_directory::directories_set()
+{
+    if (m_dest_dir && m_source_dir) {
+        return true;
+    }
+    return false;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,6 +225,8 @@ bool backup_directory::does_file_exist(const char *file)
 //
 void backup_directory::set_directories(const char *source, const char *dest)
 {
+    assert(source);
+    assert(dest);
     m_source_dir = source;
     m_dest_dir = dest;
 }
