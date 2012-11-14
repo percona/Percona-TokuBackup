@@ -137,17 +137,17 @@ void backup_manager::create(int fd, const char *file)
 void backup_manager::open(int fd, const char *file, int oflag)
 {
     if (MGR_DBG) printf("entering open() with fd = %d\n", fd);
-
-    // Verify that the prefix is correct.
-    if (!m_dir.is_prefix(file)) {
+    
+    backup_directory *directory = this->get_directory(file);
+    if (directory == NULL) {
         return;
     }
 
     m_map.put(fd);
     file_description * const description = m_map.get(fd);
-    description->name = m_dir.translate_prefix(file);
+    description->name = directory->translate_prefix(file);
     
-    m_dir.open(description);
+    directory->open(description);
     description->open();
 }
 
