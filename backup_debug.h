@@ -9,10 +9,10 @@
 #endif
 
 // Debug flag for backup_copier debugging.
-#define CPY_DBG 1
+const int CPY_DBG = 1;
 
 // Debug flag just for the backup manager.
-#define MGR_DBG 1
+const int MGR_DBG = 1;
 
 #endif // End of header guardian.
 

@@ -45,7 +45,9 @@ void backup_manager::start_backup()
     if (r) { perror("backup mutex creation failed."); assert(0); }
     
     m_doing_backup = true;
-    m_interpret_writes = true;
+    
+    // TODO: For now, don't interpret writes...
+    m_interpret_writes = false;
 }
 
 
@@ -66,7 +68,6 @@ void backup_manager::stop_backup()
     m_dir.wait_for_copy_to_finish();
     
     m_doing_backup = false;
-    m_interpret_writes = false;
     
     int r = pthread_mutex_destroy(&m_mutex);
     if (r) { perror("Cannot destroy backup mutex."); assert(0); }
@@ -98,6 +99,24 @@ void backup_manager::add_directory(const char *source_dir,
     
     // Start backing all the files in the directory.
     m_dir.start_copy();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// remove_directory() -
+//
+// Description: 
+//
+//     TBD...
+//
+void backup_manager::remove_directory(const char *source_dir,
+                                      const char *dest_dir)
+{
+    assert(source_dir);
+    assert(dest_dir);
+    
+    // TODO: Do we need to pause copy?
+    // TODO: Do we want an option to erase the backup?
 }
 
 

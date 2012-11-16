@@ -18,11 +18,13 @@ private:
     backup_directory m_dir;
     file_descriptor_map m_map;
     pthread_mutex_t m_mutex;
+
 public:
     backup_manager();
     void start_backup();
     void stop_backup();
     void add_directory(const char *source_dir, const char *dest_dir);
+    void remove_directory(const char *source_dir, const char *dest_dir);
     
     // Methods used during interposition:
     void create(int fd, const char *file);
