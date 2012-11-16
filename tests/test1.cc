@@ -33,7 +33,8 @@ int main(int argc, char *argv[])
     int result = 0;
     setup_source();
     setup_destination();
-    start_backup(SRC, DST);
+    add_directory(SRC, DST);
+    start_backup();
     
     int fd = 0;
     fd = open(SRC "/bar.data", O_WRONLY);
