@@ -5,6 +5,7 @@
 #include "real_syscalls.h"
 #include "backup_debug.h"
 
+#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

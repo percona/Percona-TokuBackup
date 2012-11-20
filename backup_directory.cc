@@ -5,6 +5,8 @@
 #include "file_description.h"
 #include "backup_debug.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
@@ -45,8 +47,7 @@ static void create_path(const char *path)
     char directory[256];
     
     while(!done) {
-        char *slash_position = NULL;
-        slash_position = strchr(path, slash);
+        const char *slash_position = strchr(path, slash);
         if (slash_position == NULL) {
             done = true;
             continue;
