@@ -138,7 +138,10 @@ void backup_manager::create(int fd, const char *file)
 
     // TODO: Add new file name to file_description object. 
     m_map.put(fd);
-    file_description *desc = m_map.get(fd);
+    file_description *description = m_map.get(fd);
+    description->name = directory->translate_prefix(file);
+    directory->open(description);
+    description->open();
 }
 
 
