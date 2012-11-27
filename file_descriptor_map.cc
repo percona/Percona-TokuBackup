@@ -28,7 +28,7 @@ file_descriptor_map::file_descriptor_map()
 //
 file_description* file_descriptor_map::get(int fd)
 {
-    assert(fd > 0);
+    assert(fd >= 0);
     if (fd >= m_map.size()) {
         return NULL;
     }
@@ -53,13 +53,14 @@ void file_descriptor_map::put(int fd)
     // TODO: use 'new', since that will call the constructor and initialize
     // our object via the intitialization list.
     file_description *description = 0;
-    description = (file_description*)malloc(sizeof(file_description));
-    description->refcount = 1;
-    description->offset   = 0;
+    description = new file_description;
+    //description = (file_description*)malloc(sizeof(file_description));
+    //description->refcount = 1;
+    //description->offset   = 0;
     
     // <CER> Is this to make space for the backup fd?
     // <CER> Shouldn't we do this when we are adding a file descriptor?
-    description->fds.push_back(0); // fd?
+    //description->fds.push_back(0); // fd?
     this->grow_array(fd);
     std::vector<file_description*>::iterator it;
     it = m_map.begin();
@@ -80,7 +81,7 @@ void file_descriptor_map::erase(int fd)
 {
     file_description *description = this->get(fd);
     assert(description != 0);
-    free(description);
+    delete description;
     m_map.at(fd) = 0;
 }
 
