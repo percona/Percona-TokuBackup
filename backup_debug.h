@@ -14,5 +14,8 @@ const int CPY_DBG = 1;
 // Debug flag just for the backup manager.
 const int MGR_DBG = 1;
 
+// Debug flag for the file descriptor map.
+const int MAP_DBG = 1;
+
 #endif // End of header guardian.
 
