@@ -158,8 +158,9 @@ ssize_t read(int fd, void *buf, size_t nbyte)
     ssize_t r = 0;
     if (DEBUG) printf("read called.\n");
     r = call_real_read(fd, buf, nbyte);
-    if (r < 0) { perror("real read() call failed."); assert(0);}
-    manager.seek(fd, nbyte);
+    if (r >= 0) {
+        manager.seek(fd, nbyte);
+    }
     return r;
 }
 

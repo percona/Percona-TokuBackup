@@ -49,6 +49,9 @@ void backup_manager::start_backup()
     
     // TODO: For now, don't interpret writes...
     m_interpret_writes = false;
+    
+    // Start backing all the files in the directory.
+    m_dir.start_copy();
 }
 
 
@@ -97,9 +100,6 @@ void backup_manager::add_directory(const char *source_dir,
     
     // TEMP: We only have one directory object at this point, for now...
     m_dir.set_directories(source_dir, dest_dir);
-    
-    // Start backing all the files in the directory.
-    m_dir.start_copy();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -214,13 +214,13 @@ void backup_manager::write(int fd, const void *buf, size_t nbyte)
         return;
     }
 
-    file_description *fdesc = NULL;
-    fdesc = m_map.get(fd);
-    if (fdesc == NULL) {
+    file_description *description = NULL;
+    description = m_map.get(fd);
+    if (description == NULL) {
         return;
     }
     
-    fdesc->write(buf, nbyte);
+    description->write(buf, nbyte);
 }
 
 
@@ -263,9 +263,11 @@ void backup_manager::seek(int fd, size_t nbyte)
         return;
     }
     
-    file_description *description = 0;
+    file_description *description = NULL;
     description = m_map.get(fd);
-    assert(description);
+    if (description == NULL) {
+        return;
+    }
     
     // TODO: determine who is seeking...
     // Do we need to seek nbytes past the current position?
