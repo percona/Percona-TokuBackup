@@ -2,6 +2,7 @@
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 
 #include "file_descriptor_map.h"
+#include "backup_debug.h"
 #include <assert.h>
 #include <cstdlib>
 
@@ -28,6 +29,10 @@ file_descriptor_map::file_descriptor_map()
 //
 file_description* file_descriptor_map::get(int fd)
 {
+    if (MAP_DBG) { 
+        printf("get() called with fd = %d", fd);
+    }
+
     assert(fd >= 0);
     if (fd >= m_map.size()) {
         return NULL;
@@ -49,6 +54,9 @@ file_description* file_descriptor_map::get(int fd)
 //
 void file_descriptor_map::put(int fd)
 {
+    if (MAP_DBG) { 
+        printf("put() called with fd = %d", fd);
+    }
     // Allocate file description object.
     // TODO: use 'new', since that will call the constructor and initialize
     // our object via the intitialization list.
@@ -79,6 +87,10 @@ void file_descriptor_map::put(int fd)
 //
 void file_descriptor_map::erase(int fd)
 {
+    if (MAP_DBG) { 
+        printf("erase() called with fd = %d", fd);
+    }
+
     file_description *description = this->get(fd);
     assert(description != 0);
     delete description;
