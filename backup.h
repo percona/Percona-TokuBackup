@@ -4,9 +4,12 @@
 #ifndef BACKUP_H
 #define BACKUP_H
 
+extern "C" {
+ // These public API's should be in C if possible
 void add_directory(const char* source, const char* destination);
 void remove_directory(const char* source, const char* destination);
-void start_backup();
-void stop_backup();
+void start_backup(void);
+void stop_backup(void);
+}
 
 #endif // end of header guardian.

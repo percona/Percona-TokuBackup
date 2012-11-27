@@ -261,7 +261,7 @@ int rename(const char *oldpath, const char *newpath)
 //
 // Description:
 //
-void add_directory(const char* source, const char* destination)
+extern "C" void add_directory(const char* source, const char* destination)
 {
     manager.add_directory(source, destination);
 }
@@ -273,7 +273,7 @@ void add_directory(const char* source, const char* destination)
 //
 // Description:
 //
-void remove_directory(const char* source, const char* destination)
+extern "C" void remove_directory(const char* source, const char* destination)
 {
     manager.remove_directory(source, destination);
 }
@@ -287,7 +287,7 @@ void remove_directory(const char* source, const char* destination)
 //
 //     
 //
-void start_backup()
+extern "C" void start_backup(void)
 {
     manager.start_backup();
 }
@@ -299,7 +299,7 @@ void start_backup()
 //
 // Description: 
 //
-void stop_backup()
+extern "C" void stop_backup(void)
 {
     manager.stop_backup();
 }
