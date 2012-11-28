@@ -8,6 +8,7 @@
 #include "assert.h"
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -108,8 +109,7 @@ void file_description::write(const void *buf, size_t nbyte)
     // ...
 }
 
-void file_description::seek(size_t nbyte)
-{
+void file_description::seek(size_t nbyte __attribute__((__unused__))) {
     
 }
 
