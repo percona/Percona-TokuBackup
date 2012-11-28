@@ -8,6 +8,7 @@
 #include "assert.h"
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -55,7 +56,7 @@ void file_description::open()
     fd = call_real_open(this->name, O_CREAT | O_WRONLY, 0777);
     if (fd < 0) {
         perror("Couldn't create backup copy of recently opened file.");
-        assert(0);
+        abort();
     }
     
     this->fd_in_dest_space = fd;
@@ -80,7 +81,7 @@ void file_description::close()
     r = call_real_close(this->fd_in_dest_space);
     if (r != 0) {
         perror("close() of backup file failed."); 
-        assert(0);
+        abort();
     }
 }
 
@@ -98,7 +99,7 @@ void file_description::write(const void *buf, size_t nbyte)
     r = call_real_write(this->fd_in_dest_space, buf, nbyte);
     if (r < 0) {
         perror("write() to backup file failed."); 
-        assert(0);
+        abort();
     }
         
     // TODO: Update this file description's offset with amount that
@@ -120,7 +121,7 @@ void file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
     r = call_real_pwrite(this->fd_in_dest_space, buf, nbyte, offset);
     if (r < 0) {
         perror("pwrite() to backup file failed."); 
-        assert(0);
+        abort();
     }
     
     // TODO: Update this file description's offset

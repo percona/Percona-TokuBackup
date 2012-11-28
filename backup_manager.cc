@@ -43,7 +43,7 @@ void backup_manager::start_backup()
 {
     assert(m_doing_backup == false);
     int r = pthread_mutex_init(&m_mutex, NULL);
-    if (r) { perror("backup mutex creation failed."); assert(0); }
+    if (r) { perror("backup mutex creation failed."); abort(); }
     
     m_doing_backup = true;
     
@@ -74,7 +74,7 @@ void backup_manager::stop_backup()
     m_doing_backup = false;
     
     int r = pthread_mutex_destroy(&m_mutex);
-    if (r) { perror("Cannot destroy backup mutex."); assert(0); }
+    if (r) { perror("Cannot destroy backup mutex."); abort(); }
 }
 
 

@@ -61,7 +61,7 @@ static void create_path(const char *path)
             // this is a race between the backup copier
             // and intercepted open() calls.
             if (errno != EEXIST) {
-                assert(0);
+                abort();
             }
         }
 
@@ -209,7 +209,7 @@ bool backup_directory::does_file_exist(const char *file)
         // We want to catch all other errors.
         if (errno != ENOENT) {
             perror("stat() failed, no backup file information.");
-            assert(0);
+            abort();
         }
     } else {
         result = true;
@@ -248,7 +248,7 @@ void backup_directory::start_copy()
     r = pthread_create(&m_thread, NULL, &start_copying, (void*)&m_copier);
     if (r != 0) {
         perror("Cannot create backup copy thread.");
-        assert(0);
+        abort();
      }
 }
 
