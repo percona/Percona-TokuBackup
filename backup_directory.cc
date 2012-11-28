@@ -12,33 +12,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-//class path_creator {
-//private:
-//    size_t index;
-//    const char slash;
-//    char directory[256];
-//public:
-//    path_creator() : index(0), slash('/'), directory("\0") {};
-//    const char *get_next_directory(const char *path);
-//};
+///////////////////////////////////////////////////////////////////////////////
 //
-/////////////////////////////////////////////////////////////////////////////////
-////
-//// ():
-////
-//const char *path_creator::get_next_directory(const char *path) {
-//    const char *r = 0;
-//    char *postiion = 0;
-//    postiion = strchr(path, this->slash);
-//    if (postiion) {
-//        
-//    }
-//    /*****************
-//    
-//    ******************/
-//    return r;
-//}
-
 static void create_path(const char *path)
 {
     // Find directory string
@@ -55,19 +30,18 @@ static void create_path(const char *path)
         size_t end = (size_t) (slash_position - path);
         strncpy(directory, path, end);
         int r = mkdir(directory, 0777);
-        if (r) { 
+        if (r) {
+            int error = errno;
             perror("making backup subdirectory failed.");
+            
             // For now, just ignore already existing dir,
             // this is a race between the backup copier
             // and intercepted open() calls.
-            if (errno != EEXIST) {
-                abort();
-            }
+            assert(error == EEXIST);
         }
 
         path += end + 1;
     }
-    
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -85,7 +59,7 @@ void *start_copying(void * copier)
     return r;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //
 // backup_directory():
 //
@@ -96,7 +70,7 @@ backup_directory::backup_directory()
 {
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //
 // directories_set():
 //
@@ -114,7 +88,7 @@ bool backup_directory::directories_set()
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //
 // is_prefix():
 //
@@ -131,7 +105,7 @@ bool backup_directory::is_prefix(const char *file)
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //
 void backup_directory::open(file_description * const description)
 {    
@@ -148,7 +122,7 @@ void backup_directory::create_subdirectories(const char *file)
     create_path(file);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 //
 // create() -
 //
@@ -174,7 +148,7 @@ void backup_directory::create(int fd, const char *file)
 //    }
 }
 
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 //
 // translate_prefix():
 //
@@ -197,7 +171,7 @@ char* backup_directory::translate_prefix(const char *file)
     return new_string;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 //
 bool backup_directory::does_file_exist(const char *file)
 {
@@ -206,8 +180,9 @@ bool backup_directory::does_file_exist(const char *file)
     // We use stat to determine if the file does not exist.
     int r = stat(file, &sb);
     if (r < 0) {
+        int error = errno;
         // We want to catch all other errors.
-        if (errno != ENOENT) {
+        if (error != ENOENT) {
             perror("stat() failed, no backup file information.");
             abort();
         }
@@ -218,7 +193,7 @@ bool backup_directory::does_file_exist(const char *file)
     return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //
 // set_directories():
 //
@@ -233,7 +208,7 @@ void backup_directory::set_directories(const char *source, const char *dest)
     m_dest_dir = strdup(dest);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 //
 // start_copy():
 //
@@ -252,7 +227,7 @@ void backup_directory::start_copy()
      }
 }
 
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 //
 // wait_for_copy_to_finish():
 //

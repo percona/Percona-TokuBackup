@@ -8,7 +8,7 @@
 #include "assert.h"
 #include <fcntl.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <errno.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -55,8 +55,9 @@ void file_description::open()
     int fd = 0;
     fd = call_real_open(this->name, O_CREAT | O_WRONLY, 0777);
     if (fd < 0) {
-        perror("Couldn't create backup copy of recently opened file.");
-        abort();
+        int error = errno;
+        perror("BACKUP: Couldn't create backup copy of recently opened file.");
+        assert(error == EEXIST);
     }
     
     this->fd_in_dest_space = fd;
@@ -80,7 +81,7 @@ void file_description::close()
     int r = 0;
     r = call_real_close(this->fd_in_dest_space);
     if (r != 0) {
-        perror("close() of backup file failed."); 
+        perror("BACKUP: close() of backup file failed."); 
         abort();
     }
 }
@@ -98,13 +99,18 @@ void file_description::write(const void *buf, size_t nbyte)
     ssize_t r = 0;
     r = call_real_write(this->fd_in_dest_space, buf, nbyte);
     if (r < 0) {
-        perror("write() to backup file failed."); 
+        perror("BACKUP: write() to backup file failed."); 
         abort();
     }
         
     // TODO: Update this file description's offset with amount that
     // was written.
     // ...
+}
+
+void file_description::seek(size_t nbyte)
+{
+    
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -120,7 +126,7 @@ void file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
     ssize_t r = 0;
     r = call_real_pwrite(this->fd_in_dest_space, buf, nbyte, offset);
     if (r < 0) {
-        perror("pwrite() to backup file failed."); 
+        perror("BACKUP: pwrite() to backup file failed."); 
         abort();
     }
     

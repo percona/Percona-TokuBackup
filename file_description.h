@@ -11,6 +11,7 @@ public:
     void open();
     void write(const void *buf, size_t nbyte);
     void pwrite(const void *buf, size_t nbyte, off_t offset);
+    void seek(size_t nbyte);
     void close();
 public:
     int refcount;
