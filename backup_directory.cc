@@ -223,13 +223,14 @@ bool backup_directory::does_file_exist(const char *file)
 // set_directories():
 //
 // Description: 
+// Note: source and dest are copied (so the caller may free them immediately or otherwise reuse the strings).
 //
 void backup_directory::set_directories(const char *source, const char *dest)
 {
     assert(source);
     assert(dest);
-    m_source_dir = source;
-    m_dest_dir = dest;
+    m_source_dir = strdup(source);
+    m_dest_dir = strdup(dest);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
