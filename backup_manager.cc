@@ -42,8 +42,12 @@ backup_manager::backup_manager()
 void backup_manager::start_backup()
 {
     assert(m_doing_backup == false);
-    int r = pthread_mutex_init(&m_mutex, NULL);
-    if (r) { perror("backup mutex creation failed."); abort(); }
+    int r = 0;
+    r = pthread_mutex_init(&m_mutex, NULL);
+    if (r) { 
+        perror("backup mutex creation failed.");
+        abort();
+    }
     
     m_doing_backup = true;
     
@@ -73,8 +77,12 @@ void backup_manager::stop_backup()
     
     m_doing_backup = false;
     
-    int r = pthread_mutex_destroy(&m_mutex);
-    if (r) { perror("Cannot destroy backup mutex."); abort(); }
+    int r = 0;
+    r = pthread_mutex_destroy(&m_mutex);
+    if (r) { 
+        perror("Cannot destroy backup mutex."); 
+        abort(); 
+    }
 }
 
 
@@ -102,6 +110,7 @@ void backup_manager::add_directory(const char *source_dir,
     m_dir.set_directories(source_dir, dest_dir);
 }
 
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // remove_directory() -
@@ -123,9 +132,13 @@ void backup_manager::remove_directory(const char *source_dir,
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// create_file() -
+// create() -
 //
-// Description: ???.
+// Description:
+//
+//     TBD: How is create different from open?  Is the only
+// difference that we KNOW the file doesn't yet exist (from
+// copy) for the create case?
 //
 void backup_manager::create(int fd, const char *file) 
 {
@@ -136,7 +149,6 @@ void backup_manager::create(int fd, const char *file)
     
     directory->create(fd, file);
 
-    // TODO: Add new file name to file_description object. 
     m_map.put(fd);
     file_description *description = m_map.get(fd);
     description->name = directory->translate_prefix(file);
@@ -147,7 +159,7 @@ void backup_manager::create(int fd, const char *file)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// open_file() -
+// open() -
 //
 // Description: 
 //
@@ -177,7 +189,7 @@ void backup_manager::open(int fd, const char *file, int oflag)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// close_descriptor() -
+// close() -
 //
 // Description:
 //
@@ -203,7 +215,7 @@ void backup_manager::close(int fd)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// write_to_descriptor() -
+// write() -
 //
 // Description: 
 //
@@ -229,9 +241,12 @@ void backup_manager::write(int fd, const void *buf, size_t nbyte)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// write_to_descriptor() -
+// pwrite() -
 //
-// Description: 
+// Description:
+//
+//     Same as regular write, but uses additional offset argument
+// to write to a particular position in the backup file.
 //
 void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 {
@@ -276,6 +291,7 @@ void backup_manager::seek(int fd, size_t nbyte)
     // Do we need to seek nbytes past the current position?
     // Past an absolute position?
     // <CER> this depends on the caller...
+    // TODO: Put the seeking inside the file description class.
     int whence = SEEK_SET;
     lseek(description->fd_in_dest_space, nbyte, whence);
 }
@@ -283,9 +299,11 @@ void backup_manager::seek(int fd, size_t nbyte)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// rename_file() -
+// rename() -
 //
-// Description: ???.
+// Description:
+//
+//     TBD...
 //
 void backup_manager::rename(const char *oldpath, const char *newpath)
 {
@@ -295,24 +313,27 @@ void backup_manager::rename(const char *oldpath, const char *newpath)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// () -
+// get_directory() -
 //
 // Description: 
 //
-//     ...
+//     TODO: When there are multiple directories, this method
+// will use the given file descriptor to return the backup
+// directory associated with that file descriptor.
 //
 backup_directory* backup_manager::get_directory(int fd)
 {
     return &m_dir;
 }
 
+
 ///////////////////////////////////////////////////////////////////////////////
 //
-// () -
+// get_directory() -
 //
 // Description: 
 //
-//     ...
+//     TODO: Needs to change for multiple directories.
 //
 backup_directory* backup_manager::get_directory(const char *file)
 {
