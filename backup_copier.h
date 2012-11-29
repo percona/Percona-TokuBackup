@@ -7,6 +7,7 @@
 #include <vector>
 
 class backup_copier {
+private:
     const char *m_source;
     const char *m_dest;
     std::vector<char *> m_todo;

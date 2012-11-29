@@ -58,14 +58,9 @@ void file_descriptor_map::put(int fd)
     if (MAP_DBG) { 
         printf("put() called with fd = %d \n", fd);
     }
-    // Allocate file description object.
-    // TODO: use 'new', since that will call the constructor and initialize
-    // our object via the intitialization list.
-    file_description *description = 0;
+    
+    file_description *description = NULL;
     description = new file_description;
-    //description = (file_description*)malloc(sizeof(file_description));
-    //description->refcount = 1;
-    //description->offset   = 0;
     
     // <CER> Is this to make space for the backup fd?
     // <CER> Shouldn't we do this when we are adding a file descriptor?
@@ -93,9 +88,9 @@ void file_descriptor_map::erase(int fd)
     }
 
     file_description *description = this->get(fd);
-    assert(description != 0);
+    assert(description != NULL);
     delete description;
-    m_map.at(fd) = 0;
+    m_map.at(fd) = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

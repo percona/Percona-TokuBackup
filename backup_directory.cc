@@ -12,37 +12,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-///////////////////////////////////////////////////////////////////////////////
-//
-static void create_path(const char *path)
-{
-    // Find directory string
-    bool done = false;
-    const char slash = '/';
-    char directory[256];
-    
-    while(!done) {
-        const char *slash_position = strchr(path, slash);
-        if (slash_position == NULL) {
-            done = true;
-            continue;
-        }
-        size_t end = (size_t) (slash_position - path);
-        strncpy(directory, path, end);
-        int r = mkdir(directory, 0777);
-        if (r) {
-            int error = errno;
-            perror("making backup subdirectory failed.");
-            
-            // For now, just ignore already existing dir,
-            // this is a race between the backup copier
-            // and intercepted open() calls.
-            assert(error == EEXIST);
-        }
-
-        path += end + 1;
-    }
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -59,6 +28,7 @@ void *start_copying(void * copier)
     return r;
 }
 
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // backup_directory():
@@ -69,6 +39,7 @@ backup_directory::backup_directory()
 : m_source_dir(NULL), m_dest_dir(NULL)
 {
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -105,48 +76,65 @@ bool backup_directory::is_prefix(const char *file)
     }
 }
 
+
 ///////////////////////////////////////////////////////////////////////////////
 //
-void backup_directory::open(file_description * const description)
+// open_path():
+//
+// Description:
+//
+//     Creates backup path for given file if it doesn't exist already.
+//
+void backup_directory::open_path(const char *file_path)
 {    
     // See if the file exists in the backup copy already...
-    bool exists = this->does_file_exist(description->name);
+    bool exists = this->does_file_exist(file_path);
     
     if (!exists) {
-        this->create_subdirectories(description->name);
+        this->create_subdirectories(file_path);
     }
 }
 
-void backup_directory::create_subdirectories(const char *file)
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// create_subdirectories:
+//
+// Description:
+//
+//     Recursively creates all the backup subdirectories 
+// required for the given path.
+//
+void backup_directory::create_subdirectories(const char *path)
 {
-    create_path(file);
+    // Find directory string
+    bool done = false;
+    const char slash = '/';
+    char directory[256] = {0};
+    
+    while(!done) {
+        const char *slash_position = strchr(path, slash);
+        if (slash_position == NULL) {
+            done = true;
+            continue;
+        }
+        size_t end = (size_t) (slash_position - path);
+        strncpy(directory, path, end);
+        int r = mkdir(directory, 0777);
+        if (r) {
+            int error = errno;
+            perror("BACKUP: making backup subdirectory failed.");
+            
+            // For now, just ignore already existing dir,
+            // this is a race between the backup copier
+            // and intercepted open() calls.
+            assert(error == EEXIST);
+        }
+
+        path += end + 1;
+    }
 }
 
-//////////////////////////////////////////////////////////////////////////////
-//
-// create() -
-//
-// Description: 
-//
-//     ...
-//
-void backup_directory::create(int fd, const char *file)
-{
-    // Create new file name based on master file prefix.
-    char *new_name = this->translate_prefix(file);
-    if (DEBUG) { printf("new_name = %s\n", new_name); }
-    
-    // See if the path exists in the backup or not.
-    // TODO:...
-//    const char *path = NULL;
-//    
-//    bool exists = false;
-//    exists = this->does_file_exist(file);
-//    
-//    if (!exists) {
-//        this->create_subdirectories(file);
-//    }
-}
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -162,7 +150,7 @@ char* backup_directory::translate_prefix(const char *file)
     size_t len_s = strlen(file);
     assert(len_op < len_s);
     size_t new_len = len_s - len_op + len_np;
-    char *new_string = 0;
+    char *new_string = NULL;
     new_string = (char *)calloc(new_len + 1, sizeof(char));
     memcpy(new_string, m_dest_dir, len_np);
     
@@ -171,7 +159,12 @@ char* backup_directory::translate_prefix(const char *file)
     return new_string;
 }
 
+
 //////////////////////////////////////////////////////////////////////////////
+//
+// does_file_exist():
+//
+// Description:
 //
 bool backup_directory::does_file_exist(const char *file)
 {
@@ -193,6 +186,7 @@ bool backup_directory::does_file_exist(const char *file)
     return result;
 }
 
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // set_directories():
@@ -207,6 +201,7 @@ void backup_directory::set_directories(const char *source, const char *dest)
     m_source_dir = strdup(source);
     m_dest_dir = strdup(dest);
 }
+
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -226,6 +221,7 @@ void backup_directory::start_copy()
         abort();
      }
 }
+
 
 //////////////////////////////////////////////////////////////////////////////
 //

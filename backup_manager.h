@@ -14,6 +14,7 @@ class backup_manager
 private:
     bool m_doing_backup;
     bool m_interpret_writes;
+    bool m_doing_copy;
     // TODO: Make this an array or vector of directories.
     backup_directory m_dir;
     file_descriptor_map m_map;

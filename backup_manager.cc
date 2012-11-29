@@ -25,7 +25,8 @@
 //
 backup_manager::backup_manager() 
     : m_doing_backup(false),
-      m_interpret_writes(false)
+      m_interpret_writes(false),
+      m_doing_copy(false) // <CER> Set to false to turn off copy
 {
 }
 
@@ -50,12 +51,12 @@ void backup_manager::start_backup()
     }
     
     m_doing_backup = true;
-    
-    // TODO: For now, don't interpret writes...
-    m_interpret_writes = false;
+    m_interpret_writes = true;
     
     // Start backing all the files in the directory.
-    m_dir.start_copy();
+    if (m_doing_copy) {
+        m_dir.start_copy();
+    }
 }
 
 
@@ -75,13 +76,14 @@ void backup_manager::stop_backup()
     // TODO: Make this: abort copy?
     m_dir.wait_for_copy_to_finish();
     
+    m_interpret_writes = false;
     m_doing_backup = false;
     
     int r = 0;
     r = pthread_mutex_destroy(&m_mutex);
     if (r) { 
         perror("Cannot destroy backup mutex."); 
-        abort(); 
+        abort();
     }
 }
 
@@ -142,18 +144,19 @@ void backup_manager::remove_directory(const char *source_dir,
 //
 void backup_manager::create(int fd, const char *file) 
 {
+    if (MGR_DBG) printf("entering open() with fd = %d\n", fd);
+    
     backup_directory *directory = this->get_directory(file);
     if (directory == NULL) {
         return;
     }
     
-    directory->create(fd, file);
-
+    char *backup_file_name = directory->translate_prefix(file);
+    directory->open_path(backup_file_name);
     m_map.put(fd);
     file_description *description = m_map.get(fd);
-    description->name = directory->translate_prefix(file);
-    directory->open(description);
-    description->open();
+    description->set_name(backup_file_name);
+    description->create();
 }
 
 
@@ -178,11 +181,11 @@ void backup_manager::open(int fd, const char *file, int oflag)
         return;
     }
 
+    char *backup_file_name = directory->translate_prefix(file);
+    directory->open_path(backup_file_name);
     m_map.put(fd);
-    file_description * const description = m_map.get(fd);
-    description->name = directory->translate_prefix(file);
-    
-    directory->open(description);
+    file_description *description = m_map.get(fd);
+    description->set_name(backup_file_name);
     description->open();
 }
 
@@ -288,12 +291,7 @@ void backup_manager::seek(int fd, size_t nbyte)
     }
     
     // TODO: determine who is seeking...
-    // Do we need to seek nbytes past the current position?
-    // Past an absolute position?
-    // <CER> this depends on the caller...
-    // TODO: Put the seeking inside the file description class.
-    int whence = SEEK_SET;
-    lseek(description->fd_in_dest_space, nbyte, whence);
+    description->seek(nbyte);
 }
 
 

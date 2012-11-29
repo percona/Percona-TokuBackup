@@ -20,7 +20,7 @@
 //     ...
 //
 file_description::file_description()
-: refcount(1), offset(0), fd_in_dest_space(-1), name(0)
+: m_refcount(1), m_offset(0), m_fd_in_dest_space(-1), m_name(NULL)
 {}
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -33,10 +33,17 @@ file_description::file_description()
 //
 void file_description::print() {
     printf("======================\n");
-    printf("file_description: %s, @%p\n", name, this);
+    printf("file_description: %s, @%p\n", m_name, this);
     printf("refcount:%d, offset:%lld, fd_in_dest_space:%d\n",
-            this->refcount, this->offset, this->fd_in_dest_space);
+            this->m_refcount, this->m_offset, this->m_fd_in_dest_space);
     printf("======================\n");
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+void file_description::set_name(char *name)
+{
+    m_name = name;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -49,19 +56,57 @@ void file_description::print() {
 // file description.  This also sets the file descriptor in the 
 // destination/backup space for the backup copy of the original file.
 //
+// Notes:
+//
+//     Open assumes that the backup file exists.  Create assumes the 
+// backup file does NOT exist.
+//
 void file_description::open()
+{
+    int fd = 0;
+    fd = call_real_open(m_name, O_WRONLY, 0777);
+    if (fd < 0) {
+        int error = errno;
+        assert(error == ENOENT);
+        this->create();
+    } else {
+        this->m_fd_in_dest_space = fd;
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// create() -
+//
+// Description: 
+//
+//     Calls the operating system's open() syscall with the create
+// flag for the current file description.  This also sets the file 
+// descriptor in the destination/backup space for the backup
+// copy of the original file.
+//
+// Notes:
+//
+//     Open assumes that the backup file exists.  Create assumes the 
+// backup file does NOT exist.
+//
+void file_description::create()
 {
     // Create file that was just opened, this assumes the parent directories
     // exist.
     int fd = 0;
-    fd = call_real_open(this->name, O_CREAT | O_WRONLY, 0777);
+    fd = call_real_open(m_name, O_CREAT | O_WRONLY, 0777);
     if (fd < 0) {
         int error = errno;
-        perror("BACKUP: Couldn't create backup copy of recently opened file.");
         assert(error == EEXIST);
+        fd = call_real_open(m_name, O_WRONLY, 0777);
+        if (fd < 0) {
+            perror("BACKUP: Couldn't open backup copy of recently opened file.");
+            abort();            
+        }
     }
-    
-    this->fd_in_dest_space = fd;
+
+    this->m_fd_in_dest_space = fd;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -80,7 +125,7 @@ void file_description::close()
     // are still open in the main application.
     
     int r = 0;
-    r = call_real_close(this->fd_in_dest_space);
+    r = call_real_close(this->m_fd_in_dest_space);
     if (r != 0) {
         perror("BACKUP: close() of backup file failed."); 
         abort();
@@ -98,19 +143,36 @@ void file_description::close()
 void file_description::write(const void *buf, size_t nbyte)
 {
     ssize_t r = 0;
-    r = call_real_write(this->fd_in_dest_space, buf, nbyte);
+    r = call_real_write(this->m_fd_in_dest_space, buf, nbyte);
     if (r < 0) {
         perror("BACKUP: write() to backup file failed."); 
         abort();
     }
         
-    // TODO: Update this file description's offset with amount that
-    // was written.
-    // ...
+    this->m_offset = r;
 }
 
-void file_description::seek(size_t nbyte __attribute__((__unused__))) {
-    
+///////////////////////////////////////////////////////////////////////////////
+//
+// seek() -
+//
+// Description: 
+//
+//     ...
+//
+void file_description::seek(size_t nbyte)
+{
+    // Do we need to seek nbytes past the current position?
+    // Past an absolute position?
+    // <CER> this depends on the caller...
+    int whence = SEEK_SET;
+    off_t offset = 0;
+    offset = lseek(this->m_fd_in_dest_space, nbyte, whence);
+    if (offset < 0) {
+        perror("BACKUP: lseek() failed.");
+        abort();
+    }
+    this->m_offset = offset;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -124,11 +186,9 @@ void file_description::seek(size_t nbyte __attribute__((__unused__))) {
 void file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
 {
     ssize_t r = 0;
-    r = call_real_pwrite(this->fd_in_dest_space, buf, nbyte, offset);
+    r = call_real_pwrite(this->m_fd_in_dest_space, buf, nbyte, offset);
     if (r < 0) {
         perror("BACKUP: pwrite() to backup file failed."); 
         abort();
     }
-    
-    // TODO: Update this file description's offset
 }

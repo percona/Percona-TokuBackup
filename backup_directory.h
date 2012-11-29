@@ -21,8 +21,7 @@ private:
     pthread_t m_thread;
 public:
     backup_directory();
-    void open(file_description * const description);
-    void create(int fd, const char* file);
+    void open_path(const char *file_path);
     bool directories_set();
     bool is_prefix(const char *file);
     char* translate_prefix(const char *file);

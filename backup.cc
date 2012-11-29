@@ -128,7 +128,7 @@ int close(int fd)
 ssize_t write(int fd, const void *buf, size_t nbyte)
 {
     ssize_t r = 0;
-    if (DEBUG) printf("write called.\n");
+    if (DEBUG) printf("BACKUP: write called.\n");
     r = call_real_write(fd, buf, nbyte);
     
     // <CER> this *SHOULD* seek in the backup copy as part of the

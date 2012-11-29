@@ -10,13 +10,16 @@
 
 class file_descriptor_map
 {
+private:
+    std::vector<file_description *> m_map;
 public:
     file_descriptor_map();
     file_description* get(int fd);
     void put(int fd);
     void erase(int fd);
 private:
-    std::vector<file_description *> m_map;
     void grow_array(int fd);
+    
+friend class file_descriptor_map_unit_test;
 };
 
