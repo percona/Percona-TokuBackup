@@ -118,7 +118,13 @@ void backup_directory::create_subdirectories(const char *path)
             done = true;
             continue;
         }
+
         size_t end = (size_t) (slash_position - path);
+        if (end == 0 && *slash_position == slash) {
+            path += end + 1;
+            continue;
+        }
+        
         strncpy(directory, path, end);
         int r = mkdir(directory, 0777);
         if (r) {
