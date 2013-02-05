@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -34,7 +35,7 @@ file_description::file_description()
 void file_description::print() {
     printf("======================\n");
     printf("file_description: %s, @%p\n", m_name, this);
-    printf("refcount:%d, offset:%lld, fd_in_dest_space:%d\n",
+    printf("refcount:%d, offset:%ld, fd_in_dest_space:%d\n",
             this->m_refcount, this->m_offset, this->m_fd_in_dest_space);
     printf("======================\n");
 }
