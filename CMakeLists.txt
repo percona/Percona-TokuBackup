@@ -13,9 +13,9 @@ message(${BACKUP_SOURCES})
 
 ###add_library(Backup STATIC backup.cc backup_manager.cc backup_file.cc real_sy###scalls.cc backup_directory.cc)
 
-add_library(Backup STATIC ${BACKUP_SOURCES})
-set_target_properties(Backup PROPERTIES POSITION_INDEPENDENT_CODE ON)
+add_library(HotBackup STATIC ${BACKUP_SOURCES})
+set_target_properties(HotBackup PROPERTIES POSITION_INDEPENDENT_CODE ON)
 add_subdirectory(tests)
 
 ## Do we need this?
-install(TARGETS Backup DESTINATION lib)
+install(TARGETS HotBackup DESTINATION lib)
