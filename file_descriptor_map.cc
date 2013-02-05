@@ -35,7 +35,7 @@ file_description* file_descriptor_map::get(int fd)
     }
 
     assert(fd >= 0);
-    if (fd >= m_map.size()) {
+    if ((size_t)fd >= m_map.size()) {
         return NULL;
     }
     
@@ -108,7 +108,7 @@ void file_descriptor_map::erase(int fd)
 void file_descriptor_map::grow_array(int fd)
 {
     assert(fd >= 0);
-    while(m_map.size() <= fd) {
+    while(m_map.size() <= (size_t)fd) {
         m_map.push_back(NULL);
     }
 }
