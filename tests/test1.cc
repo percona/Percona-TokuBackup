@@ -11,13 +11,13 @@
 #define DST "b2_dst"
 
 //
-void setup_destination()
+static void setup_destination()
 {
     system("rm -rf " DST);
 }
 
 //
-void setup_source()
+static void setup_source()
 {
     system("rm -rf " SRC);
     system("mkdir " SRC);
@@ -30,6 +30,8 @@ void setup_source()
 //
 int main(int argc, char *argv[])
 {
+    argc = argc;
+    argv = argv;
     int result = 0;
     setup_source();
     setup_destination();
