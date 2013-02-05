@@ -35,8 +35,8 @@ public:
     void pwrite(int fd, const void *buf, size_t nbyte, off_t offset);
     void seek(int fd, size_t nbyte);
     void rename(const char *oldpath, const char *newpath);
-    void ftruncate(int fd, off_t length) {};
-    void truncate(const char *path, off_t length) {};
+    void ftruncate(int fd, off_t length);
+    void truncate(const char *path, off_t length);
     
 private:
     backup_directory* get_directory(int fd);

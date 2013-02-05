@@ -174,6 +174,7 @@ void backup_manager::create(int fd, const char *file)
 //
 void backup_manager::open(int fd, const char *file, int oflag)
 {
+    oflag++;
     if (MGR_DBG) printf("entering open() with fd = %d\n", fd);
     
     backup_directory *directory = this->get_directory(file);
@@ -306,8 +307,41 @@ void backup_manager::seek(int fd, size_t nbyte)
 void backup_manager::rename(const char *oldpath, const char *newpath)
 {
     // TODO:
+    oldpath++;
+    newpath++;
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// ftruncate() -
+//
+// Description:
+//
+//     TBD...
+//
+void backup_manager::ftruncate(int fd, off_t length)
+{
+    // TODO:
+    fd++;
+    length++;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// truncate() -
+//
+// Description:
+//
+//     TBD...
+//
+void backup_manager::truncate(const char *path, off_t length)
+{
+    // TODO:
+    if(path) {
+        length++;
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -321,6 +355,7 @@ void backup_manager::rename(const char *oldpath, const char *newpath)
 //
 backup_directory* backup_manager::get_directory(int fd)
 {
+    fd++;
     return &m_dir;
 }
 
