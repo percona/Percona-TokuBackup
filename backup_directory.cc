@@ -19,6 +19,7 @@
 //
 // Description: 
 //
+void *start_copying(void *);
 void *start_copying(void * copier)
 {
     void *r = 0;
