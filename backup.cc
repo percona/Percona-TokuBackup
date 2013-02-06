@@ -48,14 +48,14 @@ int open(const char* file, int oflag, ...)
         va_end(ap);
         fd = call_real_open(file, oflag, mode);
         if (fd < 0) { 
-            perror("Interposed open() w/ O_CREAT failed.");
+            //perror("Interposed open() w/ O_CREAT failed.");
         } else {
             manager.create(fd, file);
         }
     } else {
         fd = call_real_open(file, oflag);
         if (fd < 0) {
-            perror("Interposed open() failed."); 
+            //perror("Interposed open() failed."); 
         } else {
             manager.open(fd, file, oflag);
         }
