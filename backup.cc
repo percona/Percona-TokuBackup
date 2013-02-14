@@ -73,6 +73,7 @@ int open(const char* file, int oflag, ...)
 //
 //     64-bit Linux version of open().
 //
+#if 0
 int open64(const char* file, int oflag, ...)
 {
     int fd = 0;
@@ -95,6 +96,7 @@ int open64(const char* file, int oflag, ...)
 
     return fd;
 }
+#endif
 
 
 ///////////////////////////////////////////////////////////////////////////////
