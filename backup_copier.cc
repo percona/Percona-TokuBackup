@@ -173,8 +173,8 @@ void backup_copier::copy_path(const char *source,
         if (r < 0) {
             int mkdir_errno = errno;
             perror("Cannot create directory in destination.");
-            ERROR("destination creation failure:", dest);
             assert(mkdir_errno == EEXIST);
+            ERROR("Cannot create directory that already exists = ", dest);
         }
 
         // 2. Open the directory to be copied (source).
