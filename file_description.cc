@@ -99,6 +99,7 @@ void file_description::create()
     fd = call_real_open(m_name, O_CREAT | O_WRONLY, 0777);
     if (fd < 0) {
         int error = errno;
+        perror("[UhOh]: <CAPTURE> ");
         assert(error == EEXIST);
         fd = call_real_open(m_name, O_WRONLY, 0777);
         if (fd < 0) {
