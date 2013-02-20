@@ -153,13 +153,13 @@ void backup_manager::remove_directory(const char *source_dir,
 // copy) for the create case?
 //
 void backup_manager::create(int fd, const char *file) 
-{
-    TRACE("entering create() with fd = ", fd);    
+{       
     backup_directory *directory = this->get_directory(file);
     if (directory == NULL) {
         return;
     }
-    
+
+    TRACE("entering create() with fd = ", fd); 
     char *backup_file_name = directory->translate_prefix(file);
     directory->open_path(backup_file_name);
     m_map.put(fd);
@@ -184,13 +184,12 @@ void backup_manager::create(int fd, const char *file)
 void backup_manager::open(int fd, const char *file, int oflag)
 {
     oflag++;
-    TRACE("entering open() with fd = ", fd);
-    
     backup_directory *directory = this->get_directory(file);
     if (directory == NULL) {
         return;
     }
 
+    TRACE("entering open() with fd = ", fd);
     char *backup_file_name = directory->translate_prefix(file);
     directory->open_path(backup_file_name);
     m_map.put(fd);
@@ -209,14 +208,13 @@ void backup_manager::open(int fd, const char *file, int oflag)
 //     Find and deallocate file description based on incoming fd.
 //
 void backup_manager::close(int fd) 
-{
-    TRACE("entering close() with fd = ", fd);
+{    
     file_description *description = m_map.get(fd);
     if (description == NULL) {
-        ERROR("Given fd does not exist in our map: ", fd);
         return;
-    }    
+    }
 
+    TRACE("entering close() with fd = ", fd);
     description->close();
     
     // TODO: ??? 
@@ -237,11 +235,11 @@ void backup_manager::close(int fd)
 //
 void backup_manager::write(int fd, const void *buf, size_t nbyte)
 {
-    TRACE("entering write() with fd = ", fd);
     if (!m_interpret_writes) {
         return;
     }
 
+    TRACE("entering write() with fd = ", fd);
     file_description *description = NULL;
     description = m_map.get(fd);
     if (description == NULL) {
@@ -263,17 +261,17 @@ void backup_manager::write(int fd, const void *buf, size_t nbyte)
 //
 void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 {
-    TRACE("entering pwrite() with fd = ", fd);
     if (!m_interpret_writes) {
         return;
     }
-    
+
     file_description *description = NULL;
     description = m_map.get(fd);
     if (description == NULL) {
         return;
     }
     
+    TRACE("entering pwrite() with fd = ", fd);
     description->pwrite(buf, nbyte, offset);
 }
 
@@ -289,7 +287,6 @@ void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 //
 void backup_manager::seek(int fd, size_t nbyte)
 {
-    TRACE("entering seek() with fd = ", fd);
     if (!m_interpret_writes) {
         return;
     }
@@ -300,6 +297,7 @@ void backup_manager::seek(int fd, size_t nbyte)
         return;
     }
     
+    TRACE("entering seek() with fd = ", fd);
     // TODO: determine who is seeking...
     description->seek(nbyte);
 }
