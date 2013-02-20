@@ -8,6 +8,7 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
 set(BACKUP_SOURCES
 	backup.cc
 	backup_copier.cc
+	backup_debug.cc
 	backup_directory.cc
 	backup_manager.cc
 	file_description.cc

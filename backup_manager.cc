@@ -15,6 +15,16 @@
 #include <fcntl.h>
 #include <pthread.h>
 
+#ifdef DEBUG
+#define WARN(string, arg) HotBackup::CaptureWarn(string, arg)
+#define TRACE(string, arg) HotBackup::CaptureTrace(string, arg)
+#define ERROR(string, arg) HotBackup::CaptureError(string, arg)
+#else
+#define WARN(string, arg) 
+#define TRACE(string, arg) 
+#define ERROR(string, arg) 
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // backup_manager() -
@@ -144,8 +154,7 @@ void backup_manager::remove_directory(const char *source_dir,
 //
 void backup_manager::create(int fd, const char *file) 
 {
-    if (MGR_DBG) printf("entering open() with fd = %d\n", fd);
-    
+    TRACE("entering create() with fd = ", fd);    
     backup_directory *directory = this->get_directory(file);
     if (directory == NULL) {
         return;
@@ -175,7 +184,7 @@ void backup_manager::create(int fd, const char *file)
 void backup_manager::open(int fd, const char *file, int oflag)
 {
     oflag++;
-    if (MGR_DBG) printf("entering open() with fd = %d\n", fd);
+    TRACE("entering open() with fd = ", fd);
     
     backup_directory *directory = this->get_directory(file);
     if (directory == NULL) {
@@ -201,10 +210,10 @@ void backup_manager::open(int fd, const char *file, int oflag)
 //
 void backup_manager::close(int fd) 
 {
-    if (MGR_DBG) printf("entering close_descriptor() with fd = %d\n", fd);
+    TRACE("entering close() with fd = ", fd);
     file_description *description = m_map.get(fd);
     if (description == NULL) {
-        printf("Cannot close the given description: doesn't exist in map.\n");
+        ERROR("Given fd does not exist in our map: ", fd);
         return;
     }    
 
@@ -228,7 +237,7 @@ void backup_manager::close(int fd)
 //
 void backup_manager::write(int fd, const void *buf, size_t nbyte)
 {
-    if (MGR_DBG) printf("entering backup write() with fd = %d\n", fd);
+    TRACE("entering write() with fd = ", fd);
     if (!m_interpret_writes) {
         return;
     }
@@ -254,7 +263,7 @@ void backup_manager::write(int fd, const void *buf, size_t nbyte)
 //
 void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 {
-    if (MGR_DBG) printf("entering backup pwriter() with fd = %d\n", fd);
+    TRACE("entering pwrite() with fd = ", fd);
     if (!m_interpret_writes) {
         return;
     }
@@ -280,7 +289,7 @@ void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 //
 void backup_manager::seek(int fd, size_t nbyte)
 {
-    if (MGR_DBG) printf("entering seek(), with fd = %d\n", fd);
+    TRACE("entering seek() with fd = ", fd);
     if (!m_interpret_writes) {
         return;
     }
@@ -306,6 +315,9 @@ void backup_manager::seek(int fd, size_t nbyte)
 //
 void backup_manager::rename(const char *oldpath, const char *newpath)
 {
+    TRACE("entering rename()...", "");
+    TRACE("-> old path = ", oldpath);
+    TRACE("-> new path = ", newpath);
     // TODO:
     oldpath++;
     newpath++;
@@ -322,6 +334,7 @@ void backup_manager::rename(const char *oldpath, const char *newpath)
 //
 void backup_manager::ftruncate(int fd, off_t length)
 {
+    TRACE("entering ftruncate with fd = ", fd);
     // TODO:
     fd++;
     length++;
@@ -337,6 +350,7 @@ void backup_manager::ftruncate(int fd, off_t length)
 //
 void backup_manager::truncate(const char *path, off_t length)
 {
+    TRACE("entering truncate() with path = ", path);
     // TODO:
     if(path) {
         length++;
@@ -370,8 +384,7 @@ backup_directory* backup_manager::get_directory(int fd)
 //
 backup_directory* backup_manager::get_directory(const char *file)
 {
-    if (MGR_DBG) printf("entering create_file() with file name = %s\n", file);
-    
+    //TODO: Add relevant tracing.
     if (!m_dir.directories_set())
     {
         return NULL;

@@ -30,7 +30,7 @@ file_descriptor_map::file_descriptor_map()
 //
 file_description* file_descriptor_map::get(int fd)
 {
-    if (MAP_DBG) { 
+    if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
 
@@ -55,7 +55,7 @@ file_description* file_descriptor_map::get(int fd)
 //
 void file_descriptor_map::put(int fd)
 {
-    if (MAP_DBG) { 
+    if (HotBackup::MAP_DBG) { 
         printf("put() called with fd = %d \n", fd);
     }
     
@@ -83,7 +83,7 @@ void file_descriptor_map::put(int fd)
 //
 void file_descriptor_map::erase(int fd)
 {
-    if (MAP_DBG) { 
+    if (HotBackup::MAP_DBG) { 
         printf("erase() called with fd = %d \n", fd);
     }
 

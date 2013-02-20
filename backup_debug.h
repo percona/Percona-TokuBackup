@@ -8,14 +8,34 @@
 #define DEBUG 1
 #endif
 
+namespace HotBackup {
+
 // Debug flag for backup_copier debugging.
 const int CPY_DBG = 1;
-
 // Debug flag just for the backup manager.
 const int MGR_DBG = 1;
-
 // Debug flag for the file descriptor map.
 const int MAP_DBG = 1;
 
-#endif // End of header guardian.
+// Components:
+// COPY
+const int COPY_FLAG = 0x01;
+// CAPTURE
+const int CAPUTRE_FLAG = 0x02;
+// INTERPOSE
+const int INTERPOSE_FLAG = 0x04;
 
+void CopyTrace(const char *s, const char *arg);
+void CopyWarn(const char *s, const char *arg);
+void CopyError(const char *s, const char *arg);
+void CaptureTrace(const char *s, const char *arg);
+void CaptureTrace(const char *s, const int arg);
+void CaptureWarn(const char *s, const char *arg);
+void CaptureError(const char *s, const char *arg);
+void CaptureError(const char *s, const int arg);
+void InterposeTrace(const char *s, const char *arg);
+void InterposeTrace(const char *s, const int arg);
+void InterposeWarn(const char *s, const char *arg);
+void InterposeError(const char *s, const char *arg);
+} // End of namespace.
+#endif // End of header guardian.

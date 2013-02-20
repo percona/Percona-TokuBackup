@@ -13,6 +13,16 @@
 #include <errno.h>
 #include <string.h>
 
+#ifdef DEBUG
+#define WARN(string, arg) HotBackup::CopyWarn(string, arg)
+#define TRACE(string, arg) HotBackup::CopyTrace(string, arg)
+#define ERROR(string, arg) HotBackup::CopyError(string, arg)
+#else
+#define WARN(string, arg) 
+#define TRACE(string, arg) 
+#define ERROR(string, arg) 
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // is_dot() -
@@ -69,17 +79,15 @@ void backup_copier::set_directories(const char *source, const char *dest)
 //
 void backup_copier::start_copy()
 {
+    TRACE("Copy Starting...", "");
     // 1. Start with "."
     m_todo.push_back(strdup("."));
     char *fname = 0;
     while(m_todo.size()) {
         fname = m_todo.back();
-        if (CPY_DBG) printf("---Doing backup %s\n", fname);
-        if (CPY_DBG) printf("---size1 = %lu\n", m_todo.size());
+        TRACE("Copying: ", fname);
         m_todo.pop_back();
-        if (CPY_DBG) printf("---size2 = %lu\n", m_todo.size());
         this->copy_file(fname);
-        if (CPY_DBG) printf("---size3 = %lu\n", m_todo.size());
     }
 }
 
@@ -129,13 +137,11 @@ void backup_copier::copy_path(const char *source,
                               const char* dest,
                               const char *file)
 {
-    if (CPY_DBG) printf("---entering copy path()\n");
     int r = 0;
     struct stat sbuf;
     r = stat(source, &sbuf);
     // See if the path is a directory or a real file.
     if (S_ISREG(sbuf.st_mode)) {
-        if (CPY_DBG) printf("....regular file...\n");
         int srcfd = call_real_open(source, O_RDONLY);
         assert(srcfd >= 0);
         int destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
@@ -162,14 +168,13 @@ void backup_copier::copy_path(const char *source,
         r = call_real_close(destfd);
         assert(r == 0);
     } else if (S_ISDIR(sbuf.st_mode)) {
-        if (CPY_DBG) printf("....directory...\n");
         // 1. Make the directory of the destination.
         r = mkdir(dest,0777);
         if (r < 0) {
-            int temp = errno;
-            perror("---Cannot create directory in destination.");
-            printf("---dest=%s\n", dest);
-            assert(temp == EEXIST);
+            int mkdir_errno = errno;
+            perror("Cannot create directory in destination.");
+            ERROR("destination creation failure:", dest);
+            assert(mkdir_errno == EEXIST);
         }
 
         // 2. Open the directory to be copied (source).
@@ -181,17 +186,16 @@ void backup_copier::copy_path(const char *source,
         struct dirent entry;
         struct dirent *result;
         r = readdir_r(dir, &entry, &result);
-        if (CPY_DBG) printf("---r = %d\n", r);
         while (r == 0 && result != 0) {
-            if (CPY_DBG) printf("---result %s\n", result->d_name);
-            if (CPY_DBG) printf("---entry.dname %s\n", entry.d_name);
+            TRACE("result ", result->d_name);
+            TRACE("entry.dname ", entry.d_name);
             if (is_dot(&entry)) {
-                printf("---skipping %s\n", entry.d_name);                
+                TRACE("skipping ", entry.d_name);                
             } else if (strcmp(file, "") == 0) {
-                if (CPY_DBG) printf("---pushing %s\n", entry.d_name);
+                TRACE("pushing ", entry.d_name);
                 m_todo.push_back(strdup(entry.d_name));
             } else {
-                if (CPY_DBG) printf("---catting to make: %s/%s\n", file ,entry.d_name);
+                TRACE("catting ", entry.d_name);
                 int len = strlen(file) + strlen(entry.d_name) + 2;
                 char new_name[len + 1];
                 int l = 0;
@@ -199,8 +203,8 @@ void backup_copier::copy_path(const char *source,
                 assert(l + 1 == len);
                 m_todo.push_back(strdup(new_name));
             }
+            
             r = readdir_r(dir, &entry, &result);
-            if (CPY_DBG) printf("---r = %d\n", r);
         }
     }
 }

@@ -1,23 +1,30 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 
-#include "backup.h"
 
 #include <stdio.h> // rename(),
 #include <assert.h>
-
 #include <fcntl.h> // open()
 #include <unistd.h> // close(), write(), read(), unlink(), truncate(), etc.
-
 
 //#include <sys/types.h>
 #include <dlfcn.h>
 #include <stdarg.h>
 
-
+#include "backup.h"
 #include "backup_manager.h"
 #include "real_syscalls.h"
 #include "backup_debug.h"
+
+#ifdef DEBUG
+#define WARN(string, arg) HotBackup::InterposeWarn(string, arg);
+#define TRACE(string, arg) HotBackup::InterposeTrace(string, arg);
+#define ERROR(string, arg) HotBackup::InterposeError(string, arg);
+#else
+#define WARN(string) 
+#define TRACE(string) 
+#define ERROR(string) 
+#endif
 
 backup_manager manager;
 
@@ -26,7 +33,6 @@ backup_manager manager;
 // Interposed public API:
 //
 //***************************************
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -40,23 +46,19 @@ backup_manager manager;
 int open(const char* file, int oflag, ...)
 {
     int fd = 0;
-    if (DEBUG) printf("open called.\n");
+    TRACE("open() intercepted, file = ", file);
     if (oflag & O_CREAT) {
         va_list ap;
         va_start(ap, oflag);
         mode_t mode = va_arg(ap, mode_t);
         va_end(ap);
         fd = call_real_open(file, oflag, mode);
-        if (fd < 0) { 
-            //perror("Interposed open() w/ O_CREAT failed.");
-        } else {
+        if (fd >= 0) { 
             manager.create(fd, file);
         }
     } else {
         fd = call_real_open(file, oflag);
-        if (fd < 0) {
-            //perror("Interposed open() failed."); 
-        } else {
+        if (fd >= 0) {
             manager.open(fd, file, oflag);
         }
     }
@@ -111,7 +113,7 @@ int open64(const char* file, int oflag, ...)
 int close(int fd)
 {
     int r = 0;
-    if (DEBUG) printf("close called.\n");
+    TRACE("close() intercepted, fd = ", fd);
     r = call_real_close(fd);
     manager.close(fd);
     return r;
@@ -130,7 +132,7 @@ int close(int fd)
 ssize_t write(int fd, const void *buf, size_t nbyte)
 {
     ssize_t r = 0;
-    if (DEBUG) printf("BACKUP: write called.\n");
+    TRACE("write() intercepted, fd = ", fd);
     r = call_real_write(fd, buf, nbyte);
     
     // <CER> this *SHOULD* seek in the backup copy as part of the
@@ -158,7 +160,7 @@ ssize_t write(int fd, const void *buf, size_t nbyte)
 ssize_t read(int fd, void *buf, size_t nbyte)
 {
     ssize_t r = 0;
-    if (DEBUG) printf("read called.\n");
+    TRACE("read() intercepted, fd = ", fd);
     r = call_real_read(fd, buf, nbyte);
     if (r >= 0) {
         manager.seek(fd, nbyte);
@@ -179,7 +181,7 @@ ssize_t read(int fd, void *buf, size_t nbyte)
 ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 {
     ssize_t r = 0;
-    if (DEBUG) printf("pwrite called.\n");
+    TRACE("pwrite() intercepted, fd = ", fd);
     r = call_real_pwrite(fd, buf, nbyte, offset);
     manager.pwrite(fd, buf, nbyte, offset);
     return r;
@@ -197,7 +199,7 @@ ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 int ftruncate(int fd, off_t length)
 {
     int r = 0;
-    if (DEBUG) printf("ftruncate called.\n");
+    TRACE("ftruncate() intercepted, fd = ", fd);
     r = call_real_ftruncate(fd, length);
     manager.ftruncate(fd, length);
     return r;
@@ -215,7 +217,7 @@ int ftruncate(int fd, off_t length)
 int truncate(const char *path, off_t length)
 {
     int r = 0;
-    if (DEBUG) printf("truncate called.\n");
+    TRACE("truncate() intercepted, path = ", path);
     r = call_real_truncate(path, length);
     manager.truncate(path, length);
     return r;
@@ -231,7 +233,7 @@ int truncate(const char *path, off_t length)
 int unlink(const char *path)
 {
     int r = 0;
-    if (DEBUG) printf("unlink called.\n");
+    TRACE("unlink() intercepted, path = ", path);
     r = call_real_unlink(path);
     return r;
 }
@@ -246,7 +248,9 @@ int unlink(const char *path)
 int rename(const char *oldpath, const char *newpath)
 {
     int r = 0;
-    if (DEBUG) printf("rename called.\n");
+    TRACE("rename() intercepted","");
+    TRACE("-> oldpath = ", oldpath);
+    TRACE("-> newpath = ", newpath);
     r = call_real_rename(oldpath, newpath);
     manager.rename(oldpath, newpath);
     return r;
