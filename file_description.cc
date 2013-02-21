@@ -68,6 +68,11 @@ void file_description::open()
     fd = call_real_open(m_name, O_WRONLY, 0777);
     if (fd < 0) {
         int error = errno;
+        if(error != ENOENT) {
+            perror("ERROR: <CAPTURE> ");
+            this->print();
+        }
+        
         assert(error == ENOENT);
         this->create();
     } else {
@@ -99,7 +104,11 @@ void file_description::create()
     fd = call_real_open(m_name, O_CREAT | O_WRONLY, 0777);
     if (fd < 0) {
         int error = errno;
-        perror("[UhOh]: <CAPTURE> ");
+        if (error != EEXIST) {
+            perror("ERROR: <CAPTURE> ");
+            this->print();
+        }
+        
         assert(error == EEXIST);
         fd = call_real_open(m_name, O_WRONLY, 0777);
         if (fd < 0) {
