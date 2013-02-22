@@ -6,10 +6,16 @@
 
 namespace HotBackup {
 
-// TODO: Set each flag with getenv...
 int BACKUP_TRACE_FLAGS = 0x0F;
 int BACKUP_WARN_FLAGS = 0x0F;
 int BACKUP_ERROR_FLAGS = 0x0F;
+
+
+
+void GetEnvironmentSettings(void)
+{
+    
+}
 
 void CopyTrace(const char *s, const char *arg) 
 {
