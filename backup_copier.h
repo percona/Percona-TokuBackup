@@ -5,21 +5,18 @@
 #define BACKUP_COPIER
 
 #include <vector>
-#include <dirent.h>
 
 class backup_copier {
 private:
     const char *m_source;
     const char *m_dest;
     std::vector<char *> m_todo;
-    void copy_regular_file(const char *source, const char *dest);
-    void add_dir_entries_to_todo(DIR *dir, const char *file);
 public:
     backup_copier();
     void set_directories(const char *source, const char *dest);
     void start_copy();
-    void copy_stripped_file(const char *file);
-    void copy_full_path(const char *source, const char* dest, const char *file);
+    void copy_file(const char *file);
+    void copy_path(const char *source, const char* dest, const char *file);
 };
 
 #endif // End of header guardian.
