@@ -132,7 +132,10 @@ void backup_directory::create_subdirectories(const char *path)
         *next_slash = 0;
         
         // 4. mkdir
-        int r = mkdir(directory, 0777);
+        int r = 0;
+        if (*directory) {
+            r = mkdir(directory, 0777);
+        }
         if(r) {
             int error = errno;
             perror("WARN: <CAPTURE>: Making subdirectory failed:");
