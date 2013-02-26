@@ -153,7 +153,7 @@ void backup_copier::copy_full_path(const char *source,
         this->copy_regular_file(source, dest);
     } else if (S_ISDIR(sbuf.st_mode)) {
         // Make the directory in the backup destination.
-        r = mkdir(dest, 0777);
+        r = call_real_mkdir(dest, 0777);
         if (r < 0) {
             int mkdir_errno = errno;
             perror("Cannot create directory in destination.");

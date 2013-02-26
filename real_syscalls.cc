@@ -125,9 +125,9 @@ int call_real_rename(const char* oldpath, const char* newpath) {
 static int (*real_mkdir)(const char *pathname, mode_t mode) = NULL;
 int call_real_mkdir(const char *pathname, mode_t mode);
 int call_real_mkdir(const char *pathname, mode_t mode) {
-    if (real_unlink == NULL) {
-        real_unlink = (int(*)(const char*))dlsym(RTLD_NEXT, "mkdir");
-        assert(real_unlink);
+    if (real_mkdir == NULL) {
+        real_mkdir = (int(*)(const char*, mode_t))dlsym(RTLD_NEXT, "mkdir");
+        assert(real_mkdir);
     }
     return real_mkdir(pathname, mode);
 }
