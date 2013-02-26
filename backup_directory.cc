@@ -136,6 +136,7 @@ void backup_directory::create_subdirectories(const char *path)
         if(r) {
             int error = errno;
             perror("WARN: <CAPTURE>: Making subdirectory failed:");
+            printf("WARN: <CAPTURE>: %s\n", directory);
             // For now, just ignore already existing dir,
             // this is a race between the backup copier
             // and the intercepted open() calls.
