@@ -28,10 +28,9 @@ public:
     void set_directories(const char *source, const char *dest);
     void start_copy();
     void wait_for_copy_to_finish();
+    void create_subdirectories(const char *file);
 private:
     bool does_file_exist(const char *file);
-    void create_subdirectories(const char *file);
-
 };
 
 #endif // End of header guardian.

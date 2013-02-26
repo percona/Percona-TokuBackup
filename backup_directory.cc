@@ -108,37 +108,46 @@ void backup_directory::open_path(const char *file_path)
 //
 void backup_directory::create_subdirectories(const char *path)
 {
-    // Find directory string
-    bool done = false;
-    const char slash = '/';
-    char directory[256] = {0};
+    const char SLASH = '/';
+    char *directory = strdup(path);
+    char *next_slash = directory;
     
-    while(!done) {
-        const char *slash_position = strchr(path, slash);
-        if (slash_position == NULL) {
-            done = true;
-            continue;
-        }
-
-        size_t end = (size_t) (slash_position - path);
-        if (end == 0 && *slash_position == slash) {
-            path += end + 1;
-            continue;
+    while(next_slash != NULL) {
+        // 1. scan for next slash
+        while(*next_slash != 0) {
+            if(*next_slash == SLASH) {
+                break;
+            }
+            
+            ++next_slash;
         }
         
-        strncpy(directory, path, end);
+        // 2. if found /0, set to null, break.
+        if (*next_slash == 0) {
+            next_slash = NULL;
+            break;
+        }
+        
+        // 3. turn slash into NULL
+        *next_slash = 0;
+        
+        // 4. mkdir
         int r = mkdir(directory, 0777);
-        if (r) {
+        if(r) {
             int error = errno;
-            perror("BACKUP: making backup subdirectory failed.");
-            
+            perror("WARN: <CAPTURE>: Making subdirectory failed:");
             // For now, just ignore already existing dir,
             // this is a race between the backup copier
-            // and intercepted open() calls.
+            // and the intercepted open() calls.
             assert(error == EEXIST);
         }
-
-        path += end + 1;
+        
+        // 5. revert slash back to slash char.
+        *next_slash = SLASH;
+        
+        // 6. Advance slash position by 1, to search 
+        // past recently found slash, and repeat.
+        ++next_slash;
     }
 }
 
