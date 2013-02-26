@@ -89,6 +89,7 @@ void backup_copier::start_copy()
         m_todo.pop_back();
         this->copy_stripped_file(fname);
     }
+    TRACE("Copy Starting...", "");
 }
 
 

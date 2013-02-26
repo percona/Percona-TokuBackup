@@ -15,5 +15,6 @@ int call_real_ftruncate(int fildes, off_t length);
 int call_real_truncate(const char *path, off_t length);
 int call_real_unlink(const char *path);
 int call_real_rename(const char* oldpath, const char* newpath);
+int call_real_mkdir(const char *pathname, mode_t mode);
 
 #endif // end of header guardian.

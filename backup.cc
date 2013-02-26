@@ -256,6 +256,21 @@ int rename(const char *oldpath, const char *newpath)
     return r;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//
+// mkdir() -
+//
+// Description: 
+//
+int mkdir(const char *pathname, mode_t mode)
+{
+    int r = 0;
+    TRACE("mkidr() intercepted", pathname);
+    r = call_real_mkdir(pathname, mode);
+    manager.mkdir(pathname);
+    return r;
+}
+
 /****************************************************************************/
 //
 // TODO: Separate the API for initiating, stopping and altering backup.

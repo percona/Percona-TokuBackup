@@ -321,7 +321,6 @@ void backup_manager::rename(const char *oldpath, const char *newpath)
     newpath++;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
 //
 // ftruncate() -
@@ -353,6 +352,26 @@ void backup_manager::truncate(const char *path, off_t length)
     if(path) {
         length++;
     }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// mkdir() -
+//
+// Description:
+//
+//     TBD...
+//
+void backup_manager::mkdir(const char *pathname)
+{
+    backup_directory *directory = this->get_directory(pathname);
+    if (directory == NULL) {
+        return;
+    }
+
+    TRACE("entering mkdir() for:", pathname); 
+    char *backup_directory_name = directory->translate_prefix(pathname);
+    directory->open_path(backup_directory_name);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -4,6 +4,7 @@
 #include "backup_directory.h"
 #include "file_description.h"
 #include "backup_debug.h"
+#include "real_syscalls.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -134,7 +135,7 @@ void backup_directory::create_subdirectories(const char *path)
         // 4. mkdir
         int r = 0;
         if (*directory) {
-            r = mkdir(directory, 0777);
+            r = call_real_mkdir(directory, 0777);
         }
         if(r) {
             int error = errno;
