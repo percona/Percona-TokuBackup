@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <fcntl.h> // open()
 #include <unistd.h> // close(), write(), read(), unlink(), truncate(), etc.
+#include <sys/stat.h> // mkdir()
 
 //#include <sys/types.h>
 #include <dlfcn.h>
