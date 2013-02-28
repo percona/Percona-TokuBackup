@@ -60,7 +60,12 @@ int open(const char* file, int oflag, ...)
     } else {
         fd = call_real_open(file, oflag);
         if (fd >= 0) {
-            manager.open(fd, file, oflag);
+            struct stat stats;
+            int r = fstat(fd, &stats);
+            assert(r==0);
+            if (!S_ISFIFO(stats.st_mode)) {
+                manager.open(fd, file, oflag);
+            }
         }
     }
 
@@ -93,7 +98,12 @@ int open64(const char* file, int oflag, ...)
     } else {
         fd = call_real_open(file, oflag);
         if (fd >= 0) {
-            manager.open(fd, file, oflag);
+            struct stat stats;
+            int r = fstat(fd, &stats);
+            assert(r==0);
+            if (!S_ISFIFO(stats.st_mode)) {
+                manager.open(fd, file, oflag);
+            }
         }
     }
 
