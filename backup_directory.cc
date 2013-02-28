@@ -72,9 +72,11 @@ bool backup_directory::directories_set()
 //
 bool backup_directory::is_prefix(const char *file)
 {
+    char absfile[PATH_MAX+1];
+    realpath(file, absfile);
     for (int i = 0; true; i++) {
         if (m_source_dir[i] == 0) return true;
-        if (m_source_dir[i] != file[i]) return false;
+        if (m_source_dir[i] != absfile[i]) return false;
     }
 }
 
@@ -113,6 +115,9 @@ void backup_directory::create_subdirectories(const char *path)
     char *directory = strdup(path);
     char *next_slash = directory;
     
+    assert(*next_slash=='/'); // it's an absolute path.  / always exists.
+    ++next_slash;
+
     while(next_slash != NULL) {
         // 1. scan for next slash
         while(*next_slash != 0) {
@@ -165,10 +170,13 @@ void backup_directory::create_subdirectories(const char *path)
 //
 char* backup_directory::translate_prefix(const char *file)
 {
+    char absfile[PATH_MAX+1];
+    realpath(file, absfile);
+
     // TODO: Should we have a copy of these lengths already?
     size_t len_op = strlen(m_source_dir);
     size_t len_np = strlen(m_dest_dir);
-    size_t len_s = strlen(file);
+    size_t len_s = strlen(absfile);
     assert(len_op < len_s);
     size_t new_len = len_s - len_op + len_np;
     char *new_string = NULL;
@@ -176,7 +184,7 @@ char* backup_directory::translate_prefix(const char *file)
     memcpy(new_string, m_dest_dir, len_np);
     
     // Copy the file name from the directory with the newline at the end.
-    memcpy(new_string + len_np, file + len_op, len_s - len_op + 1);
+    memcpy(new_string + len_np, absfile + len_op, len_s - len_op + 1);
     return new_string;
 }
 
@@ -219,8 +227,8 @@ void backup_directory::set_directories(const char *source, const char *dest)
 {
     assert(source);
     assert(dest);
-    m_source_dir = strdup(source);
-    m_dest_dir = strdup(dest);
+    m_source_dir = realpath(source, NULL);
+    m_dest_dir =   realpath(dest,   NULL);
 }
 
 
