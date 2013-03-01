@@ -6,6 +6,8 @@
 
 #include <sys/types.h>
 
+extern pthread_mutex_t backup_manager_mutex;
+
 int call_real_open(const char *file, int oflag, ...);
 int call_real_close(int fd);
 ssize_t call_real_write(int fd, const void *buf, size_t nbyte);

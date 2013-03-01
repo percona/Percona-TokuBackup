@@ -53,13 +53,7 @@ backup_manager::backup_manager()
 void backup_manager::start_backup()
 {
     assert(m_doing_backup == false);
-    int r = 0;
-    r = pthread_mutex_init(&m_mutex, NULL);
-    if (r) { 
-        perror("backup mutex creation failed.");
-        abort();
-    }
-    
+
     m_doing_backup = true;
     m_interpret_writes = true;
     
@@ -89,12 +83,6 @@ void backup_manager::stop_backup()
     m_interpret_writes = false;
     m_doing_backup = false;
     
-    int r = 0;
-    r = pthread_mutex_destroy(&m_mutex);
-    if (r) { 
-        perror("Cannot destroy backup mutex."); 
-        abort();
-    }
 }
 
 
@@ -162,8 +150,9 @@ void backup_manager::create(int fd, const char *file)
     TRACE("entering create() with fd = ", fd); 
     char *backup_file_name = directory->translate_prefix(file);
     directory->open_path(backup_file_name);
-    m_map.put(fd);
-    file_description *description = m_map.get(fd);
+    pthread_mutex_lock(&backup_manager_mutex); // maybe this goes into m_map.put()
+    file_description *description = m_map.put(fd);
+    pthread_mutex_unlock(&backup_manager_mutex);
     description->set_name(backup_file_name);
     description->create();
 }
@@ -209,7 +198,9 @@ void backup_manager::open(int fd, const char *file, int oflag)
 //
 void backup_manager::close(int fd) 
 {    
+    pthread_mutex_lock(&backup_manager_mutex); // maybe this goes into m_map.get()
     file_description *description = m_map.get(fd);
+    pthread_mutex_unlock(&backup_manager_mutex);
     if (description == NULL) {
         return;
     }
@@ -220,7 +211,12 @@ void backup_manager::close(int fd)
     // TODO: ??? 
     // What happens when we have multiple handles on one file descriptor,
     // but we close only one of them?...
+    //
+    // Bradley asks: What does that mean?  How can there be multiple handles on one descriptor?  There could be multiple on a description...
+
+    pthread_mutex_lock(&backup_manager_mutex); // maybe this goes into m_map. call.  We could do the write atomically, or just tell valgrind not to worry about it.
     m_map.erase(fd);
+    pthread_mutex_unlock(&backup_manager_mutex);
 }
 
 
@@ -241,7 +237,9 @@ void backup_manager::write(int fd, const void *buf, size_t nbyte)
 
     TRACE("entering write() with fd = ", fd);
     file_description *description = NULL;
+    pthread_mutex_lock(&backup_manager_mutex); // maybe this goes into m_map.put()
     description = m_map.get(fd);
+    pthread_mutex_unlock(&backup_manager_mutex);
     if (description == NULL) {
         return;
     }

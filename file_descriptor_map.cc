@@ -53,7 +53,7 @@ file_description* file_descriptor_map::get(int fd)
 // then the array is expanded from it's current length, putting a NULL pointer 
 // in each expanded slot.
 //
-void file_descriptor_map::put(int fd)
+file_description* file_descriptor_map::put(int fd)
 {
     if (HotBackup::MAP_DBG) { 
         printf("put() called with fd = %d \n", fd);
@@ -70,6 +70,7 @@ void file_descriptor_map::put(int fd)
     it = m_map.begin();
     it += fd;
     m_map.insert(it, description);
+    return description;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

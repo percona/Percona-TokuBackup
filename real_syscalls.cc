@@ -6,6 +6,10 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <pthread.h>
+
+pthread_mutex_t backup_manager_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 // **************************************************************************
 //
@@ -21,9 +25,12 @@ static int (*real_open)(const char *file, int oflag, ...) = NULL;
 int call_real_open(const char *file, int oflag, ...);
 int call_real_open(const char *file, int oflag, ...) {
     if (real_open == NULL) {
-        // really should have a mutex here to protect this.
-        real_open = (int (*)(const char *, int, ...))dlsym(RTLD_NEXT, "open");
-        assert(real_open != NULL);
+        pthread_mutex_lock(&backup_manager_mutex);
+        int (*real_open_local)(const char *, int, ...) = (int (*)(const char *, int, ...))dlsym(RTLD_NEXT, "open");
+        assert(real_open_local != NULL);
+        bool did_it = __sync_bool_compare_and_swap(&real_open, NULL, real_open_local);
+        assert(did_it);
+        pthread_mutex_unlock(&backup_manager_mutex);
     }
 
     // See if we are creating or just opening the file.
@@ -42,8 +49,12 @@ static int (*real_close)(int fd) = NULL;
 int call_real_close(int fd);
 int call_real_close(int fd) {
     if (real_close == NULL) {
-        real_close = (int(*)(int))dlsym(RTLD_NEXT, "close");
-        assert(real_close != NULL);
+        pthread_mutex_lock(&backup_manager_mutex);
+        int (*real_close_local)(int) = (int(*)(int))dlsym(RTLD_NEXT, "close");
+        assert(real_close_local != NULL);
+        bool did_it = __sync_bool_compare_and_swap(&real_close, NULL, real_close_local);
+        assert(did_it);
+        pthread_mutex_unlock(&backup_manager_mutex);
     }
 
     return real_close(fd);
@@ -53,8 +64,12 @@ static ssize_t (*real_write)(int fd, const void *buf, size_t nbyte) = NULL;
 ssize_t call_real_write(int fd, const void *buf, size_t nbyte);
 ssize_t call_real_write(int fd, const void *buf, size_t nbyte) {
     if (real_write==NULL) {
-        real_write = (ssize_t(*)(int,const void*,size_t))dlsym(RTLD_NEXT, "write");
-        assert(real_write != NULL);
+        pthread_mutex_lock(&backup_manager_mutex);
+        ssize_t (*real_write_local)(int,const void*,size_t) = (ssize_t(*)(int,const void*,size_t))dlsym(RTLD_NEXT, "write");
+        assert(real_write_local != NULL);
+        bool did_it = __sync_bool_compare_and_swap(&real_write, NULL, real_write_local);
+        assert(did_it);
+        pthread_mutex_unlock(&backup_manager_mutex);
     }
     return real_write(fd, buf, nbyte);
 }

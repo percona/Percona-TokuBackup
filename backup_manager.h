@@ -18,7 +18,6 @@ private:
     // TODO: Make this an array or vector of directories.
     backup_directory m_dir;
     file_descriptor_map m_map;
-    pthread_mutex_t m_mutex;
 
 public:
     backup_manager();

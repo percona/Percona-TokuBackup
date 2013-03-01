@@ -15,7 +15,7 @@ private:
 public:
     file_descriptor_map();
     file_description* get(int fd);
-    void put(int fd);
+    file_description* put(int fd); // create a file description, put it in the map, and return it.
     void erase(int fd);
 private:
     void grow_array(int fd);
