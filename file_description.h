@@ -19,16 +19,16 @@ private:
     // NOTE: in the 'real' application, we may use another way to name
     // the destination file, like its name.
 public:
-    file_description();
+    file_description(void);
     void prepare_for_backup(const char *name);
     void set_full_source_name(const char *name);
     const char * get_full_source_name(void);
-    void open();
-    void create();
+    void open(void);
+    void create(void);
     ssize_t write(int fd_in_source, const void *buf, size_t nbyte); // actually performs the write (so that a lock can be obtained)
     void pwrite(const void *buf, size_t nbyte, off_t offset);
     void seek(size_t nbyte, int whence);
-    void close();
+    void close(void);
     
     bool m_in_source_dir;
 };

@@ -23,14 +23,17 @@ const int DEST_FD_INIT = -1;
 //
 //     ...
 //
-file_description::file_description()
+file_description::file_description(void)
 : m_refcount(1), 
 m_offset(0), 
 m_fd_in_dest_space(DEST_FD_INIT), 
 m_backup_name(NULL),
 m_full_source_name(NULL), 
 m_in_source_dir(false)
-{}
+{
+    int r = pthread_mutex_init(&m_mutex, NULL);
+    assert(r==0);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -71,7 +74,7 @@ const char * file_description::get_full_source_name(void)
 //     Open assumes that the backup file exists.  Create assumes the 
 // backup file does NOT exist.
 //
-void file_description::open()
+void file_description::open(void)
 {
     int fd = 0;
     fd = call_real_open(m_backup_name, O_WRONLY, 0777);
@@ -106,7 +109,7 @@ void file_description::open()
 //     Open assumes that the backup file exists.  Create assumes the 
 // backup file does NOT exist.
 //
-void file_description::create()
+void file_description::create(void)
 {
     // Create file that was just opened, this assumes the parent directories
     // exist.
@@ -137,7 +140,7 @@ void file_description::create()
 //
 //     ...
 //
-void file_description::close()
+void file_description::close(void)
 {
     if(!m_in_source_dir) {
         return;
