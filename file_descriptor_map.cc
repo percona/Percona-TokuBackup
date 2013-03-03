@@ -76,10 +76,7 @@ file_description* file_descriptor_map::put(int fd)
     //description->fds.push_back(0); // fd?
     pthread_mutex_lock(&get_put_mutex);
     this->grow_array(fd);
-    std::vector<file_description*>::iterator it;
-    it = m_map.begin();
-    it += fd;
-    m_map.insert(it, description);
+    m_map[fd] = description;
     pthread_mutex_unlock(&get_put_mutex);
     return description;
 }
