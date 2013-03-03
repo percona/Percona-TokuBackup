@@ -35,7 +35,7 @@
 //
 backup_manager::backup_manager() 
     : m_doing_backup(false),
-      m_doing_copy(false) // <CER> Set to false to turn off copy
+      m_doing_copy(true) // <CER> Set to false to turn off copy
 {
 }
 
