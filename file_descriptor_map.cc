@@ -3,9 +3,15 @@
 
 #include "file_descriptor_map.h"
 #include "backup_debug.h"
+
 #include <assert.h>
 #include <cstdlib>
+#include <pthread.h>
 #include <stdio.h>
+
+
+// This mutx protects the file descriptor map
+static pthread_mutex_t get_put_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -35,11 +41,15 @@ file_description* file_descriptor_map::get(int fd)
     }
 
     assert(fd >= 0);
+    pthread_mutex_lock(&get_put_mutex);
+    file_description *result;
     if ((size_t)fd >= m_map.size()) {
-        return NULL;
+        result = NULL;
+    } else {
+        result = m_map[fd];
     }
-    
-    return m_map.at(fd);
+    pthread_mutex_unlock(&get_put_mutex);
+    return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,17 +69,18 @@ file_description* file_descriptor_map::put(int fd)
         printf("put() called with fd = %d \n", fd);
     }
     
-    file_description *description = NULL;
-    description = new file_description;
+    file_description *description = new file_description;
     
     // <CER> Is this to make space for the backup fd?
     // <CER> Shouldn't we do this when we are adding a file descriptor?
     //description->fds.push_back(0); // fd?
+    pthread_mutex_lock(&get_put_mutex);
     this->grow_array(fd);
     std::vector<file_description*>::iterator it;
     it = m_map.begin();
     it += fd;
     m_map.insert(it, description);
+    pthread_mutex_unlock(&get_put_mutex);
     return description;
 }
 
@@ -82,16 +93,25 @@ file_description* file_descriptor_map::put(int fd)
 //     Frees the file description object at the given index.  It also sets
 // that index's file descriptor pointer to zero.
 //
+// Requires: the fd is something currently mapped.
+
 void file_descriptor_map::erase(int fd)
 {
     if (HotBackup::MAP_DBG) { 
         printf("erase() called with fd = %d \n", fd);
     }
 
-    file_description *description = this->get(fd);
+    pthread_mutex_lock(&get_put_mutex);
+    file_description *description;
+    if ((size_t)fd  >= m_map.size()) {
+        description = NULL;
+    } else {
+        description = m_map[fd];
+        m_map[fd] = NULL;
+    }
+    pthread_mutex_unlock(&get_put_mutex);
     assert(description != NULL);
     delete description;
-    m_map.at(fd) = NULL;
 }
 
 
@@ -116,6 +136,7 @@ int file_descriptor_map::size(void)
 // file descriptors may be used by the parent process, but not part of our
 // backup directory.
 // 
+// Requires: the get_put_mutex is held
 void file_descriptor_map::grow_array(int fd)
 {
     assert(fd >= 0);

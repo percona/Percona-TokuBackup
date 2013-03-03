@@ -221,19 +221,13 @@ void backup_manager::open(int fd, const char *file, int oflag)
 void backup_manager::close(int fd) 
 {
     TRACE("entering close() with fd = ", fd);
-    pthread_mutex_lock(&backup_manager_mutex); // maybe this goes into m_map.get()
     file_description *description = m_map.get(fd);
     if (description != NULL)
     {
         description->close();
     }
 
-    //
-    // Bradley asks: What does that mean?  How can there be multiple handles on one descriptor?  There could be multiple on a description...
-
-    pthread_mutex_lock(&backup_manager_mutex); // maybe this goes into m_map. call.  We could do the write atomically, or just tell valgrind not to worry about it.
     m_map.erase(fd);
-    pthread_mutex_unlock(&backup_manager_mutex);
 }
 
 
@@ -251,7 +245,6 @@ void backup_manager::write(int fd, const void *buf, size_t nbyte)
     TRACE("entering write() with fd = ", fd);
 
     file_description *description = m_map.get(fd);
-    pthread_mutex_unlock(&backup_manager_mutex);
     if (description == NULL) {
         return;
     }
