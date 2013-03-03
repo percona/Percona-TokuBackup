@@ -177,7 +177,9 @@ char* backup_directory::translate_prefix(const char *file)
     size_t len_op = strlen(m_source_dir);
     size_t len_np = strlen(m_dest_dir);
     size_t len_s = strlen(absfile);
-    assert(len_op < len_s);
+    
+    // TODO: What is this assert checking?
+    //assert(len_op < len_s);
     size_t new_len = len_s - len_op + len_np;
     char *new_string = NULL;
     new_string = (char *)calloc(new_len + 1, sizeof(char));

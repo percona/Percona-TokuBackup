@@ -174,7 +174,7 @@ ssize_t read(int fd, void *buf, size_t nbyte)
     TRACE("read() intercepted, fd = ", fd);
     r = call_real_read(fd, buf, nbyte);
     if (r >= 0) {
-        manager.seek(fd, nbyte);
+        manager.seek(fd, nbyte, SEEK_CUR);
     }
     return r;
 }

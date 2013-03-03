@@ -13,8 +13,8 @@ class backup_manager
 {
 private:
     bool m_doing_backup;
-    bool m_interpret_writes;
     bool m_doing_copy;
+
     // TODO: Make this an array or vector of directories.
     backup_directory m_dir;
     file_descriptor_map m_map;
@@ -32,7 +32,7 @@ public:
     void close(int fd);
     void write(int fd, const void *buf, size_t nbyte);
     void pwrite(int fd, const void *buf, size_t nbyte, off_t offset);
-    void seek(int fd, size_t nbyte);
+    void seek(int fd, size_t nbyte, int whence);
     void rename(const char *oldpath, const char *newpath);
     void ftruncate(int fd, off_t length);
     void truncate(const char *path, off_t length);

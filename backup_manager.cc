@@ -35,8 +35,7 @@
 //
 backup_manager::backup_manager() 
     : m_doing_backup(false),
-      m_interpret_writes(false),
-      m_doing_copy(true) // <CER> Set to false to turn off copy
+      m_doing_copy(false) // <CER> Set to false to turn off copy
 {
 }
 
@@ -55,7 +54,6 @@ void backup_manager::start_backup()
     assert(m_doing_backup == false);
 
     m_doing_backup = true;
-    m_interpret_writes = true;
     
     // Start backing all the files in the directory.
     if (m_doing_copy) {
@@ -80,7 +78,6 @@ void backup_manager::stop_backup()
     // TODO: Make this: abort copy?
     m_dir.wait_for_copy_to_finish();
     
-    m_interpret_writes = false;
     m_doing_backup = false;
     
 }
@@ -108,6 +105,25 @@ void backup_manager::add_directory(const char *source_dir,
     
     // TEMP: We only have one directory object at this point, for now...
     m_dir.set_directories(source_dir, dest_dir);
+    
+    // Loop through all the current file descriptions and prepare them
+    // for backup.
+    for(int i = 0; i < m_map.size(); ++i) {
+        file_description *file = m_map.get(i);
+        if(file == NULL) {
+            continue;
+        }
+        
+        const char * source_path = file->get_full_source_name();
+        if(!m_dir.is_prefix(source_path)) {
+            continue;
+        }
+
+        const char * file_name = m_dir.translate_prefix(source_path);
+        file->prepare_for_backup(file_name);
+        m_dir.open_path(file_name);
+        file->create();
+    }
 }
 
 
@@ -141,19 +157,21 @@ void backup_manager::remove_directory(const char *source_dir,
 // copy) for the create case?
 //
 void backup_manager::create(int fd, const char *file) 
-{       
+{
+    TRACE("entering create() with fd = ", fd);
+    m_map.put(fd);
+    file_description *description = m_map.get(fd);
+    description->set_full_source_name(file);
+    
+    // If this file is not in the path of our source dir, don't create it.
     backup_directory *directory = this->get_directory(file);
     if (directory == NULL) {
         return;
     }
 
-    TRACE("entering create() with fd = ", fd); 
     char *backup_file_name = directory->translate_prefix(file);
     directory->open_path(backup_file_name);
-    pthread_mutex_lock(&backup_manager_mutex); // maybe this goes into m_map.put()
-    file_description *description = m_map.put(fd);
-    pthread_mutex_unlock(&backup_manager_mutex);
-    description->set_name(backup_file_name);
+    description->prepare_for_backup(backup_file_name);
     description->create();
 }
 
@@ -172,19 +190,23 @@ void backup_manager::create(int fd, const char *file)
 //
 void backup_manager::open(int fd, const char *file, int oflag)
 {
-    oflag++;
+    TRACE("entering open() with fd = ", fd);
+    m_map.put(fd);
+    file_description *description = m_map.get(fd);
+    description->set_full_source_name(file);
+
+    // If this file is not in the path of our source dir, don't open it.
     backup_directory *directory = this->get_directory(file);
     if (directory == NULL) {
         return;
     }
 
-    TRACE("entering open() with fd = ", fd);
     char *backup_file_name = directory->translate_prefix(file);
     directory->open_path(backup_file_name);
-    m_map.put(fd);
-    file_description *description = m_map.get(fd);
-    description->set_name(backup_file_name);
+    description->prepare_for_backup(backup_file_name);
     description->open();
+
+    oflag++;
 }
 
 
@@ -197,20 +219,15 @@ void backup_manager::open(int fd, const char *file, int oflag)
 //     Find and deallocate file description based on incoming fd.
 //
 void backup_manager::close(int fd) 
-{    
+{
+    TRACE("entering close() with fd = ", fd);
     pthread_mutex_lock(&backup_manager_mutex); // maybe this goes into m_map.get()
     file_description *description = m_map.get(fd);
-    pthread_mutex_unlock(&backup_manager_mutex);
-    if (description == NULL) {
-        return;
+    if (description != NULL)
+    {
+        description->close();
     }
 
-    TRACE("entering close() with fd = ", fd);
-    description->close();
-    
-    // TODO: ??? 
-    // What happens when we have multiple handles on one file descriptor,
-    // but we close only one of them?...
     //
     // Bradley asks: What does that mean?  How can there be multiple handles on one descriptor?  There could be multiple on a description...
 
@@ -231,14 +248,9 @@ void backup_manager::close(int fd)
 //
 void backup_manager::write(int fd, const void *buf, size_t nbyte)
 {
-    if (!m_interpret_writes) {
-        return;
-    }
-
     TRACE("entering write() with fd = ", fd);
-    file_description *description = NULL;
-    pthread_mutex_lock(&backup_manager_mutex); // maybe this goes into m_map.put()
-    description = m_map.get(fd);
+
+    file_description *description = m_map.get(fd);
     pthread_mutex_unlock(&backup_manager_mutex);
     if (description == NULL) {
         return;
@@ -259,17 +271,14 @@ void backup_manager::write(int fd, const void *buf, size_t nbyte)
 //
 void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 {
-    if (!m_interpret_writes) {
-        return;
-    }
+    TRACE("entering pwrite() with fd = ", fd);
 
     file_description *description = NULL;
     description = m_map.get(fd);
     if (description == NULL) {
         return;
     }
-    
-    TRACE("entering pwrite() with fd = ", fd);
+
     description->pwrite(buf, nbyte, offset);
 }
 
@@ -283,21 +292,16 @@ void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 //     Move the backup file descriptor to the new position.  This allows
 // upcoming intercepted writes to be backed up properly.
 //
-void backup_manager::seek(int fd, size_t nbyte)
+void backup_manager::seek(int fd, size_t nbyte, int whence)
 {
-    if (!m_interpret_writes) {
-        return;
-    }
-    
+    TRACE("entering seek() with fd = ", fd);
     file_description *description = NULL;
     description = m_map.get(fd);
     if (description == NULL) {
         return;
     }
-    
-    TRACE("entering seek() with fd = ", fd);
-    // TODO: determine who is seeking...
-    description->seek(nbyte);
+
+    description->seek(nbyte, whence);
 }
 
 

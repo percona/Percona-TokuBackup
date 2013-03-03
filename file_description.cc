@@ -12,6 +12,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+const int DEST_FD_INIT = -1;
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // file_description() -
@@ -21,30 +23,36 @@
 //     ...
 //
 file_description::file_description()
-: m_refcount(1), m_offset(0), m_fd_in_dest_space(-1), m_name(NULL)
+: m_refcount(1), 
+m_offset(0), 
+m_fd_in_dest_space(DEST_FD_INIT), 
+m_backup_name(NULL),
+m_full_source_name(NULL), 
+m_in_source_dir(false)
 {}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// print() -
-//
-// Description: 
-//
-//     Usefull print out of file description state.
-//
-void file_description::print() {
-    printf("======================\n");
-    printf("file_description: %s, @%p\n", m_name, this);
-    printf("refcount:%d, offset:%ld, fd_in_dest_space:%d\n",
-            this->m_refcount, this->m_offset, this->m_fd_in_dest_space);
-    printf("======================\n");
+void file_description::prepare_for_backup(const char *name)
+{
+    // TODO: strdup this string, then free it later.
+    m_backup_name = strdup(name);
+    m_in_source_dir = true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void file_description::set_name(char *name)
+void file_description::set_full_source_name(const char *name)
 {
-    m_name = name;
+    // TODO: strdup this string, then free it later.
+    m_full_source_name = strdup(name);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+const char * file_description::get_full_source_name(void)
+{
+    return m_full_source_name;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -65,12 +73,11 @@ void file_description::set_name(char *name)
 void file_description::open()
 {
     int fd = 0;
-    fd = call_real_open(m_name, O_WRONLY, 0777);
+    fd = call_real_open(m_backup_name, O_WRONLY, 0777);
     if (fd < 0) {
         int error = errno;
         if(error != ENOENT) {
             perror("ERROR: <CAPTURE> ");
-            this->print();
         }
         
         assert(error == ENOENT);
@@ -78,6 +85,8 @@ void file_description::open()
     } else {
         this->m_fd_in_dest_space = fd;
     }
+    
+    
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -101,16 +110,15 @@ void file_description::create()
     // Create file that was just opened, this assumes the parent directories
     // exist.
     int fd = 0;
-    fd = call_real_open(m_name, O_CREAT | O_WRONLY, 0777);
+    fd = call_real_open(m_backup_name, O_CREAT | O_WRONLY, 0777);
     if (fd < 0) {
         int error = errno;
         if (error != EEXIST) {
             perror("ERROR: <CAPTURE> ");
-            this->print();
         }
-        
+
         assert(error == EEXIST);
-        fd = call_real_open(m_name, O_WRONLY, 0777);
+        fd = call_real_open(m_backup_name, O_WRONLY, 0777);
         if (fd < 0) {
             perror("BACKUP: Couldn't open backup copy of recently opened file.");
             abort();            
@@ -130,6 +138,14 @@ void file_description::create()
 //
 void file_description::close()
 {
+    if(!m_in_source_dir) {
+        return;
+    }
+    
+    if(m_fd_in_dest_space == DEST_FD_INIT) {
+        return;
+    }
+
     // TODO: Check refcount, if it's zero we REALLY have to close
     // the file.  Otherwise, if there are any references left, 
     // we can only decrement the refcount; other file descriptors
@@ -153,14 +169,24 @@ void file_description::close()
 //
 void file_description::write(const void *buf, size_t nbyte)
 {
+    this->m_offset += nbyte;
+    
+    if(!m_in_source_dir) {
+        return;
+    }
+    
+    // We can't write to the backup file if it hasn't been created yet.
+    if(m_fd_in_dest_space == DEST_FD_INIT) {
+        return;
+    }
+
     ssize_t r = 0;
-    r = call_real_write(this->m_fd_in_dest_space, buf, nbyte);
+    size_t position = m_offset - nbyte;
+    r = call_real_pwrite(this->m_fd_in_dest_space, buf, nbyte, position);
     if (r < 0) {
         perror("BACKUP: write() to backup file failed."); 
         abort();
     }
-        
-    this->m_offset = r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -171,19 +197,41 @@ void file_description::write(const void *buf, size_t nbyte)
 //
 //     ...
 //
-void file_description::seek(size_t nbyte)
+void file_description::seek(size_t nbyte, int whence)
 {
+    switch(whence) {
+        case SEEK_SET:
+            this->m_offset = nbyte;
+            break;
+        case SEEK_CUR:
+            this->m_offset += nbyte;
+            break;
+        case SEEK_END:
+            // TODO: How do we know how big the source file is?
+            // Do we need to track this as well.
+            break;
+        default:
+            break;
+    }
+    
+    if(!m_in_source_dir) {
+        return;
+    }
+    
+    // We can't seek the backup file if it hasn't been created yet.
+    if(m_fd_in_dest_space == DEST_FD_INIT) {
+        return;
+    }
+    
     // Do we need to seek nbytes past the current position?
     // Past an absolute position?
     // <CER> this depends on the caller...
-    int whence = SEEK_SET;
     off_t offset = 0;
     offset = lseek(this->m_fd_in_dest_space, nbyte, whence);
     if (offset < 0) {
         perror("BACKUP: lseek() failed.");
         abort();
     }
-    this->m_offset = offset;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -196,6 +244,14 @@ void file_description::seek(size_t nbyte)
 //
 void file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
 {
+    if(!m_in_source_dir) {
+        return;
+    }
+    
+    if(m_fd_in_dest_space == DEST_FD_INIT) {
+        return;
+    }
+    
     ssize_t r = 0;
     r = call_real_pwrite(this->m_fd_in_dest_space, buf, nbyte, offset);
     if (r < 0) {

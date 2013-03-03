@@ -202,7 +202,7 @@ void backup_copier::copy_regular_file(const char *source, const char *dest)
         // TODO: Verify that there is not a race with write capturing here.
         assert(destfd >= 0);
     }
-    
+
     // This section actually copies all the bytes from the source
     // file to our newly created backup copy.
     ssize_t n_read;
@@ -221,7 +221,7 @@ void backup_copier::copy_regular_file(const char *source, const char *dest)
             n_wrote_this_buf += n_wrote_now;
         }
     }
-    
+
     r = call_real_close(srcfd);
     assert(r == 0);
     r = call_real_close(destfd);

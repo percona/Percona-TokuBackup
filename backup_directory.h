@@ -19,6 +19,7 @@ private:
     const char *m_dest_dir;
     backup_copier m_copier;
     pthread_t m_thread;
+
 public:
     backup_directory();
     void open_path(const char *file_path);

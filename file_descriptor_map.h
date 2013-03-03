@@ -3,10 +3,12 @@
 
 #ifndef FILE_DESCRIPTOR_MAP_H
 #define FILE_DESCRIPTOR_MAP_H
-#endif // End of header guardian.
 
 #include <vector>
 #include "file_description.h"
+#include "backup_directory.h"
+
+class backup_directory;
 
 class file_descriptor_map
 {
@@ -17,9 +19,11 @@ public:
     file_description* get(int fd);
     file_description* put(int fd); // create a file description, put it in the map, and return it.
     void erase(int fd);
+    int size(void);
 private:
     void grow_array(int fd);
     
 friend class file_descriptor_map_unit_test;
 };
 
+#endif // End of header guardian.
