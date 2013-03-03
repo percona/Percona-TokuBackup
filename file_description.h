@@ -1,6 +1,7 @@
 #ifndef FILE_DESCRIPTION_H
 #define FILE_DESCRIPTION_H
 
+#include <pthread.h>
 #include <sys/types.h>
 #include <vector>
 
@@ -13,6 +14,8 @@ private:
     const char *m_backup_name;
     const char *m_full_source_name;
 
+    pthread_mutex_t m_mutex; // A mutex used to make m_offset move atomically when we perform a write (or read).
+
     // NOTE: in the 'real' application, we may use another way to name
     // the destination file, like its name.
 public:
@@ -22,7 +25,7 @@ public:
     const char * get_full_source_name(void);
     void open();
     void create();
-    void write(const void *buf, size_t nbyte);
+    ssize_t write(int fd_in_source, const void *buf, size_t nbyte); // actually performs the write (so that a lock can be obtained)
     void pwrite(const void *buf, size_t nbyte, off_t offset);
     void seek(size_t nbyte, int whence);
     void close();

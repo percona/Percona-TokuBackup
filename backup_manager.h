@@ -30,7 +30,7 @@ public:
     void create(int fd, const char *file);
     void open(int fd, const char *file, int oflag);
     void close(int fd);
-    void write(int fd, const void *buf, size_t nbyte);
+    ssize_t write(int fd, const void *buf, size_t nbyte); // actually performs the write on fd (so that a lock can be obtained)
     void pwrite(int fd, const void *buf, size_t nbyte, off_t offset);
     void seek(int fd, size_t nbyte, int whence);
     void rename(const char *oldpath, const char *newpath);

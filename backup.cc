@@ -142,15 +142,14 @@ int close(int fd)
 //
 ssize_t write(int fd, const void *buf, size_t nbyte)
 {
-    ssize_t r = 0;
     TRACE("write() intercepted, fd = ", fd);
-    r = call_real_write(fd, buf, nbyte);
-    
+
+    // Moved the write down into file_description->write, where a lock can be obtained
+
     // <CER> this *SHOULD* seek in the backup copy as part of the
     // write() to the backup file...
     
-    manager.write(fd, buf, nbyte);
-    return r;
+    return manager.write(fd, buf, nbyte);
 }
 
 

@@ -240,16 +240,16 @@ void backup_manager::close(int fd)
 //     Using the given file descriptor, this method updates the 
 // backup copy of a prevously opened file.
 //
-void backup_manager::write(int fd, const void *buf, size_t nbyte)
+ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 {
     TRACE("entering write() with fd = ", fd);
 
     file_description *description = m_map.get(fd);
     if (description == NULL) {
-        return;
+        return call_real_write(fd, buf, nbyte);
+    } else {
+        return description->write(fd, buf, nbyte);
     }
-    
-    description->write(buf, nbyte);
 }
 
 

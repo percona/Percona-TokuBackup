@@ -168,26 +168,26 @@ void file_description::close()
 //
 //     ...
 //
-void file_description::write(const void *buf, size_t nbyte)
+ssize_t file_description::write(int fd_in_source, const void *buf, size_t nbyte)
 {
-    this->m_offset += nbyte;
+    pthread_mutex_lock(&m_mutex);
+    ssize_t r = call_real_write(fd_in_source, buf, nbyte);
+    if (r>=0) {
+        off_t position = this->m_offset;
+        this->m_offset += r;
     
-    if(!m_in_source_dir) {
-        return;
+        if (!m_in_source_dir) {
+            /* nothing */
+        } else if (m_fd_in_dest_space == DEST_FD_INIT) {
+            // We can't write to the backup file if it hasn't been created yet.
+            /* nothing */
+        } else {
+            ssize_t second_write_size = call_real_pwrite(this->m_fd_in_dest_space, buf, r, position);
+            assert(second_write_size==r);
+        }
     }
-    
-    // We can't write to the backup file if it hasn't been created yet.
-    if(m_fd_in_dest_space == DEST_FD_INIT) {
-        return;
-    }
-
-    ssize_t r = 0;
-    size_t position = m_offset - nbyte;
-    r = call_real_pwrite(this->m_fd_in_dest_space, buf, nbyte, position);
-    if (r < 0) {
-        perror("BACKUP: write() to backup file failed."); 
-        abort();
-    }
+    pthread_mutex_unlock(&m_mutex);
+    return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
