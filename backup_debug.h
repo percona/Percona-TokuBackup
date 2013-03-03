@@ -4,18 +4,18 @@
 #ifndef BACKUP_DEBUG_H
 #define BACKUP_DEBUG_H
 
-#ifndef DEBUG
-#define DEBUG 1
+#ifndef DEBUG_HOTBACKUP
+#define DEBUG_HOTBACKUP 0
 #endif
 
 namespace HotBackup {
 
 // Debug flag for backup_copier debugging.
-const int CPY_DBG = 1;
+const int CPY_DBG = 0;
 // Debug flag just for the backup manager.
-const int MGR_DBG = 1;
+const int MGR_DBG = 0;
 // Debug flag for the file descriptor map.
-const int MAP_DBG = 1;
+const int MAP_DBG = 0;
 
 // Components:
 // COPY

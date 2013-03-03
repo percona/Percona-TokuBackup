@@ -17,14 +17,14 @@
 #include "real_syscalls.h"
 #include "backup_debug.h"
 
-#ifdef DEBUG
+#if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::InterposeWarn(string, arg);
 #define TRACE(string, arg) HotBackup::InterposeTrace(string, arg);
 #define ERROR(string, arg) HotBackup::InterposeError(string, arg);
 #else
-#define WARN(string) 
-#define TRACE(string) 
-#define ERROR(string) 
+#define WARN(string,arg)
+#define TRACE(string,arg)
+#define ERROR(string,arg)
 #endif
 
 backup_manager manager;

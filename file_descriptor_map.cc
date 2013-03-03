@@ -99,16 +99,19 @@ void file_descriptor_map::erase(int fd)
     }
 
     pthread_mutex_lock(&get_put_mutex);
-    file_description *description;
     if ((size_t)fd  >= m_map.size()) {
-        description = NULL;
+        pthread_mutex_unlock(&get_put_mutex);
     } else {
-        description = m_map[fd];
+        file_description *description = m_map[fd];
         m_map[fd] = NULL;
+        pthread_mutex_unlock(&get_put_mutex);
+
+        // Do this after releasing the lock
+        if (description!=NULL) {
+            description->close();
+            delete description;
+        }
     }
-    pthread_mutex_unlock(&get_put_mutex);
-    assert(description != NULL);
-    delete description;
 }
 
 

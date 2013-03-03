@@ -24,7 +24,7 @@ void *start_copying(void *);
 void *start_copying(void * copier)
 {
     void *r = 0;
-    if (DEBUG) printf(">>> pthread: copy started\n");
+    if (DEBUG_HOTBACKUP) printf(">>> pthread: copy started\n");
     backup_copier *c = (backup_copier*)copier;
     c->start_copy();
     return r;

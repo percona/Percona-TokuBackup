@@ -15,7 +15,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 
-#ifdef DEBUG
+#if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CaptureWarn(string, arg)
 #define TRACE(string, arg) HotBackup::CaptureTrace(string, arg)
 #define ERROR(string, arg) HotBackup::CaptureError(string, arg)
@@ -221,13 +221,7 @@ void backup_manager::open(int fd, const char *file, int oflag)
 void backup_manager::close(int fd) 
 {
     TRACE("entering close() with fd = ", fd);
-    file_description *description = m_map.get(fd);
-    if (description != NULL)
-    {
-        description->close();
-    }
-
-    m_map.erase(fd);
+    m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
 }
 
 
