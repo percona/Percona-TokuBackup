@@ -75,45 +75,6 @@ int open(const char* file, int oflag, ...)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// open64() -
-//
-// Description: 
-//
-//     64-bit Linux version of open().
-//
-#if 0
-int open64(const char* file, int oflag, ...)
-{
-    int fd = 0;
-    if (DEBUG) printf("open called.\n");
-    if (oflag & O_CREAT) {
-        va_list ap;
-        va_start(ap, oflag);
-        mode_t mode = va_arg(ap, mode_t);
-        va_end(ap);
-        fd = call_real_open(file, oflag, mode);
-        if (fd >= 0) {
-            manager.create(fd, file);
-        }
-    } else {
-        fd = call_real_open(file, oflag);
-        if (fd >= 0) {
-            struct stat stats;
-            int r = fstat(fd, &stats);
-            assert(r==0);
-            if (!S_ISFIFO(stats.st_mode)) {
-                manager.open(fd, file, oflag);
-            }
-        }
-    }
-
-    return fd;
-}
-#endif
-
-
-///////////////////////////////////////////////////////////////////////////////
-//
 // close() -
 //
 // Description: 
