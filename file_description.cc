@@ -212,7 +212,7 @@ ssize_t file_description::read(int fd_in_source, void *buf, size_t nbyte) {
 //
 off_t file_description::lseek(int fd_in_source, size_t nbyte, int whence) {
     pthread_mutex_lock(&m_mutex);
-    off_t new_offset = lseek(fd_in_source, nbyte, whence); // should be call_real_lseek, when we implement it.
+    off_t new_offset = call_real_lseek(fd_in_source, nbyte, whence);
     this->m_offset = new_offset;
     pthread_mutex_unlock(&m_mutex);
     return new_offset;
