@@ -21,7 +21,7 @@ template <class T> static void dlsym_set(T *ptr, const char *name)
         pthread_mutex_lock(&dlsym_mutex);
         if (*ptr==NULL) {
             // the pointer is still NULL, so do the set,  otherwise someone else changed it while I held the pointer.
-            T *ptr_local = (T*)(dlsym(RTLD_NEXT, name));
+            T ptr_local = (T)(dlsym(RTLD_NEXT, name));
             assert(ptr_local != NULL);
             bool did_it = __sync_bool_compare_and_swap(ptr, NULL, ptr_local);
             assert(did_it);
