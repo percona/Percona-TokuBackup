@@ -175,9 +175,9 @@ ssize_t file_description::write(int fd_in_source, const void *buf, size_t nbyte)
 {
     pthread_mutex_lock(&m_mutex);
     ssize_t r = call_real_write(fd_in_source, buf, nbyte);
-    if (r>=0) {
-        off_t position = this->m_offset;
-        this->m_offset += r;
+    if (r>0) {
+        off_t position = m_offset;
+        m_offset += r;
     
         if (!m_in_source_dir) {
             /* nothing */
@@ -192,6 +192,15 @@ ssize_t file_description::write(int fd_in_source, const void *buf, size_t nbyte)
     pthread_mutex_unlock(&m_mutex);
     return r;
 }
+
+ssize_t file_description::read(int fd_in_source, void *buf, size_t nbyte) {
+    pthread_mutex_lock(&m_mutex);
+    ssize_t r = call_real_read(fd_in_source, buf, nbyte);
+    m_offset += r;
+    pthread_mutex_unlock(&m_mutex);
+    return r;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //

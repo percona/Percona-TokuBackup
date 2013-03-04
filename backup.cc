@@ -146,9 +146,6 @@ ssize_t write(int fd, const void *buf, size_t nbyte)
 
     // Moved the write down into file_description->write, where a lock can be obtained
 
-    // <CER> this *SHOULD* seek in the backup copy as part of the
-    // write() to the backup file...
-    
     return manager.write(fd, buf, nbyte);
 }
 
@@ -169,13 +166,10 @@ ssize_t write(int fd, const void *buf, size_t nbyte)
 //
 ssize_t read(int fd, void *buf, size_t nbyte)
 {
-    ssize_t r = 0;
     TRACE("read() intercepted, fd = ", fd);
-    r = call_real_read(fd, buf, nbyte);
-    if (r >= 0) {
-        manager.seek(fd, nbyte, SEEK_CUR);
-    }
-    return r;
+    // Moved the read down into file_description->read, where a lock can be obtained.
+    
+    return manager.read(fd, buf, nbyte);
 }
 
 

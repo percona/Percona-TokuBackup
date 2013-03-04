@@ -233,6 +233,7 @@ void backup_manager::close(int fd)
 //
 //     Using the given file descriptor, this method updates the 
 // backup copy of a prevously opened file.
+//     Also does the write itself (the write is in here so that a lock can be obtained to protect the file offset)
 //
 ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 {
@@ -246,6 +247,16 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
     }
 }
 
+// read(): Do the read.
+ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
+    TRACE("entering write() with fd = ", fd);
+    file_description *description = m_map.get(fd);
+    if (description == NULL) {
+        return call_real_read(fd, buf, nbyte);
+    } else {
+        return description->read(fd, buf, nbyte);
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //

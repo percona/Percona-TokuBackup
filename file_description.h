@@ -25,8 +25,9 @@ public:
     const char * get_full_source_name(void);
     void open(void);
     void create(void);
-    ssize_t write(int fd_in_source, const void *buf, size_t nbyte); // actually performs the write (so that a lock can be obtained)
+    ssize_t write(int fd_in_source, const void *buf, size_t nbyte); // Actually performs the write (so that a lock can be obtained).
     void pwrite(const void *buf, size_t nbyte, off_t offset);
+    ssize_t read(int fd_in_source, void *buf, size_t nbyte);        // Actually performs the read (so a lock can be obtained).
     void seek(size_t nbyte, int whence);
     void close(void);
     
