@@ -13,7 +13,7 @@
 #include <errno.h>
 #include <string.h>
 
-#ifdef DEBUG
+#ifdef DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CopyWarn(string, arg)
 #define TRACE(string, arg) HotBackup::CopyTrace(string, arg)
 #define ERROR(string, arg) HotBackup::CopyError(string, arg)
