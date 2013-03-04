@@ -210,41 +210,12 @@ ssize_t file_description::read(int fd_in_source, void *buf, size_t nbyte) {
 //
 //     ...
 //
-void file_description::seek(size_t nbyte, int whence)
-{
-    switch(whence) {
-        case SEEK_SET:
-            this->m_offset = nbyte;
-            break;
-        case SEEK_CUR:
-            this->m_offset += nbyte;
-            break;
-        case SEEK_END:
-            // TODO: How do we know how big the source file is?
-            // Do we need to track this as well.
-            break;
-        default:
-            break;
-    }
-    
-    if(!m_in_source_dir) {
-        return;
-    }
-    
-    // We can't seek the backup file if it hasn't been created yet.
-    if(m_fd_in_dest_space == DEST_FD_INIT) {
-        return;
-    }
-    
-    // Do we need to seek nbytes past the current position?
-    // Past an absolute position?
-    // <CER> this depends on the caller...
-    off_t offset = 0;
-    offset = lseek(this->m_fd_in_dest_space, nbyte, whence);
-    if (offset < 0) {
-        perror("BACKUP: lseek() failed.");
-        abort();
-    }
+off_t file_description::lseek(int fd_in_source, size_t nbyte, int whence) {
+    pthread_mutex_lock(&m_mutex);
+    off_t new_offset = lseek(fd_in_source, nbyte, whence); // should be call_real_lseek, when we implement it.
+    this->m_offset = new_offset;
+    pthread_mutex_unlock(&m_mutex);
+    return new_offset;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

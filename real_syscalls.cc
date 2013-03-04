@@ -82,6 +82,12 @@ ssize_t call_real_pwrite(int fildes, const void *buf, size_t nbyte, off_t offset
     return real_pwrite(fildes, buf, nbyte, offset);
 }
 
+off_t call_real_lseek(int fd, off_t offset, int whence) {
+    static off_t (*real_lseek)(int, off_t, int) = NULL;
+    dlsym_set(&real_lseek, "lseek");
+    return real_lseek(fd, offset, whence);
+}
+
 int call_real_ftruncate(int fildes, off_t length) {
     static int (*real_ftruncate)(int fildes,  off_t length) = NULL;
     dlsym_set(&real_ftruncate, "ftruncate");

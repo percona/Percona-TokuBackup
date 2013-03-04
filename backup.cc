@@ -192,6 +192,11 @@ ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 }
 
 
+off_t lseek(int fd, off_t offset, int whence) {
+    TRACE("lseek() intercepted fd =", fd);
+    return manager.lseek(fd, offset, whence);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // ftruncate() -

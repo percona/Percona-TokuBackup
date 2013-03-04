@@ -290,16 +290,15 @@ void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 //     Move the backup file descriptor to the new position.  This allows
 // upcoming intercepted writes to be backed up properly.
 //
-void backup_manager::seek(int fd, size_t nbyte, int whence)
-{
+off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
     TRACE("entering seek() with fd = ", fd);
     file_description *description = NULL;
     description = m_map.get(fd);
     if (description == NULL) {
-        return;
+        return call_real_lseek(fd, nbyte, whence);
+    } else {
+        return description->lseek(fd, nbyte, whence);
     }
-
-    description->seek(nbyte, whence);
 }
 
 
