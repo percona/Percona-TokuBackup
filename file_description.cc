@@ -80,11 +80,18 @@ void file_description::open(void)
     fd = call_real_open(m_backup_name, O_WRONLY, 0777);
     if (fd < 0) {
         int error = errno;
-        if(error != ENOENT) {
-            perror("ERROR: <CAPTURE> ");
+
+        // For now, don't store the fd if they are opening a dir.
+        // That is just for fsync'ing a dir, which we do not care about.
+        if(error == EISDIR) {
+            return;
         }
-        
-        assert(error == ENOENT);
+
+        if(error != ENOENT && error != EISDIR) {
+            perror("ERROR: <CAPTURE> ");
+            abort();
+        }
+
         this->create();
     } else {
         this->m_fd_in_dest_space = fd;
