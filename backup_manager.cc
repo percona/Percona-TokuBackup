@@ -52,13 +52,38 @@ backup_manager::backup_manager()
 void backup_manager::start_backup()
 {
     assert(m_doing_backup == false);
-
-    m_doing_backup = true;
+    
+    // TODO: Assert that the directories have been set.
     
     // Start backing all the files in the directory.
     if (m_doing_copy) {
         m_dir.start_copy();
     }
+    
+    // TODO: Does this need a lock?
+    // Loop through all the current file descriptions and prepare them
+    // for backup.
+    for(int i = 0; i < m_map.size(); ++i) {
+        file_description *file = m_map.get(i);
+        if(file == NULL) {
+            continue;
+        }
+        
+        const char * source_path = file->get_full_source_name();
+        if(!m_dir.is_prefix(source_path)) {
+            continue;
+        }
+
+        const char * file_name = m_dir.translate_prefix(source_path);
+        file->prepare_for_backup(file_name);
+        m_dir.open_path(file_name);
+        file->create();
+    }
+    
+    // This boolean acts like a switch:
+    // Once set to true, future calls to open() and create() will
+    // create and CAPTURE the respective files and directories.
+    m_doing_backup = true;
 }
 
 
@@ -77,7 +102,6 @@ void backup_manager::stop_backup()
     
     // TODO: Make this: abort copy?
     m_dir.wait_for_copy_to_finish();
-    
     m_doing_backup = false;
     
 }
@@ -99,31 +123,12 @@ void backup_manager::add_directory(const char *source_dir,
 {
     assert(source_dir);
     assert(dest_dir);
-    
+
     // TODO: assert that the directory's are not the same.
     // TODO: assert that the destination directory is empty.
-    
     // TEMP: We only have one directory object at this point, for now...
     m_dir.set_directories(source_dir, dest_dir);
     
-    // Loop through all the current file descriptions and prepare them
-    // for backup.
-    for(int i = 0; i < m_map.size(); ++i) {
-        file_description *file = m_map.get(i);
-        if(file == NULL) {
-            continue;
-        }
-        
-        const char * source_path = file->get_full_source_name();
-        if(!m_dir.is_prefix(source_path)) {
-            continue;
-        }
-
-        const char * file_name = m_dir.translate_prefix(source_path);
-        file->prepare_for_backup(file_name);
-        m_dir.open_path(file_name);
-        file->create();
-    }
 }
 
 
@@ -140,7 +145,7 @@ void backup_manager::remove_directory(const char *source_dir,
 {
     assert(source_dir);
     assert(dest_dir);
-    
+
     // TODO: Do we need to pause copy?
     // TODO: Do we want an option to erase the backup?
 }
@@ -162,7 +167,7 @@ void backup_manager::create(int fd, const char *file)
     m_map.put(fd);
     file_description *description = m_map.get(fd);
     description->set_full_source_name(file);
-    
+
     // If this file is not in the path of our source dir, don't create it.
     backup_directory *directory = this->get_directory(file);
     if (directory == NULL) {
