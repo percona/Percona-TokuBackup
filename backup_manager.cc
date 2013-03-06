@@ -168,6 +168,11 @@ void backup_manager::create(int fd, const char *file)
     if (directory == NULL) {
         return;
     }
+    
+    // If we aren't doing backup, don't bother creating the backup copy.
+    if (!m_doing_backup) {
+        return;
+    }
 
     char *backup_file_name = directory->translate_prefix(file);
     directory->open_path(backup_file_name);
@@ -198,6 +203,11 @@ void backup_manager::open(int fd, const char *file, int oflag)
     // If this file is not in the path of our source dir, don't open it.
     backup_directory *directory = this->get_directory(file);
     if (directory == NULL) {
+        return;
+    }
+
+    // If we aren't doing backup don't bother opening the backup copy.    
+    if (!m_doing_backup) {
         return;
     }
 
