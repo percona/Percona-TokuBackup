@@ -5,7 +5,7 @@
 #define BACKUP_DEBUG_H
 
 #ifndef DEBUG_HOTBACKUP
-#define DEBUG_HOTBACKUP 0
+#define DEBUG_HOTBACKUP 1
 #endif
 
 namespace HotBackup {
