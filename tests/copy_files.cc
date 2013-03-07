@@ -1,0 +1,157 @@
+/* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
+// vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
+
+#include <stdio.h>
+#include <sys/stat.h>
+
+#include "backup_test_helpers.h"
+#include "backup_copier.h"
+
+const int TEXT_COUNT = 9;
+const char *text[TEXT_COUNT] = {"oh", "well", "hello", "there", "kitty", "cat", "how", "are", "you"};
+const int FILES_PER_DIR = 3;
+const int FILE_COUNT = 3;
+const char *files[FILE_COUNT] = {"/first.data", "/second.data", "/reallyLongFileNameThatShouldNotBreak.data"};
+const int DIR_COUNT = 3;
+const char *dirs[DIR_COUNT] = {"/subdir", "/mydir", "/reallyLongSubDirectoryName"};
+
+int verify_large_dir(void)
+{
+    int r = 0;
+    char str[PATH_MAX];
+    struct stat sb;
+
+    // 1. Verify that the three files are at the top.
+    for(int i = 0; i < FILE_COUNT; ++i) {
+        strcpy(str, DST);
+        strcat(str, files[i]);
+        r = stat(str, &sb);
+        if(r) {
+            perror(str);
+            return r;
+        }
+    }
+   
+    // 2. Verify the contents of each file are correct.
+    // TODO:
+
+    // 3. Verify there are two subdirectories.
+    for(int i = 0; i < DIR_COUNT -1; ++i) {
+        strcpy(str, DST);
+        strcat(str, dirs[i]);
+        r = stat(str, &sb);
+        if (r) {
+            perror(str);
+            return r;
+        }
+    }
+
+    // 4. Verify contents of each file in first subdir.
+    // TODO:
+    for(int i = 0; i < FILE_COUNT; ++i) {
+        strcpy(str, DST);
+        strcat(str, dirs[0]);
+        strcat(str, files[i]);
+        r = stat(str, &sb);
+        if(r) {
+            perror(str);
+            return r;
+        }
+    }
+
+    // 5. Verify there is one more subdirectory inside 2nd initial subdir.
+    strcpy(str, DST);
+    strcat(str, dirs[1]);
+    strcat(str, dirs[2]);
+    r = stat(str, &sb);
+    if(r) {
+        perror(str);
+        return r;
+    }
+
+    // 6. Verify contents of each file in lowest dir. 
+    // TODO:
+    return r;
+}
+
+
+void setup_large_dir(void)
+{
+    // Create files in the top level directory.
+    char str[PATH_MAX];
+    for (int i = 0; i < FILE_COUNT; ++i) {
+        strcpy(str, "echo ");
+        strcat(str, text[i]);
+        strcat(str, " > ");
+        strcat(str, SRC);
+        strcat(str, files[i]);
+        system(str);
+    }
+
+    // Make two sub dirs.
+    for(int i = 0; i < DIR_COUNT - 1; ++i) {
+        strcpy(str, "mkdir " SRC);
+        strcat(str, dirs[i]);
+        system(str);
+    }
+
+    // Populate the first sub dir.
+    for (int i = 0; i < FILE_COUNT; ++i) {
+        strcpy(str, "echo ");
+        strcat(str, text[i + FILES_PER_DIR]);
+        strcat(str, " > ");
+        strcat(str, SRC);
+        strcat(str, dirs[0]);
+        strcat(str, files[i]);
+        system(str);
+    }
+
+    // Create the deeper sub dir.
+    strcpy(str, "mkdir " SRC);
+    strcat(str, dirs[1]);
+    strcat(str, dirs[2]);
+    system(str);
+
+    // Populate the deeper sub dir.
+    for (int i = 0; i < FILE_COUNT; ++i) {
+        strcpy(str, "echo ");
+        strcat(str, text[i + (FILES_PER_DIR * 2)]);
+        strcat(str, " > ");
+        strcat(str, SRC);
+        strcat(str, dirs[1]);
+        strcat(str, dirs[2]);
+        strcat(str, files[i]);
+        system(str);
+    }
+/******
+    system("echo " "oh > " SRC "/first.data");
+    system("echo well > " SRC "/second.data");
+    system("echo hello > " SRC "/reallyLongNameThatShouldNotBreak.data");
+    system("mkdir " SRC "/subdir");
+    system("echo there > " SRC "/subdir/sub.data");
+    system("echo kitty > " SRC "/subdir/longNameThatShouldNotBreakPartTwo.data");
+    system("mkdir " SRC "/mysql");
+    system("mkdir " SRC "/mysql/reallylongsubdirectoryname");
+    system("echo cat > " SRC "/mysql/reallylongsubdirectoryname/longNameThatShouldNotBreakPartTwo.data");
+*****/
+}
+
+void copy_files(void)
+{
+    setup_source();
+    setup_destination();
+    setup_large_dir();
+
+    backup_copier copier;
+    copier.set_directories(SRC, DST);
+    copier.start_copy();
+
+    int r = verify_large_dir();
+    if(r) {
+        fail();
+    } else {
+        pass();
+    }
+
+    printf(": copy_files()\n");
+}
