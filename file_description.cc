@@ -124,14 +124,10 @@ void file_description::create(void)
     fd = call_real_open(m_backup_name, O_CREAT | O_WRONLY, 0777);
     if (fd < 0) {
         int error = errno;
-        if (error != EEXIST) {
-            perror("ERROR: <CAPTURE> ");
-        }
-
         assert(error == EEXIST);
         fd = call_real_open(m_backup_name, O_WRONLY, 0777);
         if (fd < 0) {
-            perror("BACKUP: Couldn't open backup copy of recently opened file.");
+            perror("ERROR: <CAPTURE>: Couldn't open backup copy of recently opened file.");
             abort();            
         }
     }
@@ -247,6 +243,32 @@ void file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
     r = call_real_pwrite(this->m_fd_in_dest_space, buf, nbyte, offset);
     if (r < 0) {
         perror("BACKUP: pwrite() to backup file failed."); 
+        abort();
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// truncate() -
+//
+// Description: 
+//
+//     ...
+//
+void file_description::truncate(off_t length)
+{
+    if(!m_in_source_dir) {
+        return;
+    }
+
+    if (m_fd_in_dest_space == DEST_FD_INIT) {
+        return;
+    }
+
+    int r = 0;
+    r = call_real_ftruncate(this->m_fd_in_dest_space, length);
+    if (r < 0) {
+        perror("ERROR: <CAPTURE>: ");
         abort();
     }
 }

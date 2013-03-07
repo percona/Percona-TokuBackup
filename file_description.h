@@ -30,7 +30,7 @@ public:
     ssize_t read(int fd_in_source, void *buf, size_t nbyte);        // Actually performs the read (so a lock can be obtained).
     off_t lseek(int fd_in_source, size_t nbyte, int whence);        // Actually performs the lseek (so a lock can be obtained).
     void close(void);
-    
+    void truncate(off_t offset);
     bool m_in_source_dir;
 };
 

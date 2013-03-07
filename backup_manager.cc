@@ -346,9 +346,10 @@ void backup_manager::rename(const char *oldpath, const char *newpath)
 void backup_manager::ftruncate(int fd, off_t length)
 {
     TRACE("entering ftruncate with fd = ", fd);
-    // TODO:
-    fd++;
-    length++;
+    file_description *description = m_map.get(fd);
+    if (description != NULL) {
+        description->truncate(length);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -363,6 +364,8 @@ void backup_manager::truncate(const char *path, off_t length)
 {
     TRACE("entering truncate() with path = ", path);
     // TODO:
+    // 1. Convert the path to the backup dir.
+    // 2. Call real_ftruncate directly.
     if(path) {
         length++;
     }

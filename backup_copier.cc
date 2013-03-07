@@ -13,7 +13,7 @@
 #include <errno.h>
 #include <string.h>
 
-#ifdef DEBUG_HOTBACKUP
+#if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CopyWarn(string, arg)
 #define TRACE(string, arg) HotBackup::CopyTrace(string, arg)
 #define ERROR(string, arg) HotBackup::CopyError(string, arg)
@@ -79,7 +79,7 @@ void backup_copier::set_directories(const char *source, const char *dest)
 //
 void backup_copier::start_copy()
 {
-    TRACE("Copy Starting...", "");
+    TRACE(">>>>>>>>>>>>>>>>>\nToku Hot Backup Copy Starting\n>>>>>>>>>>>>>>>>>\n","");
     // 1. Start with "."
     m_todo.push_back(strdup("."));
     char *fname = 0;
@@ -89,7 +89,8 @@ void backup_copier::start_copy()
         m_todo.pop_back();
         this->copy_stripped_file(fname);
     }
-    TRACE("Copy Starting...", "");
+
+    TRACE("<<<<<<<<<<<<<<<<<\nToku Hot Backup Copy Finished\n<<<<<<<<<<<<<<<<\n","");
 }
 
 
@@ -156,7 +157,7 @@ void backup_copier::copy_full_path(const char *source,
         r = call_real_mkdir(dest, 0777);
         if (r < 0) {
             int mkdir_errno = errno;
-            perror("Cannot create directory in destination.");
+            //perror("Cannot create directory in destination.");
             assert(mkdir_errno == EEXIST);
             ERROR("Cannot create directory that already exists = ", dest);
         }

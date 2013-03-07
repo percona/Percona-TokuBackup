@@ -144,8 +144,8 @@ void backup_directory::create_subdirectories(const char *path)
         }
         if(r) {
             int error = errno;
-            perror("WARN: <CAPTURE>: Making subdirectory failed:");
-            printf("WARN: <CAPTURE>: %s\n", directory);
+            //perror("WARN: <CAPTURE>: Making subdirectory failed:");
+            //printf("WARN: <CAPTURE>: %s\n", directory);
             // For now, just ignore already existing dir,
             // this is a race between the backup copier
             // and the intercepted open() calls.
@@ -262,6 +262,9 @@ void backup_directory::start_copy()
 //
 void backup_directory::wait_for_copy_to_finish()
 {
-    pthread_join(m_thread, NULL);
+    int r = pthread_join(m_thread, NULL);
+    if (r) {
+        perror("Toku Hot Backup: <COPY> pthread error: ");
+    }
 }
 

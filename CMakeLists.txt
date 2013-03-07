@@ -18,7 +18,7 @@ message(${BACKUP_SOURCES})
 
 add_library(HotBackup STATIC ${BACKUP_SOURCES})
 set_target_properties(HotBackup PROPERTIES POSITION_INDEPENDENT_CODE ON)
-##add_subdirectory(tests)
+add_subdirectory(tests)
 
 ## Do we need this?
 install(TARGETS HotBackup DESTINATION lib)
