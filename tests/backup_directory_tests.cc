@@ -1,6 +1,9 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 #include <sys/stat.h>
 
 #include "backup_test_helpers.h"
@@ -32,7 +35,7 @@ int backup_sub_dirs(void)
 
     // Append the long directory path to the destination path we just
     // copied.
-    char *longname = LONG_DIR;
+    const char *longname = LONG_DIR;
     int i = 0;
     while(*longname) {
         *temp = *(longname)++;

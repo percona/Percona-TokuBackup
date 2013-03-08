@@ -2,6 +2,8 @@
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 
 #include "backup_test_helpers.h"
