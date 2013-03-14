@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <time.h>
 
 #if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CopyWarn(string, arg)
@@ -79,7 +80,12 @@ void backup_copier::set_directories(const char *source, const char *dest)
 //
 void backup_copier::start_copy()
 {
-    TRACE(">>>>>>>>>>>>>>>>>\nToku Hot Backup Copy Starting\n>>>>>>>>>>>>>>>>>\n","");
+    time_t t;
+    char buf[27];
+    time(&t);
+    ctime_r(&t, buf);
+    fprintf(stderr, "Toku Hot Backup Started: %s\n", buf);
+
     // 1. Start with "."
     m_todo.push_back(strdup("."));
     char *fname = 0;
@@ -90,7 +96,9 @@ void backup_copier::start_copy()
         this->copy_stripped_file(fname);
     }
 
-    TRACE("<<<<<<<<<<<<<<<<<\nToku Hot Backup Copy Finished\n<<<<<<<<<<<<<<<<\n","");
+    time(&t);
+    ctime_r(&t, buf);
+    fprintf(stderr, "Toku Hot Backup Finished: %s\n", buf);
 }
 
 
