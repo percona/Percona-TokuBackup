@@ -27,6 +27,23 @@
 #define ERROR(string,arg)
 #endif
 
+#if 0
+// I had turned this on to see if we were running these destructors twice.  I don't see it, however.
+class demo_twicer {
+  public:
+    demo_twicer(void);
+    ~demo_twicer(void);
+};
+demo_twicer::demo_twicer(void) {
+    printf("demo_twicer constructor.\n");
+}
+demo_twicer::~demo_twicer(void) {
+    printf("demo_twicer destructor.\n");
+}
+
+demo_twicer twicer;
+#endif
+
 backup_manager manager;
 
 //***************************************

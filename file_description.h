@@ -11,8 +11,8 @@ private:
     off_t m_offset;
     std::vector<int> m_fds; // which fds refer to this file description.
     int m_fd_in_dest_space;   // what is the fd in the destination space?
-    const char *m_backup_name;
-    const char *m_full_source_name;
+    char *m_backup_name;       // These two strings are const except for the destructor which calls free().
+    char *m_full_source_name;
 
     pthread_mutex_t m_mutex; // A mutex used to make m_offset move atomically when we perform a write (or read).
 
@@ -20,6 +20,7 @@ private:
     // the destination file, like its name.
 public:
     file_description(void);
+    ~file_description(void);
     void prepare_for_backup(const char *name);
     void set_full_source_name(const char *name);
     const char * get_full_source_name(void);

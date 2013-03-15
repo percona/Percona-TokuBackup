@@ -35,6 +35,18 @@ m_in_source_dir(false)
     assert(r==0);
 }
 
+file_description::~file_description(void)
+{
+    if (m_full_source_name) {
+        free(m_full_source_name);
+        m_full_source_name = NULL;
+    }
+    if (m_backup_name) {
+        free(m_backup_name);
+        m_backup_name = NULL;
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 void file_description::prepare_for_backup(const char *name)
