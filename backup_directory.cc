@@ -233,6 +233,24 @@ void backup_directory::set_directories(const char *source, const char *dest)
     m_dest_dir =   realpath(dest,   NULL);
 }
 
+int backup_directory::set_source_directory(const char *source)
+{
+    int r = 0;
+    // NOTE: This allocates new memory for the fully resolved path.
+    m_source_dir = realpath(source, NULL);
+
+    // TODO: Return an error if realpath returns an error.
+    return r;
+}
+
+int backup_directory::set_destination_directory(const char *destination)
+{
+    int r = 0;
+    // NOTE: This allocates new memory for the fully resolved path.
+    m_dest_dir = realpath(destination, NULL);
+    // TODO: Return an error if realpath returns an error.
+    return r;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 //

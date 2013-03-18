@@ -27,6 +27,8 @@ public:
     bool is_prefix(const char *file);
     char* translate_prefix(const char *file);
     void set_directories(const char *source, const char *dest);
+    int set_source_directory(const char *source);
+    int set_destination_directory(const char *destination);
     void start_copy();
     void wait_for_copy_to_finish();
     void create_subdirectories(const char *file);

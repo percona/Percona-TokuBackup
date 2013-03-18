@@ -9,6 +9,8 @@ extern "C" {
 void add_directory(const char* source, const char* destination);
 void remove_directory(const char* source, const char* destination);
 void start_backup(void);
+int  set_source_directory(const char* source);
+int  backup_to_this_directory(const char* destination);
 void stop_backup(void);
 }
 

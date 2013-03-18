@@ -1,4 +1,4 @@
-/* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
+ /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 
 #ifndef BACKUP_MANAGER_H
@@ -25,7 +25,9 @@ public:
     void stop_backup();
     void add_directory(const char *source_dir, const char *dest_dir);
     void remove_directory(const char *source_dir, const char *dest_dir);
-    
+    int add_source_directory(const char *source_dir);
+    int add_destination_directory(const char *dest_dir);
+
     // Methods used during interposition:
     void create(int fd, const char *file);
     void open(int fd, const char *file, int oflag);

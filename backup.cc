@@ -306,9 +306,71 @@ extern "C" void start_backup(void)
 //
 // stop_backup() -
 //
-// Description: 
+// Description:
+//     This function stops the current backup in progress, if there is one.
+//
+// Notes:
+//     As of now, this backup library does not clean up the data copied
+// and captured if a backup is terminated using this function.
 //
 extern "C" void stop_backup(void)
 {
     manager.stop_backup();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// set_source_directory()
+//
+// Description:
+//     This function sets the source directory that will be backed up.
+//
+// Returns:
+//     Returns 0 on success.  -1 on error.
+//
+extern "C" int set_source_directory(const char *source)
+{
+    int r = 0;
+    if(source == NULL) {
+        r = -1;
+        goto out;
+    }
+
+    // TODO: Is there a way to serialize this?
+    r = manager.add_source_directory(source);
+
+ out:
+    return r;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// start_backup() -
+//
+// Description:
+//     This function sets the destination directory into which the backup
+// will be copied.  It also initiates the COPY and CAPTURE phases of backup.
+//
+// Returns:
+//     Returns 0 on success.  -1 on error.
+//
+extern "C" int backup_to_this_directory(const char *destination)
+{
+    int r = 0;
+    if(destination == NULL) {
+        r = -1;
+        goto out;
+    }
+
+    r = manager.add_destination_directory(destination);
+    if(r != 0) {
+        // TODO: Possible error translation from backup land to mysql land.
+        goto out;
+    }
+
+    // TODO: return some errors from this function, as any part of backup COULD fail.
+    manager.start_backup();
+
+ out:
+    return r;
 }
