@@ -3,7 +3,6 @@
 
 
 #include <stdio.h> // rename(),
-#include <assert.h>
 #include <fcntl.h> // open()
 #include <unistd.h> // close(), write(), read(), unlink(), truncate(), etc.
 #include <sys/stat.h> // mkdir()
@@ -79,13 +78,18 @@ int open(const char* file, int oflag, ...)
         if (fd >= 0) {
             struct stat stats;
             int r = fstat(fd, &stats);
-            assert(r==0);
+            if(r != 0) {
+                goto out;
+            }
+
+            // TODO: What happens if we can't tell that the file is a FIFO?  Should we just the backup?  Skip this file?
             if (!S_ISFIFO(stats.st_mode)) {
                 manager.open(fd, file, oflag);
             }
         }
     }
 
+out:
     return fd;
 }
 

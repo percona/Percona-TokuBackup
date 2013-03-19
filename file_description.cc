@@ -86,8 +86,9 @@ const char * file_description::get_full_source_name(void)
 //     Open assumes that the backup file exists.  Create assumes the 
 // backup file does NOT exist.
 //
-void file_description::open(void)
+int file_description::open(void)
 {
+    int r = 0;
     int fd = 0;
     fd = call_real_open(m_backup_name, O_WRONLY, 0777);
     if (fd < 0) {
@@ -96,20 +97,22 @@ void file_description::open(void)
         // For now, don't store the fd if they are opening a dir.
         // That is just for fsync'ing a dir, which we do not care about.
         if(error == EISDIR) {
-            return;
+            goto out;
         }
 
         if(error != ENOENT && error != EISDIR) {
             perror("ERROR: <CAPTURE> ");
-            abort();
+            r = -1;
+            goto out;
         }
 
-        this->create();
+        r = this->create();
     } else {
         this->m_fd_in_dest_space = fd;
     }
     
-    
+out:
+    return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -128,23 +131,31 @@ void file_description::open(void)
 //     Open assumes that the backup file exists.  Create assumes the 
 // backup file does NOT exist.
 //
-void file_description::create(void)
+int file_description::create(void)
 {
+    int r = 0;
     // Create file that was just opened, this assumes the parent directories
     // exist.
     int fd = 0;
     fd = call_real_open(m_backup_name, O_CREAT | O_WRONLY, 0777);
     if (fd < 0) {
         int error = errno;
-        assert(error == EEXIST);
+        if(error != EEXIST) {
+            r = -1;
+            goto out;
+        }
         fd = call_real_open(m_backup_name, O_WRONLY, 0777);
         if (fd < 0) {
             perror("ERROR: <CAPTURE>: Couldn't open backup copy of recently opened file.");
-            abort();            
+            r = -1;
+            goto out;
         }
     }
 
     this->m_fd_in_dest_space = fd;
+
+out:
+    return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -155,27 +166,29 @@ void file_description::create(void)
 //
 //     ...
 //
-void file_description::close(void)
+int file_description::close(void)
 {
+    int r = 0;
     if(!m_in_source_dir) {
-        return;
+        goto out;
     }
     
     if(m_fd_in_dest_space == DEST_FD_INIT) {
-        return;
+        goto out;
     }
 
     // TODO: Check refcount, if it's zero we REALLY have to close
     // the file.  Otherwise, if there are any references left, 
     // we can only decrement the refcount; other file descriptors
     // are still open in the main application.
-    
-    int r = 0;
     r = call_real_close(this->m_fd_in_dest_space);
     if (r != 0) {
-        perror("BACKUP: close() of backup file failed."); 
-        abort();
+        perror("Toku Hot Backup: close() of backup file failed."); 
+        r = -1;
     }
+
+out:    
+    return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -190,7 +203,7 @@ ssize_t file_description::write(int fd_in_source, const void *buf, size_t nbyte)
 {
     pthread_mutex_lock(&m_mutex);
     ssize_t r = call_real_write(fd_in_source, buf, nbyte);
-    if (r>0) {
+    if (r > 0) {
         off_t position = m_offset;
         m_offset += r;
     
@@ -201,7 +214,9 @@ ssize_t file_description::write(int fd_in_source, const void *buf, size_t nbyte)
             /* nothing */
         } else {
             ssize_t second_write_size = call_real_pwrite(this->m_fd_in_dest_space, buf, r, position);
-            assert(second_write_size==r);
+            if(second_write_size != r) {
+                // TODO: Find some way to abort the backup, since our write failed.
+            }
         }
     }
     pthread_mutex_unlock(&m_mutex);
@@ -241,22 +256,25 @@ off_t file_description::lseek(int fd_in_source, size_t nbyte, int whence) {
 //
 //     ...
 //
-void file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
+int file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
 {
+    int r = 0;
     if(!m_in_source_dir) {
-        return;
+        goto out;
     }
     
     if(m_fd_in_dest_space == DEST_FD_INIT) {
-        return;
+        goto out;
     }
     
-    ssize_t r = 0;
     r = call_real_pwrite(this->m_fd_in_dest_space, buf, nbyte, offset);
     if (r < 0) {
-        perror("BACKUP: pwrite() to backup file failed."); 
-        abort();
+        perror("Toku Hot Backup: pwrite() to backup file failed:"); 
+        r = -1;
     }
+
+out:
+    return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -267,20 +285,23 @@ void file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
 //
 //     ...
 //
-void file_description::truncate(off_t length)
+int file_description::truncate(off_t length)
 {
+    int r = 0;
     if(!m_in_source_dir) {
-        return;
+        goto out;
     }
 
     if (m_fd_in_dest_space == DEST_FD_INIT) {
-        return;
+        goto out;
     }
 
-    int r = 0;
     r = call_real_ftruncate(this->m_fd_in_dest_space, length);
     if (r < 0) {
-        perror("ERROR: <CAPTURE>: ");
-        abort();
+        perror("Toku Hot Backup: truncating backup file failed:");
+        r = -1;
     }
+
+out:    
+    return r;
 }

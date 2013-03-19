@@ -11,15 +11,19 @@ class backup_copier {
 private:
     const char *m_source;
     const char *m_dest;
+    int m_copy_error;
     std::vector<char *> m_todo;
-    void copy_regular_file(const char *source, const char *dest);
-    void add_dir_entries_to_todo(DIR *dir, const char *file);
+    int copy_regular_file(const char *source, const char *dest);
+    int add_dir_entries_to_todo(DIR *dir, const char *file);
 public:
     backup_copier();
     void set_directories(const char *source, const char *dest);
-    void start_copy();
-    void copy_stripped_file(const char *file);
-    void copy_full_path(const char *source, const char* dest, const char *file);
+    void set_error(int error);
+    int get_error(void);
+    int start_copy();
+    int copy_stripped_file(const char *file);
+    int copy_full_path(const char *source, const char* dest, const char *file);
+    int copy_file_data(int srcfd, int destfd);
 };
 
 #endif // End of header guardian.

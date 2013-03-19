@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(HotBackup)
 
+##set(CMAKE_BUILD_TYPE Debug)
+
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS 
   _FILE_OFFSET_BITS=64 
   _LARGEFILE64_SOURCE)

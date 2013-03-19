@@ -19,21 +19,23 @@ private:
     const char *m_dest_dir;
     backup_copier m_copier;
     pthread_t m_thread;
-
 public:
     backup_directory();
-    void open_path(const char *file_path);
+    int open_path(const char *file_path);
     bool directories_set();
     bool is_prefix(const char *file);
     char* translate_prefix(const char *file);
     void set_directories(const char *source, const char *dest);
     int set_source_directory(const char *source);
     int set_destination_directory(const char *destination);
-    void start_copy();
-    void wait_for_copy_to_finish();
+    int start_copy(void);
+    void wait_for_copy_to_finish(void);
+    void abort_copy(void);
     void create_subdirectories(const char *file);
+    void print_time(const char *toku_string);
+    int get_error_status(void);
 private:
-    bool does_file_exist(const char *file);
+    int does_file_exist(const char *file);
 };
 
 #endif // End of header guardian.

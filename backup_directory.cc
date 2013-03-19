@@ -9,10 +9,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <errno.h>
 #include <sys/stat.h>
 
+
+//////////////////////////////////////////////////////////////////////////////
+//
+void print_time(const char *toku_string)
+{
+    time_t t;
+    char buf[27];
+    time(&t);
+    ctime_r(&t, buf);
+    fprintf(stderr, "%s %s\n", toku_string, buf);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -24,9 +34,16 @@ void *start_copying(void *);
 void *start_copying(void * copier)
 {
     void *r = 0;
-    if (DEBUG_HOTBACKUP) printf(">>> pthread: copy started\n");
     backup_copier *c = (backup_copier*)copier;
-    c->start_copy();
+    print_time("Toku Hot Backup: Started:");
+    int copy_error = c->start_copy();
+
+    if (copy_error != 0) {
+        c->set_error(copy_error);
+    }
+
+    // TODO: Free todo list strings.
+    print_time("Toku Hot Backup: Finished:");
     return r;
 }
 
@@ -57,9 +74,9 @@ bool backup_directory::directories_set()
     if (m_dest_dir && m_source_dir) {
         return true;
     }
+
     return false;
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -89,14 +106,21 @@ bool backup_directory::is_prefix(const char *file)
 //
 //     Creates backup path for given file if it doesn't exist already.
 //
-void backup_directory::open_path(const char *file_path)
+int backup_directory::open_path(const char *file_path)
 {    
+    int r = 0;
     // See if the file exists in the backup copy already...
-    bool exists = this->does_file_exist(file_path);
+    int exists = this->does_file_exist(file_path);
     
-    if (!exists) {
+    if (exists == 0) {
         this->create_subdirectories(file_path);
     }
+    
+    if(exists == -1) {
+        r = -1;
+    }
+    
+    return r;
 }
 
 
@@ -112,10 +136,10 @@ void backup_directory::open_path(const char *file_path)
 void backup_directory::create_subdirectories(const char *path)
 {
     const char SLASH = '/';
+    
+    // TODO: Is this a memory leak?
     char *directory = strdup(path);
     char *next_slash = directory;
-    
-    assert(*next_slash=='/'); // it's an absolute path.  / always exists.
     ++next_slash;
 
     while(next_slash != NULL) {
@@ -142,14 +166,18 @@ void backup_directory::create_subdirectories(const char *path)
         if (*directory) {
             r = call_real_mkdir(directory, 0777);
         }
+        
         if(r) {
             int error = errno;
-            //perror("WARN: <CAPTURE>: Making subdirectory failed:");
+            
             //printf("WARN: <CAPTURE>: %s\n", directory);
             // For now, just ignore already existing dir,
             // this is a race between the backup copier
             // and the intercepted open() calls.
-            assert(error == EEXIST);
+            if(error != EEXIST) {
+                // TODO: Handle this screw case.
+                perror("Toku Hot Backup: Making backup subdirectory failed:");
+            }
         }
         
         // 5. revert slash back to slash char.
@@ -177,9 +205,6 @@ char* backup_directory::translate_prefix(const char *file)
     size_t len_op = strlen(m_source_dir);
     size_t len_np = strlen(m_dest_dir);
     size_t len_s = strlen(absfile);
-    
-    // TODO: What is this assert checking?
-    //assert(len_op < len_s);
     size_t new_len = len_s - len_op + len_np;
     char *new_string = NULL;
     new_string = (char *)calloc(new_len + 1, sizeof(char));
@@ -197,9 +222,9 @@ char* backup_directory::translate_prefix(const char *file)
 //
 // Description:
 //
-bool backup_directory::does_file_exist(const char *file)
+int backup_directory::does_file_exist(const char *file)
 {
-    bool result = false;
+    int result = 0;
     struct stat sb;
     // We use stat to determine if the file does not exist.
     int r = stat(file, &sb);
@@ -207,11 +232,11 @@ bool backup_directory::does_file_exist(const char *file)
         int error = errno;
         // We want to catch all other errors.
         if (error != ENOENT) {
-            perror("stat() failed, no backup file information.");
-            abort();
+            perror("Toku Hot Backup:stat() failed, no file information.");
+            result = -1;
         }
     } else {
-        result = true;
+        result = 1;
     }
     
     return result;
@@ -227,12 +252,12 @@ bool backup_directory::does_file_exist(const char *file)
 //
 void backup_directory::set_directories(const char *source, const char *dest)
 {
-    assert(source);
-    assert(dest);
     m_source_dir = realpath(source, NULL);
     m_dest_dir =   realpath(dest,   NULL);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+//
 int backup_directory::set_source_directory(const char *source)
 {
     int r = 0;
@@ -243,6 +268,8 @@ int backup_directory::set_source_directory(const char *source)
     return r;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+//
 int backup_directory::set_destination_directory(const char *destination)
 {
     int r = 0;
@@ -260,15 +287,16 @@ int backup_directory::set_destination_directory(const char *destination)
 //
 //     Copies all files and subdirectories to the destination.
 //
-void backup_directory::start_copy()
+int backup_directory::start_copy(void)
 {
     int r = 0;
     m_copier.set_directories(m_source_dir, m_dest_dir);
     r = pthread_create(&m_thread, NULL, &start_copying, (void*)&m_copier);
     if (r != 0) {
-        perror("Cannot create backup copy thread.");
-        abort();
-     }
+        perror("Toku Hot Backup: Cannot create backup copy thread.");
+    }
+
+    return r;
 }
 
 
@@ -276,13 +304,30 @@ void backup_directory::start_copy()
 //
 // wait_for_copy_to_finish():
 //
-// Description: 
+// Description:
 //
-void backup_directory::wait_for_copy_to_finish()
+void backup_directory::wait_for_copy_to_finish(void)
 {
     int r = pthread_join(m_thread, NULL);
     if (r) {
-        perror("Toku Hot Backup: <COPY> pthread error: ");
+        perror("Toku Hot Backup: pthread error: ");
     }
+}
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+//
+void backup_directory::abort_copy(void)
+{
+    // TODO: Stop copy thread.
+    // TODO: Enable this to be safely called from concurrent threads, ex: Multiple CAPTURE'd writes failing need to abort COPY. 
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+int backup_directory::get_error_status(void)
+{
+    return m_copier.get_error();
 }
 

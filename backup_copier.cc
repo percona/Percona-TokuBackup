@@ -7,7 +7,6 @@
 
 #include <stdio.h>
 #include <sys/stat.h>
-#include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -50,7 +49,7 @@ static bool is_dot(struct dirent const *entry)
 //     Constructor for this copier object.
 //
 backup_copier::backup_copier()
-: m_source(0), m_dest(0)
+: m_source(0), m_dest(0), m_copy_error(0)
 {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,6 +65,21 @@ void backup_copier::set_directories(const char *source, const char *dest)
 {
     m_source = source;
     m_dest = dest;
+    m_copy_error = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+void backup_copier::set_error(int error)
+{
+    m_copy_error = error;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+int backup_copier::get_error(void)
+{
+    return m_copy_error;
 }
 
 
@@ -78,14 +92,9 @@ void backup_copier::set_directories(const char *source, const char *dest)
 //     Loops through all files and subdirectories of the current 
 // directory that has been selected for backup.
 //
-void backup_copier::start_copy()
+int backup_copier::start_copy()
 {
-    time_t t;
-    char buf[27];
-    time(&t);
-    ctime_r(&t, buf);
-    fprintf(stderr, "Toku Hot Backup Started: %s\n", buf);
-
+    int r = 0;
     // 1. Start with "."
     m_todo.push_back(strdup("."));
     char *fname = 0;
@@ -93,12 +102,14 @@ void backup_copier::start_copy()
         fname = m_todo.back();
         TRACE("Copying: ", fname);
         m_todo.pop_back();
-        this->copy_stripped_file(fname);
+        r = this->copy_stripped_file(fname);
+        if(r != 0) {
+            goto out;
+        }
     }
 
-    time(&t);
-    ctime_r(&t, buf);
-    fprintf(stderr, "Toku Hot Backup Finished: %s\n", buf);
+out:
+    return r;
 }
 
 
@@ -112,28 +123,41 @@ void backup_copier::start_copy()
 // desitnation directory members to determine the exact location
 // of the file in both the original and backup locations.
 //
-void backup_copier::copy_stripped_file(const char *file)
+int backup_copier::copy_stripped_file(const char *file)
 {
+    int r = 0;
     bool is_dot = (strcmp(file, ".") == 0);
     if (is_dot) {
         // Just copy the root of the backup tree.
-        this->copy_full_path(m_source, m_dest, "");
+        r = this->copy_full_path(m_source, m_dest, "");
+        if (r != 0) {
+            goto out;
+        }
     } else {
         // Prepend the source directory path to the file name.
-        int r = 0;
         int slen = strlen(m_source) + strlen(file) + 2;
         char full_source_file_path[slen];
         r = snprintf(full_source_file_path, slen, "%s/%s", m_source, file);
-        assert(r + 1 == slen);
+        if(r + 1 != slen) {
+            goto out;
+        }
 
         // Prepend the destination directory path to the file name.
         int dlen = strlen(m_dest) + strlen(file) + 2;
         char full_dest_file_path[dlen];
         r = snprintf(full_dest_file_path, dlen, "%s/%s", m_dest, file);
-        assert(r + 1 == dlen);
+        if(r + 1 != dlen) {
+            goto out;
+        }
         
-        this->copy_full_path(full_source_file_path, full_dest_file_path, file);
+        r = this->copy_full_path(full_source_file_path, full_dest_file_path, file);
+        if(r != 0) {
+            goto out;
+        }
     }
+
+out:
+    return r;
 }
 
 
@@ -148,7 +172,7 @@ void backup_copier::copy_stripped_file(const char *file)
 // determine the relative location of the file in the directory
 // heirarchy.
 //
-void backup_copier::copy_full_path(const char *source,
+int backup_copier::copy_full_path(const char *source,
                                    const char* dest,
                                    const char *file)
 {
@@ -165,25 +189,37 @@ void backup_copier::copy_full_path(const char *source,
         r = call_real_mkdir(dest, 0777);
         if (r < 0) {
             int mkdir_errno = errno;
-            //perror("Cannot create directory in destination.");
-            assert(mkdir_errno == EEXIST);
+            if(mkdir_errno != EEXIST) {
+                r = -1;
+                goto out;
+            }
+            
             ERROR("Cannot create directory that already exists = ", dest);
         }
 
         // Open the directory to be copied (source directory, full path).
         DIR *dir = opendir(source);
-        assert(dir);
+        if(dir == NULL) {
+            r = -1;
+            goto out;
+        }
 
-        this->add_dir_entries_to_todo(dir, file);
-        
+        r = this->add_dir_entries_to_todo(dir, file);
+        if(r != 0) {
+            goto out;
+        }
+
         r = closedir(dir);
+        // TODO: return error from closedir...
     } else {
         // TODO: Do we need to add a case for hard links?
         if (S_ISLNK(sbuf.st_mode)) {
             WARN("Link file found, but not copied:", file);
         }
     }
-
+    
+out:
+    return r;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,44 +233,86 @@ void backup_copier::copy_full_path(const char *source,
 // function creates the new file, then copies all the bytes from
 // one to the other.
 //
-void backup_copier::copy_regular_file(const char *source, const char *dest)
+int backup_copier::copy_regular_file(const char *source, const char *dest)
 {
     int r = 0;
+    int copy_error = 0;
+    int create_error = 0;
+    int destfd = 0;
     int srcfd = call_real_open(source, O_RDONLY);
-    // TODO: Handle case where file is deleted AFTER backup starts.
-    assert(srcfd >= 0);
-    int destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
-    if (destfd < 0) {
-        int create_error = errno;
-        ERROR("Could not create backup copy of file.", dest);
-        assert(create_error == EEXIST);
-        // TODO: Verify that there is not a race with write capturing here.
-        assert(destfd >= 0);
+    if (srcfd < 0) {
+        // TODO: Handle case where file is deleted AFTER backup starts.
+        goto out;
     }
 
-    // This section actually copies all the bytes from the source
-    // file to our newly created backup copy.
+    destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
+    if (destfd < 0) {
+        create_error = errno;
+        ERROR("Could not create backup copy of file.", dest);
+        if(create_error != EEXIST) {
+            r = -1;
+            goto close_source_fd;
+        }
+    }
+
+    copy_error = copy_file_data(srcfd, destfd);
+
+    r = call_real_close(destfd);
+    if(r != 0) {
+        // TODO: What happens when we can't close file descriptors as part of the copy process?
+    }
+    
+close_source_fd:
+
+    r = call_real_close(srcfd);
+    if(r != 0) {
+        // TODO: What happens when we can't close file descriptors as part of the copy process?
+    }
+
+out:
+    return copy_error;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// copy_file_data() -
+//
+// Description:
+//     This section actually copies all the bytes from the source
+// file to our newly created backup copy.
+//
+int backup_copier::copy_file_data(int srcfd, int destfd)
+{
+    int r = 0;
+
     ssize_t n_read;
     // TODO: Replace these magic numbers.
     const size_t buf_size = 1024 * 1024;
     char buf[buf_size];
     ssize_t n_wrote_now = 0;
     while ((n_read = call_real_read(srcfd, buf, buf_size))) {
-        assert(n_read >= 0);
+        if(n_read < 0) {
+            r = -1;
+            goto out;
+        }
+        
         ssize_t n_wrote_this_buf = 0;
         while (n_wrote_this_buf < n_read) {
             n_wrote_now = call_real_write(destfd,
                                           buf + n_wrote_this_buf,
                                           n_read - n_wrote_this_buf);
-            assert(n_wrote_now > 0);
+            if(n_wrote_now <= 0) {
+                r = -1;
+                goto out;
+            }
+
             n_wrote_this_buf += n_wrote_now;
         }
     }
 
-    r = call_real_close(srcfd);
-    assert(r == 0);
-    r = call_real_close(destfd);
-    assert(r == 0);
+out:
+    return r;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,10 +324,10 @@ void backup_copier::copy_regular_file(const char *source, const char *dest)
 //     Loop through each entry, adding directories and regular
 // files to our copy 'todo' list.
 //
-void backup_copier::add_dir_entries_to_todo(DIR *dir, const char *file)
+int backup_copier::add_dir_entries_to_todo(DIR *dir, const char *file)
 {
     TRACE("--Adding all entries in this directory to todo list: ", file);
-    
+    int r = 0;
     struct dirent const *e = NULL;
     while((e = readdir(dir)) != NULL) {
         if(is_dot(e)) {
@@ -263,35 +341,18 @@ void backup_copier::add_dir_entries_to_todo(DIR *dir, const char *file)
             char new_name[length + 1];
             int printed = 0;
             printed = snprintf(new_name, length + 1, "%s/%s", file, e->d_name);
-            assert(printed + 1 == length);
+            if(printed + 1 != length) {
+                // snprintf had an error.  We must abort the copy.
+                r = -1;
+                goto out;
+            }
             
             // Add it to our todo list.
             m_todo.push_back(strdup(new_name));
             TRACE("~~~Added this file to todo list:", new_name);
         }
     }
-      //int r = 0;
-//    struct dirent entry;
-//    struct dirent *result;
-//    r = readdir_r(dir, &entry, &result);
-//    while (r == 0 && result != 0) {
-//        if (is_dot(&entry)) {
-//            TRACE("skipping ", entry.d_name);                
-//        } else if (strcmp(file, "") == 0) {
-//            TRACE("pushing ", entry.d_name);
-//            m_todo.push_back(strdup(entry.d_name));
-//        } else {
-//            TRACE("-> prepending :", entry.d_name);
-//            TRACE("-> with :", file);
-//            int len = strlen(file) + strlen(entry.d_name) + 2;
-//            char new_name[len + 1];
-//            int l = 0;
-//            l = snprintf(new_name, len + 1, "%s/%s", file, entry.d_name);
-//            assert(l + 1 == len);
-//            m_todo.push_back(strdup(new_name));
-//            TRACE("~~~Added this file to todo list:", new_name);
-//        }
-//        
-//        r = readdir_r(dir, &entry, &result);
-//    }
+    
+out:
+    return r;
 }

@@ -51,13 +51,19 @@ backup_manager::backup_manager()
 //
 void backup_manager::start_backup()
 {
+    int r = 0;
     assert(m_doing_backup == false);
     
     // TODO: Assert that the directories have been set.
     
-    // Start backing all the files in the directory.
+    // NOTE: This boolean is for testing.
     if (m_doing_copy) {
-        m_dir.start_copy();
+        r = m_dir.start_copy();
+    }
+    
+    if(r != 0) {
+        // This means we couldn't start the copy thread (ex: pthread error).
+        goto error_out;
     }
     
     // TODO: Does this need a lock?
@@ -76,14 +82,27 @@ void backup_manager::start_backup()
 
         const char * file_name = m_dir.translate_prefix(source_path);
         file->prepare_for_backup(file_name);
-        m_dir.open_path(file_name);
-        file->create();
+        int r = m_dir.open_path(file_name);
+        if(r != 0) {
+            // TODO: Could not open path, abort backup.
+        }
+
+        r = file->create();
+        if(r != 0) {
+            // TODO: Could not create the file, abort backup.
+        }
     }
     
     // This boolean acts like a switch:
     // Once set to true, future calls to open() and create() will
     // create and CAPTURE the respective files and directories.
     m_doing_backup = true;
+
+error_out:
+    if (r != 0) {
+        // TODO: Format and report errors.
+    }
+
 }
 
 
@@ -128,7 +147,6 @@ void backup_manager::add_directory(const char *source_dir,
     // TODO: assert that the destination directory is empty.
     // TEMP: We only have one directory object at this point, for now...
     m_dir.set_directories(source_dir, dest_dir);
-    
 }
 
 //
@@ -209,9 +227,16 @@ void backup_manager::create(int fd, const char *file)
     }
 
     char *backup_file_name = directory->translate_prefix(file);
-    directory->open_path(backup_file_name);
+    int r = directory->open_path(backup_file_name);
+    if(r != 0) {
+        // TODO: open path error, abort backup.
+    }
+
     description->prepare_for_backup(backup_file_name);
-    description->create();
+    r = description->create();
+    if(r != 0) {
+        // TODO: abort backup, creation of backup file failed.
+    }
 }
 
 
@@ -246,9 +271,16 @@ void backup_manager::open(int fd, const char *file, int oflag)
     }
 
     char *backup_file_name = directory->translate_prefix(file);
-    directory->open_path(backup_file_name);
+    int r = directory->open_path(backup_file_name);
+    if(r != 0) {
+        // TODO: open path error, abort backup.
+    }
+
     description->prepare_for_backup(backup_file_name);
-    description->open();
+    r = description->open();
+    if(r != 0) {
+        // TODO: abort backup, open failed.
+    }
 
     oflag++;
 }
@@ -291,7 +323,15 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
     }
 }
 
-// read(): Do the read.
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// read() -
+//
+// Description:
+//
+//     Do the read.
+//
 ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
     TRACE("entering write() with fd = ", fd);
     file_description *description = m_map.get(fd);
@@ -321,7 +361,10 @@ void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
         return;
     }
 
-    description->pwrite(buf, nbyte, offset);
+    int r = description->pwrite(buf, nbyte, offset);
+    if(r != 0) {
+        // TODO: abort backup, pwrite on the backup file failed.
+    }
 }
 
 
@@ -374,10 +417,15 @@ void backup_manager::rename(const char *oldpath, const char *newpath)
 //
 void backup_manager::ftruncate(int fd, off_t length)
 {
+    int r = 0;
     TRACE("entering ftruncate with fd = ", fd);
     file_description *description = m_map.get(fd);
     if (description != NULL) {
-        description->truncate(length);
+        r = description->truncate(length);
+    }
+    
+    if(r != 0) {
+        // TODO: Abort the backup, truncate failed on the file.
     }
 }
 
@@ -417,7 +465,10 @@ void backup_manager::mkdir(const char *pathname)
 
     TRACE("entering mkdir() for:", pathname); 
     char *backup_directory_name = directory->translate_prefix(pathname);
-    directory->open_path(backup_directory_name);
+    int r = directory->open_path(backup_directory_name);
+    if(r != 0) {
+        // TODO: open path error, abort backup.
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
