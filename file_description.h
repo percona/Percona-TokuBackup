@@ -24,12 +24,14 @@ public:
     void prepare_for_backup(const char *name);
     void set_full_source_name(const char *name);
     const char * get_full_source_name(void);
+    void lock(void);
+    void unlock(void);
     int open(void);
     int create(void);
-    ssize_t write(int fd_in_source, const void *buf, size_t nbyte); // Actually performs the write (so that a lock can be obtained).
+    void write(ssize_t written, const void *buf, size_t nbyte);
     int pwrite(const void *buf, size_t nbyte, off_t offset);
-    ssize_t read(int fd_in_source, void *buf, size_t nbyte);        // Actually performs the read (so a lock can be obtained).
-    off_t lseek(int fd_in_source, size_t nbyte, int whence);        // Actually performs the lseek (so a lock can be obtained).
+    void read(ssize_t nbyte);
+    void lseek(off_t new_offset);        
     int close(void);
     int truncate(off_t offset);
     bool m_in_source_dir;

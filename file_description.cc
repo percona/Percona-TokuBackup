@@ -71,6 +71,21 @@ const char * file_description::get_full_source_name(void)
     return m_full_source_name;
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+//
+void file_description::lock(void)
+{
+    pthread_mutex_lock(&m_mutex);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+void file_description::unlock(void)
+{
+    pthread_mutex_unlock(&m_mutex);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // open() -
@@ -199,13 +214,11 @@ out:
 //
 //     ...
 //
-ssize_t file_description::write(int fd_in_source, const void *buf, size_t nbyte)
+void file_description::write(ssize_t written, const void *buf, size_t nbyte)
 {
-    pthread_mutex_lock(&m_mutex);
-    ssize_t r = call_real_write(fd_in_source, buf, nbyte);
-    if (r > 0) {
+    if (written > 0) {
         off_t position = m_offset;
-        m_offset += r;
+        m_offset += written;
     
         if (!m_in_source_dir) {
             /* nothing */
@@ -213,22 +226,16 @@ ssize_t file_description::write(int fd_in_source, const void *buf, size_t nbyte)
             // We can't write to the backup file if it hasn't been created yet.
             /* nothing */
         } else {
-            ssize_t second_write_size = call_real_pwrite(this->m_fd_in_dest_space, buf, r, position);
-            if(second_write_size != r) {
+            ssize_t second_write_size = call_real_pwrite(m_fd_in_dest_space, buf, written, position);
+            if(second_write_size != written) {
                 // TODO: Find some way to abort the backup, since our write failed.
             }
         }
     }
-    pthread_mutex_unlock(&m_mutex);
-    return r;
 }
 
-ssize_t file_description::read(int fd_in_source, void *buf, size_t nbyte) {
-    pthread_mutex_lock(&m_mutex);
-    ssize_t r = call_real_read(fd_in_source, buf, nbyte);
-    m_offset += r;
-    pthread_mutex_unlock(&m_mutex);
-    return r;
+void file_description::read(ssize_t nbyte) {    
+    m_offset += nbyte;
 }
 
 
@@ -240,12 +247,8 @@ ssize_t file_description::read(int fd_in_source, void *buf, size_t nbyte) {
 //
 //     ...
 //
-off_t file_description::lseek(int fd_in_source, size_t nbyte, int whence) {
-    pthread_mutex_lock(&m_mutex);
-    off_t new_offset = call_real_lseek(fd_in_source, nbyte, whence);
-    this->m_offset = new_offset;
-    pthread_mutex_unlock(&m_mutex);
-    return new_offset;
+void file_description::lseek(off_t new_offset) {
+    m_offset = new_offset;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

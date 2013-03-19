@@ -314,13 +314,19 @@ void backup_manager::close(int fd)
 ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 {
     TRACE("entering write() with fd = ", fd);
-
+    ssize_t r = 0;
     file_description *description = m_map.get(fd);
     if (description == NULL) {
-        return call_real_write(fd, buf, nbyte);
+        r = call_real_write(fd, buf, nbyte);
     } else {
-        return description->write(fd, buf, nbyte);
+        description->lock();
+        r = call_real_write(fd, buf, nbyte);
+        // TODO: Don't call our write if the first one fails.
+        description->write(r, buf, nbyte);
+        description->unlock();
     }
+    
+    return r;
 }
 
 
@@ -333,13 +339,20 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 //     Do the read.
 //
 ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
+    ssize_t r = 0;
     TRACE("entering write() with fd = ", fd);
     file_description *description = m_map.get(fd);
     if (description == NULL) {
-        return call_real_read(fd, buf, nbyte);
+        r = call_real_read(fd, buf, nbyte);
     } else {
-        return description->read(fd, buf, nbyte);
+        description->lock();
+        r = call_real_read(fd, buf, nbyte);
+        // TODO: Don't perform our read if the first one fails.
+        description->read(r);
+        description->unlock();
     }
+    
+    return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -384,7 +397,11 @@ off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
     if (description == NULL) {
         return call_real_lseek(fd, nbyte, whence);
     } else {
-        return description->lseek(fd, nbyte, whence);
+        description->lock();
+        off_t new_offset = call_real_lseek(fd, nbyte, whence);
+        description->lseek(new_offset);
+        description->unlock();
+        return new_offset;
     }
 }
 
