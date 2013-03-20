@@ -35,8 +35,10 @@
 //
 backup_manager::backup_manager() 
     : m_doing_backup(false),
-      m_doing_copy(true) // <CER> Set to false to turn off copy
+      m_doing_copy(true) // <CER> Set to false to turn off copy, for debugging purposes.
 {
+    int r = pthread_mutex_init(&m_mutex, NULL);
+    assert(r == 0);
 }
 
 
@@ -52,7 +54,12 @@ backup_manager::backup_manager()
 void backup_manager::start_backup()
 {
     int r = 0;
-    assert(m_doing_backup == false);
+    int pthread_error = 0;
+    r = pthread_mutex_trylock(&m_mutex);
+    if(r != 0) {
+        r = -1;
+        goto error_out;
+    }
     
     // TODO: Assert that the directories have been set.
     
@@ -63,10 +70,9 @@ void backup_manager::start_backup()
     
     if(r != 0) {
         // This means we couldn't start the copy thread (ex: pthread error).
-        goto error_out;
+        goto unlock_out;
     }
     
-    // TODO: Does this need a lock?
     // Loop through all the current file descriptions and prepare them
     // for backup.
     for(int i = 0; i < m_map.size(); ++i) {
@@ -98,11 +104,16 @@ void backup_manager::start_backup()
     // create and CAPTURE the respective files and directories.
     m_doing_backup = true;
 
+unlock_out:
+    pthread_error = pthread_mutex_unlock(&m_mutex);
+    if(pthread_error != 0) {
+        // TODO: Should there be a way to disable backup permanently in this case?
+    }
+
 error_out:
     if (r != 0) {
         // TODO: Format and report errors.
     }
-
 }
 
 

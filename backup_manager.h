@@ -8,6 +8,7 @@
 #include "file_description.h"
 #include <sys/types.h>
 #include <vector>
+#include <pthread.h>
 
 class backup_manager
 {
@@ -18,6 +19,7 @@ private:
     // TODO: Make this an array or vector of directories.
     backup_directory m_dir;
     file_descriptor_map m_map;
+    pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
 
 public:
     backup_manager();
