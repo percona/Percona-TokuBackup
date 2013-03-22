@@ -20,7 +20,8 @@ private:
     backup_directory m_dir;
     file_descriptor_map m_map;
     pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
-
+    int m_capture_error;
+    
 public:
     backup_manager();
     void start_backup();

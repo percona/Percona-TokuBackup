@@ -35,7 +35,8 @@
 //
 backup_manager::backup_manager() 
     : m_doing_backup(false),
-      m_doing_copy(true) // <CER> Set to false to turn off copy, for debugging purposes.
+      m_doing_copy(true), // <CER> Set to false to turn off copy, for debugging purposes.
+      m_capture_error(0)
 {
     int r = pthread_mutex_init(&m_mutex, NULL);
     assert(r == 0);
@@ -104,6 +105,16 @@ void backup_manager::start_backup()
     // create and CAPTURE the respective files and directories.
     m_doing_backup = true;
 
+    // We should block until the copy finishes.
+    m_dir.wait_for_copy_to_finish();
+    
+    // Disable CAPTURE now that COPY is complete.
+    m_doing_backup = false;
+    
+    // TODO: Print the current time after CAPTURE has been disabled.
+
+    r = m_dir.get_error_status();
+    
 unlock_out:
     pthread_error = pthread_mutex_unlock(&m_mutex);
     if(pthread_error != 0) {
@@ -111,7 +122,11 @@ unlock_out:
     }
 
 error_out:
-    if (r != 0) {
+    if(r != 0) {
+        // TODO: Format and report errors.
+    }
+
+    if(m_capture_error != 0) {
         // TODO: Format and report errors.
     }
 }
@@ -128,12 +143,8 @@ error_out:
 //
 void backup_manager::stop_backup()
 {
-    assert(m_doing_backup == true);
-    
-    // TODO: Make this: abort copy?
-    m_dir.wait_for_copy_to_finish();
     m_doing_backup = false;
-    
+    m_dir.abort_copy();
 }
 
 

@@ -314,14 +314,18 @@ void backup_directory::wait_for_copy_to_finish(void)
     }
 }
 
-
-
 //////////////////////////////////////////////////////////////////////////////
 //
 void backup_directory::abort_copy(void)
 {
-    // TODO: Stop copy thread.
-    // TODO: Enable this to be safely called from concurrent threads, ex: Multiple CAPTURE'd writes failing need to abort COPY. 
+    // Stop copy thread.
+    pthread_cancel(m_thread);
+    int r = pthread_join(m_thread, NULL);
+    if (r) {
+        perror("Toku Hot Backup: pthread error: ");
+    }
+
+    // TODO: Clean up copier.        
 }
 
 //////////////////////////////////////////////////////////////////////////////

@@ -95,10 +95,15 @@ int backup_copier::get_error(void)
 int backup_copier::start_copy()
 {
     int r = 0;
-    // 1. Start with "."
+
+    // Start with "."
     m_todo.push_back(strdup("."));
     char *fname = 0;
     while(m_todo.size()) {
+        int oldstate;
+        int newstate = PTHREAD_CANCEL_DISABLE;
+        pthread_setcancelstate(newstate, &oldstate);
+        
         fname = m_todo.back();
         TRACE("Copying: ", fname);
         m_todo.pop_back();
@@ -106,6 +111,11 @@ int backup_copier::start_copy()
         if(r != 0) {
             goto out;
         }
+        
+        // TODO: We can also have this after iterations of the data copy loop.
+        newstate = PTHREAD_CANCEL_ENABLE;
+        pthread_setcancelstate(newstate, &oldstate);
+        pthread_testcancel();
     }
 
 out:
