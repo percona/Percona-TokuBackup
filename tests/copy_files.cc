@@ -126,7 +126,7 @@ static void copy_files(void) {
 
     backup_copier copier;
     copier.set_directories(src, dst);
-    copier.start_copy();
+    copier.do_copy(simple_poll_fun, NULL, NULL, NULL);
 
     int r = verify_large_dir();
     if(r) {

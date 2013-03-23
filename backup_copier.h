@@ -4,6 +4,7 @@
 #ifndef BACKUP_COPIER
 #define BACKUP_COPIER
 
+#include "backup.h"
 #include <vector>
 #include <dirent.h>
 
@@ -20,9 +21,9 @@ public:
     void set_directories(const char *source, const char *dest);
     void set_error(int error);
     int get_error(void);
-    int start_copy();
-    int copy_stripped_file(const char *file);
-    int copy_full_path(const char *source, const char* dest, const char *file);
+    int do_copy(backup_poll_fun_t, void*, backup_error_fun_t, void*);
+    int copy_stripped_file(const char *file, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra);
+    int copy_full_path(const char *source, const char* dest, const char *file, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra);
     int copy_file_data(int srcfd, int destfd);
 };
 

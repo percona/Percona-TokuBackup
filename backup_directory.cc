@@ -25,29 +25,6 @@ static void print_time(const char *toku_string) {
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// start_copying():
-//
-// Description: 
-//
-void *start_copying(void *);
-void *start_copying(void * copier) {
-    void *r = 0;
-    backup_copier *c = (backup_copier*)copier;
-    print_time("Toku Hot Backup: Started:");
-    int copy_error = c->start_copy();
-
-    if (copy_error != 0) {
-        c->set_error(copy_error);
-    }
-
-    // TODO: Free todo list strings.
-    print_time("Toku Hot Backup: Finished:");
-    return r;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-//
 // backup_directory():
 //
 // Description: 
@@ -248,10 +225,26 @@ int backup_directory::does_file_exist(const char *file)
 // Description: 
 // Note: source and dest are copied (so the caller may free them immediately or otherwise reuse the strings).
 //
-void backup_directory::set_directories(const char *source, const char *dest)
+int backup_directory::set_directories(const char *source, const char *dest,
+                                      backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra)
 {
     m_source_dir = realpath(source, NULL);
     m_dest_dir =   realpath(dest,   NULL);
+    if (m_source_dir==NULL) {
+        char string[1000];
+        snprintf(string, sizeof(string), "Source directory %s does not exist", source);
+        error_fun(ENOENT, string, error_extra);
+        return ENOENT;
+    }
+    if (m_dest_dir==NULL) {
+        free((void*)m_source_dir);
+        m_source_dir = NULL;
+        char string[1000];
+        snprintf(string, sizeof(string), "Destination directory %s does not exist", dest);
+        error_fun(ENOENT, string, error_extra);
+        return ENOENT;
+    }
+    return 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -285,31 +278,12 @@ int backup_directory::set_destination_directory(const char *destination)
 //
 //     Copies all files and subdirectories to the destination.
 //
-int backup_directory::start_copy(void)
-{
-    int r = 0;
+int backup_directory::do_copy(backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) {
     m_copier.set_directories(m_source_dir, m_dest_dir);
-    r = pthread_create(&m_thread, NULL, &start_copying, (void*)&m_copier);
-    if (r != 0) {
-        perror("Toku Hot Backup: Cannot create backup copy thread.");
-    }
-
+    print_time("Toku Hot Backup: Started:");
+    int r = m_copier.do_copy(poll_fun, poll_extra, error_fun, error_extra);
+    print_time("Toku Hot Backup: Finished:");
     return r;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-//
-// wait_for_copy_to_finish():
-//
-// Description:
-//
-void backup_directory::wait_for_copy_to_finish(void)
-{
-    int r = pthread_join(m_thread, NULL);
-    if (r) {
-        perror("Toku Hot Backup: pthread error: ");
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -324,12 +298,5 @@ void backup_directory::abort_copy(void)
     }
 
     // TODO: Clean up copier.        
-}
-
-//////////////////////////////////////////////////////////////////////////////
-//
-int backup_directory::get_error_status(void)
-{
-    return m_copier.get_error();
 }
 

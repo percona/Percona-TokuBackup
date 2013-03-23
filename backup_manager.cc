@@ -45,106 +45,82 @@ backup_manager::backup_manager()
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// start_backup() -
+// do_backup() -
 //
 // Description: 
 //
 //     Turns ON boolean flags for both backup and the interpretation
 // of writes.
 //
-void backup_manager::start_backup()
-{
-    int r = 0;
-    int pthread_error = 0;
+int backup_manager::do_backup(backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) {
+    int r;
+    {
+        r = poll_fun(0, "Preparing backup", poll_extra);
+        if (r!=0) {
+            error_fun(r, "User aborted backup", error_extra);
+            goto error_out;
+        }
+    }
+
     r = pthread_mutex_trylock(&m_mutex);
-    if(r != 0) {
-        r = -1;
+    if (r != 0) {
+        if (r==EBUSY) {
+            error_fun(r, "Another backup is in progress.", error_extra);
+            goto error_out;
+        }
         goto error_out;
     }
     
     // TODO: Assert that the directories have been set.
     
-    // NOTE: This boolean is for testing.
-    if (m_doing_copy) {
-        r = m_dir.start_copy();
-    }
-    
-    if(r != 0) {
-        // This means we couldn't start the copy thread (ex: pthread error).
-        goto unlock_out;
-    }
-    
     // Loop through all the current file descriptions and prepare them
     // for backup.
-    for(int i = 0; i < m_map.size(); ++i) {
+    for (int i = 0; i < m_map.size(); ++i) {
         file_description *file = m_map.get(i);
-        if(file == NULL) {
+        if (file == NULL) {
             continue;
         }
         
         const char * source_path = file->get_full_source_name();
-        if(!m_dir.is_prefix(source_path)) {
+        if (!m_dir.is_prefix(source_path)) {
             continue;
         }
 
         const char * file_name = m_dir.translate_prefix(source_path);
         file->prepare_for_backup(file_name);
         int r = m_dir.open_path(file_name);
-        if(r != 0) {
+        if (r != 0) {
             // TODO: Could not open path, abort backup.
         }
 
         r = file->create();
-        if(r != 0) {
+        if (r != 0) {
             // TODO: Could not create the file, abort backup.
         }
     }
     
-    // This boolean acts like a switch:
-    // Once set to true, future calls to open() and create() will
-    // create and CAPTURE the respective files and directories.
-    m_doing_backup = true;
+    // NOTE: This boolean is for testing.
+    r = m_dir.do_copy(poll_fun, poll_extra, error_fun, error_extra);
+    
+    if (r != 0) {
+        // This means we couldn't start the copy thread (ex: pthread error).
+        goto unlock_out;
+    }
 
-    // We should block until the copy finishes.
-    m_dir.wait_for_copy_to_finish();
-    
-    // Disable CAPTURE now that COPY is complete.
-    m_doing_backup = false;
-    
     // TODO: Print the current time after CAPTURE has been disabled.
 
-    r = m_dir.get_error_status();
-    
 unlock_out:
-    pthread_error = pthread_mutex_unlock(&m_mutex);
-    if(pthread_error != 0) {
-        // TODO: Should there be a way to disable backup permanently in this case?
+    {
+        int pthread_error = pthread_mutex_unlock(&m_mutex);
+        if (pthread_error != 0) {
+            // TODO: Should there be a way to disable backup permanently in this case?
+            error_fun(pthread_error, "pthread_mutex_unlock failed.  Backup system is probably broken", error_extra);
+            if (r!=0) r = pthread_error;
+        }
     }
 
 error_out:
-    if(r != 0) {
-        // TODO: Format and report errors.
-    }
-
-    if(m_capture_error != 0) {
-        // TODO: Format and report errors.
-    }
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// stop_backup() -
-//
-// Description: 
-//
-//     Turns OFF boolean flags for both backup and the interpretation
-// of writes.
-//
-void backup_manager::stop_backup()
-{
-    m_doing_backup = false;
-    m_dir.abort_copy();
+    return r;
 }
 
 
@@ -159,8 +135,9 @@ void backup_manager::stop_backup()
 // the top level of our backup directory.  All files underneath
 // each directory tree should match once the backup is complete.
 //
-void backup_manager::add_directory(const char *source_dir,
-                                   const char *dest_dir)
+int backup_manager::add_directory(const char *source_dir,
+                                  const char *dest_dir,
+                                  backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra)
 {
     assert(source_dir);
     assert(dest_dir);
@@ -168,7 +145,7 @@ void backup_manager::add_directory(const char *source_dir,
     // TODO: assert that the directory's are not the same.
     // TODO: assert that the destination directory is empty.
     // TEMP: We only have one directory object at this point, for now...
-    m_dir.set_directories(source_dir, dest_dir);
+    return m_dir.set_directories(source_dir, dest_dir, poll_fun, poll_extra, error_fun, error_extra);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

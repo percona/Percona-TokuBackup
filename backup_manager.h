@@ -4,6 +4,7 @@
 #ifndef BACKUP_MANAGER_H
 #define BACKUP_MANAGER_H
 
+#include "backup.h"
 #include "backup_directory.h"
 #include "file_description.h"
 #include <sys/types.h>
@@ -24,9 +25,9 @@ private:
     
 public:
     backup_manager();
-    void start_backup();
-    void stop_backup();
-    void add_directory(const char *source_dir, const char *dest_dir);
+    int do_backup(backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) __attribute__((warn_unused_result));
+    int add_directory(const char *source_dir, const char *dest_dir,
+                      backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra)  __attribute__((warn_unused_result));
 
     // Methods used during interposition:
     void create(int fd, const char *file);

@@ -93,30 +93,31 @@ int backup_copier::get_error(void)
 //     Loops through all files and subdirectories of the current 
 // directory that has been selected for backup.
 //
-int backup_copier::start_copy()
-{
+int backup_copier::do_copy(backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra) {
     int r = 0;
 
     // Start with "."
     m_todo.push_back(strdup("."));
     char *fname = 0;
-    while(m_todo.size()) {
-        int oldstate;
-        int newstate = PTHREAD_CANCEL_DISABLE;
-        pthread_setcancelstate(newstate, &oldstate);
+    size_t n_done  = 0;
+    while (size_t n_known = m_todo.size()) {
         
         fname = m_todo.back();
         TRACE("Copying: ", fname);
+        char msg[1000];
+        snprintf(msg, sizeof(msg), "Copying file number %ld of %ld seen so far (%s)", n_done, n_known, fname);
+        msg[sizeof(msg)-1]=0; // be paranoid
+        // Use n_done/n_files.   We need to do a better estimate involving n_bytes_copied/n_bytes_total
+        // This one is very wrong
+        r = poll_fun((double)n_done/(double)(n_done+n_known), msg, poll_extra);
+        if (r != 0) goto out;
         m_todo.pop_back();
-        r = this->copy_stripped_file(fname);
+        r = this->copy_stripped_file(fname, poll_fun, poll_extra, error_fun, error_extra);
         if(r != 0) {
             goto out;
         }
         
-        // TODO: We can also have this after iterations of the data copy loop.
-        newstate = PTHREAD_CANCEL_ENABLE;
-        pthread_setcancelstate(newstate, &oldstate);
-        pthread_testcancel();
+        n_done++;
     }
 
 out:
@@ -131,16 +132,15 @@ out:
 // Description: 
 //
 //     Copy's the given file, using this copier object's source and
-// desitnation directory members to determine the exact location
+// destination directory members to determine the exact location
 // of the file in both the original and backup locations.
 //
-int backup_copier::copy_stripped_file(const char *file)
-{
+int backup_copier::copy_stripped_file(const char *file, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra) {
     int r = 0;
     bool is_dot = (strcmp(file, ".") == 0);
     if (is_dot) {
         // Just copy the root of the backup tree.
-        r = this->copy_full_path(m_source, m_dest, "");
+        r = this->copy_full_path(m_source, m_dest, "", poll_fun, poll_extra, error_fun, error_extra);
         if (r != 0) {
             goto out;
         }
@@ -161,7 +161,8 @@ int backup_copier::copy_stripped_file(const char *file)
             goto out;
         }
         
-        r = this->copy_full_path(full_source_file_path, full_dest_file_path, file);
+        r = this->copy_full_path(full_source_file_path, full_dest_file_path, file,
+                                 poll_fun, poll_extra, error_fun, error_extra);
         if(r != 0) {
             goto out;
         }
@@ -184,9 +185,9 @@ out:
 // heirarchy.
 //
 int backup_copier::copy_full_path(const char *source,
-                                   const char* dest,
-                                   const char *file)
-{
+                                  const char* dest,
+                                  const char *file,
+                                  backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra) {
     int r = 0;
     struct stat sbuf;
     r = stat(source, &sbuf);
@@ -201,7 +202,9 @@ int backup_copier::copy_full_path(const char *source,
         if (r < 0) {
             int mkdir_errno = errno;
             if(mkdir_errno != EEXIST) {
-                r = -1;
+                char string[1000];
+                snprintf(string, sizeof(string), "error mkdir(\"%s\"), errno=%d (%s)", dest, mkdir_errno, strerror(mkdir_errno));
+                error_fun(mkdir_errno, string, error_extra);
                 goto out;
             }
             

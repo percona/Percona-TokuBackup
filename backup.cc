@@ -271,10 +271,18 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
         return EINVAL;
     }
     for (int i=0; i<dir_count; i++) {
-        manager.add_directory(source_dirs[i], dest_dirs[i]);
+        if (source_dirs[i]==NULL) {
+            error_fun(EINVAL, "One of the source directories is NULL", error_extra);
+            return EINVAL;
+        }
+        if (dest_dirs[i]==NULL) {
+            error_fun(EINVAL, "One of the destination directories is NULL", error_extra);
+            return EINVAL;
+        }
+        int r = manager.add_directory(source_dirs[i], dest_dirs[i], poll_fun, poll_extra, error_fun, error_extra);
+        if (r!=0) return r;
     }
-    manager.start_backup();
-    return 0;
+    return manager.do_backup(poll_fun, poll_extra, error_fun, error_extra);
 }
 
 extern "C" void tokubackup_throttle_backup(unsigned long bytes_per_second) {

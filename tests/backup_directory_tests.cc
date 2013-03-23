@@ -47,7 +47,10 @@ static int backup_sub_dirs(void) {
 
     *temp = 0;
     backup_directory dir;
-    dir.set_directories(source, destination);
+    {
+        int r = dir.set_directories(source, destination, simple_poll_fun, NULL, NULL, NULL);
+        assert(r==0);
+    }
     dir.create_subdirectories(newpath);
 
     // Verify:

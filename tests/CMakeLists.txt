@@ -19,6 +19,7 @@ set(tests
   truncate
   read_and_seek
   test6317
+  test6317b
   )
 
 foreach(test ${tests})

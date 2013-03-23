@@ -3,8 +3,8 @@
 #include "backup.h"
 #include "backup_test_helpers.h"
 
-// Test for #6317 (nonexistent destination directory causes segfault).  This particular test tests for the destination==NULL. 
-const int expect_result = EINVAL;
+// Test for #6317 (nonexistent destination directory causes segfault) 
+const int expect_result = ENOENT;
 int   error_count=0;
 bool  ok=true;
 
@@ -25,7 +25,7 @@ int main(int argc __attribute__((__unused__)), const char *argv[] __attribute__(
     setup_dirs();
     // No destination dir
     pthread_t thread;
-    start_backup_thread_with_funs(&thread, get_src(), NULL, simple_poll_fun, NULL, expect_error, NULL, expect_result);
+    start_backup_thread_with_funs(&thread, get_src(), get_dst(), simple_poll_fun, NULL, expect_error, NULL, expect_result);
     finish_backup_thread(thread);
     if (ok && error_count!=1) {
         ok=false;

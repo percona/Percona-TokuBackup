@@ -4,6 +4,7 @@
 #ifndef BACKUP_DIRECTORY_H
 #define BACKUP_DIRECTORY_H
 
+#include "backup.h"
 #include "file_description.h"
 #include "file_descriptor_map.h"
 #include "backup_copier.h"
@@ -25,15 +26,12 @@ public:
     bool directories_set();
     bool is_prefix(const char *file);
     char* translate_prefix(const char *file);
-    void set_directories(const char *source, const char *dest);
+    int set_directories(const char *source, const char *dest, backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) __attribute__((warn_unused_result));
     int set_source_directory(const char *source);
     int set_destination_directory(const char *destination);
-    int start_copy(void);
-    void wait_for_copy_to_finish(void);
+    int do_copy(backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) __attribute__((warn_unused_result));
     void abort_copy(void);
     void create_subdirectories(const char *file);
-    void print_time(const char *toku_string);
-    int get_error_status(void);
 private:
     int does_file_exist(const char *file);
 };

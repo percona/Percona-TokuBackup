@@ -155,7 +155,7 @@ char *get_dst(void) {
 char *get_src(void) {
     size_t size = strlen(BACKUP_NAME)+100;
     char s[size];
-    int r = snprintf(s, size, "%s.backup", BACKUP_NAME);
+    int r = snprintf(s, size, "%s.source", BACKUP_NAME);
     assert(r<(int)size);
     char *result = strdup(s);
     assert(result);
