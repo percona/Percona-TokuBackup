@@ -8,6 +8,7 @@
 #include <sys/stat.h> // mkdir()
 
 //#include <sys/types.h>
+#include <errno.h>
 #include <dlfcn.h>
 #include <stdarg.h>
 
@@ -262,119 +263,20 @@ int mkdir(const char *pathname, mode_t mode)
     return r;
 }
 
-/****************************************************************************/
-//
-// TODO: Separate the API for initiating, stopping and altering backup.
-//
-/****************************************************************************/
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// add_directory() -
-//
-// Description:
-//
-extern "C" void add_directory(const char* source, const char* destination)
-{
-    manager.add_directory(source, destination);
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// add_directory() -
-//
-// Description:
-//
-extern "C" void remove_directory(const char* source, const char* destination)
-{
-    manager.remove_directory(source, destination);
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// start_backup() -
-//
-// Description:
-//
-//     
-//
-extern "C" void start_backup(void)
-{
+extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *dest_dirs[], int dir_count,
+                                        backup_poll_fun_t poll_fun, void *poll_extra,
+                                        backup_error_fun_t error_fun, void *error_extra) {
+    if (dir_count!=1) {
+        error_fun(EINVAL, "Only one source directory may be specified for backup", error_extra);
+        return EINVAL;
+    }
+    for (int i=0; i<dir_count; i++) {
+        manager.add_directory(source_dirs[i], dest_dirs[i]);
+    }
     manager.start_backup();
+    return 0;
 }
 
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// stop_backup() -
-//
-// Description:
-//     This function stops the current backup in progress, if there is one.
-//
-// Notes:
-//     As of now, this backup library does not clean up the data copied
-// and captured if a backup is terminated using this function.
-//
-extern "C" void stop_backup(void)
-{
-    manager.stop_backup();
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// set_source_directory()
-//
-// Description:
-//     This function sets the source directory that will be backed up.
-//
-// Returns:
-//     Returns 0 on success.  -1 on error.
-//
-extern "C" int set_source_directory(const char *source)
-{
-    int r = 0;
-    if(source == NULL) {
-        r = -1;
-        goto out;
-    }
-
-    // TODO: Is there a way to serialize this?
-    r = manager.add_source_directory(source);
-
- out:
-    return r;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// start_backup() -
-//
-// Description:
-//     This function sets the destination directory into which the backup
-// will be copied.  It also initiates the COPY and CAPTURE phases of backup.
-//
-// Returns:
-//     Returns 0 on success.  -1 on error.
-//
-extern "C" int backup_to_this_directory(const char *destination)
-{
-    int r = 0;
-    if(destination == NULL) {
-        r = -1;
-        goto out;
-    }
-
-    r = manager.add_destination_directory(destination);
-    if(r != 0) {
-        // TODO: Possible error translation from backup land to mysql land.
-        goto out;
-    }
-
-    // TODO: return some errors from this function, as any part of backup COULD fail.
-    manager.start_backup();
-
- out:
-    return r;
+extern "C" void tokubackup_throttle_backup(unsigned long bytes_per_second) {
+    fprintf(stderr, "%s:%d ignored throttle %ld\n", __FILE__, __LINE__, bytes_per_second);
 }

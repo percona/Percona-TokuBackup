@@ -15,8 +15,7 @@
 
 //////////////////////////////////////////////////////////////////////////////
 //
-void print_time(const char *toku_string)
-{
+static void print_time(const char *toku_string) {
     time_t t;
     char buf[27];
     time(&t);
@@ -31,8 +30,7 @@ void print_time(const char *toku_string)
 // Description: 
 //
 void *start_copying(void *);
-void *start_copying(void * copier)
-{
+void *start_copying(void * copier) {
     void *r = 0;
     backup_copier *c = (backup_copier*)copier;
     print_time("Toku Hot Backup: Started:");

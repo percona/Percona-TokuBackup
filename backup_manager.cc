@@ -171,55 +171,6 @@ void backup_manager::add_directory(const char *source_dir,
     m_dir.set_directories(source_dir, dest_dir);
 }
 
-//
-int backup_manager::add_source_directory(const char *source_dir)
-{
-    int r = 0;
-    if(source_dir == NULL) {
-        r = -1;
-        goto out;
-    }
-
-    // TODO: Check that path of source exists, return error if not.
-    r = m_dir.set_source_directory(source_dir);
- out:
-    return r;
-}
-
-//
-int backup_manager::add_destination_directory(const char *dest_dir)
-{
-    int r = 0;
-    if(dest_dir == NULL) {
-        r = -1;
-        goto out;
-    }
-
-    r = m_dir.set_destination_directory(dest_dir);
-
- out:
-    return r;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// remove_directory() -
-//
-// Description: 
-//
-//     TBD...
-//
-void backup_manager::remove_directory(const char *source_dir,
-                                      const char *dest_dir)
-{
-    assert(source_dir);
-    assert(dest_dir);
-
-    // TODO: Do we need to pause copy?
-    // TODO: Do we want an option to erase the backup?
-}
-
-
 ///////////////////////////////////////////////////////////////////////////////
 //
 // create() -

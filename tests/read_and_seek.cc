@@ -14,18 +14,30 @@
 #include "backup.h"
 #include "backup_test_helpers.h"
 
-void read_and_seek()
-{
+static int verify(void) {
+    char *src = get_src();
+    char *dst = get_dst();
+    int r = systemf("diff -r %s %s", src, dst);
+    free(src);
+    free(dst);
+    if (!WIFEXITED(r)) return -1;
+    if (WEXITSTATUS(r)!=0) return -1;
+    return 0;
+}
+
+void read_and_seek(void) {
     int result = 0;
     int fd = 0;
     setup_source();
     setup_dirs();
     setup_destination();
-    add_directory(SRC, DST);
-    start_backup();
+    pthread_t thread;
+    start_backup_thread(&thread);
 
-    fd = open(SRC "/my.data", O_CREAT | O_RDWR);
+    char *src = get_src();
+    fd = openf(O_CREAT | O_RDWR, 0777, "%s/my.data", src);
     assert(fd >= 0);
+    free(src);
     result = write(fd, "Hello World\n", 12);
     char buf[10];
     result = read(fd, buf, 5);
@@ -41,5 +53,19 @@ void read_and_seek()
     result = close(fd);
     assert(result == 0);
 
-    stop_backup();
+    finish_backup_thread(thread);
+
+    if(verify()) {
+        fail();
+    } else {
+        pass();
+    }
+    printf(": read_and_seek()\n");
+}
+
+const char *BACKUP_NAME = __FILE__;
+
+int main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+    read_and_seek();
+    return 0;
 }

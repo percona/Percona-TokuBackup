@@ -5,12 +5,13 @@
 #include "real_syscalls.h"
 #include "backup_debug.h"
 
-#include <stdio.h>
-#include <sys/stat.h>
 #include <dirent.h>
-#include <fcntl.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <pthread.h>
+#include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 
 #if DEBUG_HOTBACKUP

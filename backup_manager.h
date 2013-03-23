@@ -27,9 +27,6 @@ public:
     void start_backup();
     void stop_backup();
     void add_directory(const char *source_dir, const char *dest_dir);
-    void remove_directory(const char *source_dir, const char *dest_dir);
-    int add_source_directory(const char *source_dir);
-    int add_destination_directory(const char *dest_dir);
 
     // Methods used during interposition:
     void create(int fd, const char *file);

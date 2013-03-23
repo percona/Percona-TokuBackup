@@ -16,36 +16,40 @@
 const char * const WRITTEN_STR = "goodbye\n";
 const int WRITTEN_STR_LEN = 8;
 
+const char *BACKUP_NAME = __FILE__;
+
 //
 static int verify(void)
 {
-    int r = 0;
-    int backup_fd = open(DST "/bar.data", O_RDONLY);
-    assert(backup_fd >= 0);
+    char *dst = get_dst();
+    int backup_fd = openf(O_RDONLY, 0, "%s/bar.data", dst);
+    assert(backup_fd >= 0);    
+    free(dst);
     char backup_string[30] = {0};
-    r = read(backup_fd, backup_string, WRITTEN_STR_LEN);
+    int r = read(backup_fd, backup_string, WRITTEN_STR_LEN);
     assert(r == WRITTEN_STR_LEN);
     r = strcmp(WRITTEN_STR, backup_string);
     return r;
 }
 
 //
-void open_write_close()
-{
-    int result = 0;
+static void open_write_close(void) {
     setup_source();
     setup_dirs();
     setup_destination();
-    add_directory(SRC, DST);
-    start_backup();
-    
-    int fd = 0;
-    fd = open(SRC "/bar.data", O_WRONLY);
+    pthread_t thread;
+    start_backup_thread(&thread);
+
+    char *src = get_src();
+    int fd = openf(O_WRONLY, 0, "%s/bar.data", src);
     assert(fd >= 0);
-    result = write(fd, WRITTEN_STR, WRITTEN_STR_LEN);
+    free(src);
+    int result = write(fd, WRITTEN_STR, WRITTEN_STR_LEN);
     assert(result == 8);
     result = close(fd);
     assert(result == 0);
+
+    finish_backup_thread(thread);
 
     if(verify()) {
         fail();
@@ -53,6 +57,9 @@ void open_write_close()
         pass();
     }
     printf(": open_write_close()\n");
+}
 
-    stop_backup();
+int main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+    open_write_close();
+    return 0;
 }
