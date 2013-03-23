@@ -20,14 +20,21 @@ set(BACKUP_SOURCES
 	file_description.cc
 	file_descriptor_map.cc
 	real_syscalls.cc)
-message(${BACKUP_SOURCES})
+# message(${BACKUP_SOURCES})
+set(BACKUP_COMMUNITY_SOURCES
+        backup_community.cc)
 
 set(CMAKE_C_FLAGS "-Wall -Werror ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "-Wall -Werror -Wmissing-declarations ${CMAKE_CXX_FLAGS}")
 
-add_library(HotBackup STATIC ${BACKUP_SOURCES})
-set_target_properties(HotBackup PROPERTIES POSITION_INDEPENDENT_CODE ON)
+# Two libraries.  One is the actual backup, one is for the community edition, and doesn't do anything.
+add_library(HotBackup          SHARED ${BACKUP_SOURCES})
+add_library(HotBackupCommunity SHARED ${BACKUP_COMMUNITY_SOURCES})
+set_target_properties(HotBackup          PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(HotBackupCommunity PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 add_subdirectory(tests)
 
 ## Do we need this?
 install(TARGETS HotBackup DESTINATION lib)
+install(TARGETS HotBackupCommunity DESTINATION lib)
