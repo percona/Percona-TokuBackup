@@ -4,6 +4,9 @@
 #ifndef BACKUP_TEST_HELPERS_H
 #define BACKUP_TEST_HELPERS_H
 
+#ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
+#ident "$Id$"
+
 #include "backup.h"
 #include <pthread.h>
 

@@ -4,6 +4,9 @@
 #ifndef BACKUP_H
 #define BACKUP_H
 
+#ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
+#ident "$Id$"
+
 extern "C" {
 
 // These public API's should be in C.

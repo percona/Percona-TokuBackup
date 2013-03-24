@@ -4,6 +4,9 @@
 #ifndef REAL_SYSCALLS_H
 #define REAL_SYSCALLS_H
 
+#ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
+#ident "$Id$"
+
 #include <sys/types.h>
 
 extern pthread_mutex_t backup_manager_mutex;

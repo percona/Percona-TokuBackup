@@ -4,6 +4,9 @@
 #ifndef BACKUP_DEBUG_H
 #define BACKUP_DEBUG_H
 
+#ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
+#ident "$Id$"
+
 #ifndef DEBUG_HOTBACKUP
 #define DEBUG_HOTBACKUP 0
 #endif

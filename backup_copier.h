@@ -4,6 +4,9 @@
 #ifndef BACKUP_COPIER
 #define BACKUP_COPIER
 
+#ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
+#ident "$Id$"
+
 #include "backup.h"
 #include <vector>
 #include <dirent.h>

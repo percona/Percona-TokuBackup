@@ -4,6 +4,9 @@
 #ifndef BACKUP_DIRECTORY_H
 #define BACKUP_DIRECTORY_H
 
+#ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
+#ident "$Id$"
+
 #include "backup.h"
 #include "file_description.h"
 #include "file_descriptor_map.h"
