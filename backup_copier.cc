@@ -195,7 +195,7 @@ int backup_copier::copy_full_path(const char *source,
     
     // See if the source path is a directory or a real file.
     if (S_ISREG(sbuf.st_mode)) {
-        this->copy_regular_file(source, dest);
+        this->copy_regular_file(source, dest, poll_fun, poll_extra, error_fun, error_extra);
     } else if (S_ISDIR(sbuf.st_mode)) {
         // Make the directory in the backup destination.
         r = call_real_mkdir(dest, 0777);
@@ -247,7 +247,7 @@ out:
 // function creates the new file, then copies all the bytes from
 // one to the other.
 //
-int backup_copier::copy_regular_file(const char *source, const char *dest)
+int backup_copier::copy_regular_file(const char *source, const char *dest, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra)
 {
     int r = 0;
     int copy_error = 0;
@@ -269,7 +269,7 @@ int backup_copier::copy_regular_file(const char *source, const char *dest)
         }
     }
 
-    copy_error = copy_file_data(srcfd, destfd);
+    copy_error = copy_file_data(srcfd, destfd, source, dest, poll_fun, poll_extra, error_fun, error_extra);
 
     r = call_real_close(destfd);
     if(r != 0) {
@@ -296,15 +296,17 @@ out:
 //     This section actually copies all the bytes from the source
 // file to our newly created backup copy.
 //
-int backup_copier::copy_file_data(int srcfd, int destfd)
+int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra)
 {
     int r = 0;
 
     ssize_t n_read;
     // TODO: Replace these magic numbers.
     const size_t buf_size = 1024 * 1024;
-    char buf[buf_size];
+    char *buf = new char[buf_size]; // this cannot be on the stack.
     ssize_t n_wrote_now = 0;
+    char poll_string[1000];
+    snprintf(poll_string, sizeof(poll_string), "Copying %s to %s", source_path, dest_path);
     while ((n_read = call_real_read(srcfd, buf, buf_size))) {
         if(n_read < 0) {
             r = -1;
@@ -313,11 +315,20 @@ int backup_copier::copy_file_data(int srcfd, int destfd)
         
         ssize_t n_wrote_this_buf = 0;
         while (n_wrote_this_buf < n_read) {
+            r = poll_fun(0, poll_string, poll_extra);
+            if (r!=0) {
+                error_fun(r, "User aborted backup", error_extra);
+                goto out;
+            }
+
             n_wrote_now = call_real_write(destfd,
                                           buf + n_wrote_this_buf,
                                           n_read - n_wrote_this_buf);
-            if(n_wrote_now <= 0) {
-                r = -1;
+            if(n_wrote_now < 0) {
+                r = errno;
+                char string[1000];
+                snprintf(string, sizeof(string), "errno=%d (%s) Writing destination file %s", r, strerror(r), dest_path);
+                error_fun(r, string, error_extra);
                 goto out;
             }
 
@@ -326,6 +337,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd)
     }
 
 out:
+    delete buf;
     return r;
 }
 

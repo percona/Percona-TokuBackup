@@ -272,7 +272,7 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
         description->lock();
         r = call_real_write(fd, buf, nbyte);
         // TODO: Don't call our write if the first one fails.
-        description->write(r, buf, nbyte);
+        description->write(r, buf);
         description->unlock();
     }
     

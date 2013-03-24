@@ -28,7 +28,7 @@ public:
     void unlock(void);
     int open(void);
     int create(void);
-    void write(ssize_t written, const void *buf, size_t nbyte);
+    void write(ssize_t written, const void *buf);
     int pwrite(const void *buf, size_t nbyte, off_t offset);
     void read(ssize_t nbyte);
     void lseek(off_t new_offset);        

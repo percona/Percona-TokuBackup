@@ -14,7 +14,7 @@ private:
     const char *m_dest;
     int m_copy_error;
     std::vector<char *> m_todo;
-    int copy_regular_file(const char *source, const char *dest);
+    int copy_regular_file(const char *source, const char *dest, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra);
     int add_dir_entries_to_todo(DIR *dir, const char *file);
 public:
     backup_copier();
@@ -24,7 +24,7 @@ public:
     int do_copy(backup_poll_fun_t, void*, backup_error_fun_t, void*);
     int copy_stripped_file(const char *file, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra);
     int copy_full_path(const char *source, const char* dest, const char *file, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra);
-    int copy_file_data(int srcfd, int destfd);
+    int copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra);
 };
 
 #endif // End of header guardian.

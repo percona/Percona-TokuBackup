@@ -226,7 +226,8 @@ int backup_directory::does_file_exist(const char *file)
 // Note: source and dest are copied (so the caller may free them immediately or otherwise reuse the strings).
 //
 int backup_directory::set_directories(const char *source, const char *dest,
-                                      backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra)
+                                      backup_poll_fun_t poll_fun __attribute__((unused)), void *poll_extra __attribute__((unused)),
+                                      backup_error_fun_t error_fun, void *error_extra)
 {
     m_source_dir = realpath(source, NULL);
     m_dest_dir =   realpath(dest,   NULL);

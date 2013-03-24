@@ -214,7 +214,7 @@ out:
 //
 //     ...
 //
-void file_description::write(ssize_t written, const void *buf, size_t nbyte)
+void file_description::write(ssize_t written, const void *buf)
 {
     if (written > 0) {
         off_t position = m_offset;
