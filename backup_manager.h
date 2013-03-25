@@ -26,6 +26,8 @@ private:
     pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
     int m_capture_error;
     
+    volatile unsigned long m_throttle;
+
 public:
     backup_manager();
     int do_backup(backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) __attribute__((warn_unused_result));
@@ -45,6 +47,9 @@ public:
     void truncate(const char *path, off_t length);
     void mkdir(const char *pathname);
     
+    void set_throttle(unsigned long bytes_per_second); // This is thread-safe.
+    unsigned long get_throttle(void);                 // This is thread-safe.
+
 private:
     backup_directory* get_directory(int fd);
     backup_directory* get_directory(const char *file);

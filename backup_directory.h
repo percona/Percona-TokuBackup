@@ -7,7 +7,6 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include "backup.h"
 #include "file_description.h"
 #include "file_descriptor_map.h"
 #include "backup_copier.h"
@@ -32,7 +31,7 @@ public:
     int set_directories(const char *source, const char *dest, backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) __attribute__((warn_unused_result));
     int set_source_directory(const char *source);
     int set_destination_directory(const char *destination);
-    int do_copy(backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) __attribute__((warn_unused_result));
+    int do_copy(backup_manager *manage, backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) __attribute__((warn_unused_result));
     void abort_copy(void);
     void create_subdirectories(const char *file);
 private:

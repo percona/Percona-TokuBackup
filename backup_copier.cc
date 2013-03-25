@@ -6,6 +6,7 @@
 #include "backup_copier.h"
 #include "real_syscalls.h"
 #include "backup_debug.h"
+#include "backup_manager.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -15,6 +16,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 
 #if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CopyWarn(string, arg)
@@ -95,7 +97,7 @@ int backup_copier::get_error(void)
 //     Loops through all files and subdirectories of the current 
 // directory that has been selected for backup.
 //
-int backup_copier::do_copy(backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra) {
+int backup_copier::do_copy(backup_manager *manager, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra) {
     int r = 0;
 
     // Start with "."
@@ -110,11 +112,11 @@ int backup_copier::do_copy(backup_poll_fun_t poll_fun, void*poll_extra, backup_e
         snprintf(msg, sizeof(msg), "Copying file number %ld of %ld seen so far (%s)", n_done, n_known, fname);
         msg[sizeof(msg)-1]=0; // be paranoid
         // Use n_done/n_files.   We need to do a better estimate involving n_bytes_copied/n_bytes_total
-        // This one is very wrong
+        // This one is very wrongu
         r = poll_fun((double)n_done/(double)(n_done+n_known), msg, poll_extra);
         if (r != 0) goto out;
         m_todo.pop_back();
-        r = this->copy_stripped_file(fname, poll_fun, poll_extra, error_fun, error_extra);
+        r = this->copy_stripped_file(fname, manager, poll_fun, poll_extra, error_fun, error_extra);
         if(r != 0) {
             goto out;
         }
@@ -137,12 +139,12 @@ out:
 // destination directory members to determine the exact location
 // of the file in both the original and backup locations.
 //
-int backup_copier::copy_stripped_file(const char *file, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra) {
+int backup_copier::copy_stripped_file(const char *file, backup_manager*manager, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra) {
     int r = 0;
     bool is_dot = (strcmp(file, ".") == 0);
     if (is_dot) {
         // Just copy the root of the backup tree.
-        r = this->copy_full_path(m_source, m_dest, "", poll_fun, poll_extra, error_fun, error_extra);
+        r = this->copy_full_path(m_source, m_dest, "", manager, poll_fun, poll_extra, error_fun, error_extra);
         if (r != 0) {
             goto out;
         }
@@ -164,6 +166,7 @@ int backup_copier::copy_stripped_file(const char *file, backup_poll_fun_t poll_f
         }
         
         r = this->copy_full_path(full_source_file_path, full_dest_file_path, file,
+                                 manager,
                                  poll_fun, poll_extra, error_fun, error_extra);
         if(r != 0) {
             goto out;
@@ -189,6 +192,7 @@ out:
 int backup_copier::copy_full_path(const char *source,
                                   const char* dest,
                                   const char *file,
+                                  backup_manager *manager,
                                   backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra) {
     int r = 0;
     struct stat sbuf;
@@ -197,7 +201,7 @@ int backup_copier::copy_full_path(const char *source,
     
     // See if the source path is a directory or a real file.
     if (S_ISREG(sbuf.st_mode)) {
-        this->copy_regular_file(source, dest, poll_fun, poll_extra, error_fun, error_extra);
+        this->copy_regular_file(source, dest, sbuf.st_size, manager, poll_fun, poll_extra, error_fun, error_extra);
     } else if (S_ISDIR(sbuf.st_mode)) {
         // Make the directory in the backup destination.
         r = call_real_mkdir(dest, 0777);
@@ -249,7 +253,9 @@ out:
 // function creates the new file, then copies all the bytes from
 // one to the other.
 //
-int backup_copier::copy_regular_file(const char *source, const char *dest, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra)
+int backup_copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size,
+                                     backup_manager *manager,
+                                     backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra)
 {
     int r = 0;
     int copy_error = 0;
@@ -271,7 +277,7 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, backu
         }
     }
 
-    copy_error = copy_file_data(srcfd, destfd, source, dest, poll_fun, poll_extra, error_fun, error_extra);
+    copy_error = copy_file_data(srcfd, destfd, source, dest, source_file_size, manager, poll_fun, poll_extra, error_fun, error_extra);
 
     r = call_real_close(destfd);
     if(r != 0) {
@@ -290,6 +296,30 @@ out:
 }
 
 
+static int gettime_reporting_error(struct timespec *ts, backup_error_fun_t error_fun, void*error_extra) {
+    int r = clock_gettime(CLOCK_MONOTONIC, ts);
+    if (r!=0) {
+        char string[1000];
+        int er = errno;
+        if (er!=0) {
+            snprintf(string, sizeof(string), "clock_gettime returned an error: errno=%d (%s)", er, strerror(er));
+            error_fun(er, string, error_extra);
+        } else {
+            error_fun(-1, "clock_gettime returned an error, but errno==0", error_extra);
+            er = -1;
+        }
+        return er;
+    } else {
+        return 0;
+    }
+}
+
+static double tdiff(struct timespec a, struct timespec b)
+// Effect: Return a-b in seconds.
+{
+    return (a.tv_sec - b.tv_sec) + 1e-9*(a.tv_nsec - b.tv_nsec);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // copy_file_data() -
@@ -298,18 +328,26 @@ out:
 //     This section actually copies all the bytes from the source
 // file to our newly created backup copy.
 //
-int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra)
+int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, off_t source_file_size,
+                                  backup_manager *manager,
+                                  backup_poll_fun_t poll_fun, void*poll_extra, backup_error_fun_t error_fun, void*error_extra)
 {
     int r = 0;
 
-    ssize_t n_read;
     // TODO: Replace these magic numbers.
     const size_t buf_size = 1024 * 1024;
     char *buf = new char[buf_size]; // this cannot be on the stack.
     ssize_t n_wrote_now = 0;
     char poll_string[1000];
-    snprintf(poll_string, sizeof(poll_string), "Copying %s to %s", source_path, dest_path);
-    while ((n_read = call_real_read(srcfd, buf, buf_size))) {
+    size_t total_written = 0;
+
+    struct timespec starttime;
+    r = gettime_reporting_error(&starttime, error_fun, error_extra);
+    if (r!=0) goto out;
+
+    while (1) {
+                
+        ssize_t n_read = call_real_read(srcfd, buf, buf_size);
         if(n_read < 0) {
             r = -1;
             goto out;
@@ -317,6 +355,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
         
         ssize_t n_wrote_this_buf = 0;
         while (n_wrote_this_buf < n_read) {
+            snprintf(poll_string, sizeof(poll_string), "Copying file: %ld/%ld bytes done of %s to %s.", total_written, source_file_size, source_path, dest_path);
             r = poll_fun(0, poll_string, poll_extra);
             if (r!=0) {
                 error_fun(r, "User aborted backup", error_extra);
@@ -333,8 +372,35 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
                 error_fun(r, string, error_extra);
                 goto out;
             }
+            total_written += n_wrote_now;
 
             n_wrote_this_buf += n_wrote_now;
+        }
+        while (1) {
+            // Sleep until we've used up enough time.  Be sure to keep polling once per second.
+            struct timespec endtime;
+            r = gettime_reporting_error(&endtime, error_fun, error_extra);
+            if (r!=0) goto out;
+            double actual_time = tdiff(endtime, starttime);
+            unsigned long throttle = manager->get_throttle();
+            double budgeted_time = total_written / (double)throttle;
+            if (budgeted_time <= actual_time) break;
+            double sleep_time = budgeted_time - actual_time;  // if we were supposed to copy 10MB at 2MB/s, then our budget was 5s.  If we took 1s, then sleep 4s.
+            {
+                char string[1000];
+                snprintf(string, sizeof(string), "Backup throttled: copied %ld/%ld bytes of %s to %s. Sleeping %.2fs for throttling.",
+                         total_written, source_file_size, source_path, dest_path, sleep_time);
+                r = poll_fun(0, string, poll_extra);
+            }
+            if (r!=0) {
+                error_fun(r, "User aborted backup", error_extra);
+                goto out;
+            }
+            if (sleep_time>1) {
+                usleep(1000000);
+            } else {
+                usleep((long)(sleep_time*1e6));
+            }
         }
     }
 

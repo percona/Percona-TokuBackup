@@ -45,11 +45,14 @@ set(BACKUP_COMMUNITY_SOURCES
 add_library(HotBackup          SHARED ${BACKUP_SOURCES})
 add_library(HotBackupCommunity SHARED ${BACKUP_COMMUNITY_SOURCES})
 
+target_link_libraries(HotBackup          LINK_PUBLIC rt)
+target_link_libraries(HotBackupCommunity LINK_PUBLIC rt)
+
 # If for some reason we go back to static libraries, we'll need this.
 # set_target_properties(HotBackup          PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # set_target_properties(HotBackupCommunity PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 add_subdirectory(tests)
 
-install(TARGETS HotBackup DESTINATION lib)
+install(TARGETS HotBackup          DESTINATION lib)
 install(TARGETS HotBackupCommunity DESTINATION lib)

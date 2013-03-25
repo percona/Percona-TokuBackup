@@ -102,7 +102,7 @@ int backup_manager::do_backup(backup_poll_fun_t poll_fun, void *poll_extra, back
     }
     
     // NOTE: This boolean is for testing.
-    r = m_dir.do_copy(poll_fun, poll_extra, error_fun, error_extra);
+    r = m_dir.do_copy(this, poll_fun, poll_extra, error_fun, error_extra);
     
     if (r != 0) {
         // This means we couldn't start the copy thread (ex: pthread error).
@@ -479,4 +479,14 @@ backup_directory* backup_manager::get_directory(const char *file)
     }
     
     return &m_dir;
+}
+
+void backup_manager::set_throttle(unsigned long bytes_per_second) {
+    __atomic_store(&m_throttle, &bytes_per_second, __ATOMIC_SEQ_CST); // sequential consistency is probably too much, but this isn't called often
+}
+
+unsigned long backup_manager::get_throttle(void) {
+    unsigned long ret;
+    __atomic_load(&m_throttle, &ret, __ATOMIC_SEQ_CST);
+    return ret;
 }

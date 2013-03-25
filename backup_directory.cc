@@ -281,10 +281,10 @@ int backup_directory::set_destination_directory(const char *destination)
 //
 //     Copies all files and subdirectories to the destination.
 //
-int backup_directory::do_copy(backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) {
+int backup_directory::do_copy(backup_manager *manager, backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) {
     m_copier.set_directories(m_source_dir, m_dest_dir);
     print_time("Toku Hot Backup: Started:");
-    int r = m_copier.do_copy(poll_fun, poll_extra, error_fun, error_extra);
+    int r = m_copier.do_copy(manager, poll_fun, poll_extra, error_fun, error_extra);
     print_time("Toku Hot Backup: Finished:");
     return r;
 }

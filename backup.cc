@@ -287,5 +287,5 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
 }
 
 extern "C" void tokubackup_throttle_backup(unsigned long bytes_per_second) {
-    fprintf(stderr, "%s:%d ignored throttle %ld\n", __FILE__, __LINE__, bytes_per_second);
+    manager.set_throttle(bytes_per_second);
 }
