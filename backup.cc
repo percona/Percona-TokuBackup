@@ -3,10 +3,12 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
+extern "C"{
 #include <stdio.h> // rename(),
 #include <fcntl.h> // open()
 #include <unistd.h> // close(), write(), read(), unlink(), truncate(), etc.
 #include <sys/stat.h> // mkdir()
+}
 
 //#include <sys/types.h>
 #include <errno.h>
@@ -62,8 +64,8 @@ backup_manager manager;
 //     Either creates or opens a file in both the source directory
 // and the backup directory.
 //
-int open(const char* file, int oflag, ...)
-{
+extern "C" int open(const char* file, int oflag, ...) __attribute__((visibility("default")));
+extern "C" int open(const char* file, int oflag, ...) {
     int fd = 0;
     TRACE("open() intercepted, file = ", file);
     if (oflag & O_CREAT) {
@@ -105,8 +107,8 @@ out:
 //     Closes the file associated with the provided file descriptor
 // in both the source and backup directories.
 //
-int close(int fd)
-{
+int close(int fd) __attribute__((visibility("default")));
+int close(int fd) {
     int r = 0;
     TRACE("close() intercepted, fd = ", fd);
     r = call_real_close(fd);
@@ -124,8 +126,8 @@ int close(int fd)
 //     Writes to the file associated with the given file descriptor
 // in both the source and backup directories.
 //
-ssize_t write(int fd, const void *buf, size_t nbyte)
-{
+ssize_t write(int fd, const void *buf, size_t nbyte) __attribute__((visibility("default")));
+ssize_t write(int fd, const void *buf, size_t nbyte) {
     TRACE("write() intercepted, fd = ", fd);
 
     // Moved the write down into file_description->write, where a lock can be obtained
@@ -148,8 +150,8 @@ ssize_t write(int fd, const void *buf, size_t nbyte)
 // given file descriptor has changed, even though no bytes are
 // read from the backup copy of the same file.
 //
-ssize_t read(int fd, void *buf, size_t nbyte)
-{
+ssize_t read(int fd, void *buf, size_t nbyte) __attribute__((visibility("default")));
+ssize_t read(int fd, void *buf, size_t nbyte) {
     TRACE("read() intercepted, fd = ", fd);
     // Moved the read down into file_description->read, where a lock can be obtained.
     
@@ -166,8 +168,8 @@ ssize_t read(int fd, void *buf, size_t nbyte)
 //     Writes to the file associated with the given file descriptor
 // in both the source and backup directories.
 //
-ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
-{
+ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset) __attribute__((visibility("default")));
+ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset) {
     ssize_t r = 0;
     TRACE("pwrite() intercepted, fd = ", fd);
     r = call_real_pwrite(fd, buf, nbyte, offset);
@@ -175,7 +177,7 @@ ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
     return r;
 }
 
-
+off_t lseek(int fd, off_t offset, int whence)  __attribute__((visibility("default")));
 off_t lseek(int fd, off_t offset, int whence) {
     TRACE("lseek() intercepted fd =", fd);
     return manager.lseek(fd, offset, whence);
@@ -189,8 +191,8 @@ off_t lseek(int fd, off_t offset, int whence) {
 //
 //     Deletes a portion of the file based on the given file descriptor.
 //
-int ftruncate(int fd, off_t length)
-{
+int ftruncate(int fd, off_t length) __attribute__((visibility("default")));
+int ftruncate(int fd, off_t length) {
     int r = 0;
     TRACE("ftruncate() intercepted, fd = ", fd);
     r = call_real_ftruncate(fd, length);
@@ -207,8 +209,8 @@ int ftruncate(int fd, off_t length)
 //
 //     Deletes a portion of the given file based on the given length.
 //
-int truncate(const char *path, off_t length)
-{
+int truncate(const char *path, off_t length) throw() __attribute__((__nonnull__ (1))) __attribute__((visibility("default")));
+int truncate(const char *path, off_t length) throw() {
     int r = 0;
     TRACE("truncate() intercepted, path = ", path);
     r = call_real_truncate(path, length);
@@ -223,8 +225,8 @@ int truncate(const char *path, off_t length)
 //
 // Description: 
 //
-int unlink(const char *path)
-{
+int unlink(const char *path) throw() __attribute__((__nonnull__ (1))) __attribute__((visibility("default")));
+int unlink(const char *path) throw() {
     int r = 0;
     TRACE("unlink() intercepted, path = ", path);
     r = call_real_unlink(path);
@@ -238,8 +240,8 @@ int unlink(const char *path)
 //
 // Description: 
 //
-int rename(const char *oldpath, const char *newpath)
-{
+int rename(const char *oldpath, const char *newpath) __attribute__((visibility("default")));
+int rename(const char *oldpath, const char *newpath) {
     int r = 0;
     TRACE("rename() intercepted","");
     TRACE("-> oldpath = ", oldpath);
@@ -255,8 +257,8 @@ int rename(const char *oldpath, const char *newpath)
 //
 // Description: 
 //
-int mkdir(const char *pathname, mode_t mode)
-{
+int mkdir(const char *pathname, mode_t mode) throw() __attribute__((__nonnull__ (1))) __attribute__((visibility("default")));
+int mkdir(const char *pathname, mode_t mode) throw() {
     int r = 0;
     TRACE("mkidr() intercepted", pathname);
     r = call_real_mkdir(pathname, mode);

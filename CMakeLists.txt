@@ -44,15 +44,39 @@ set(BACKUP_COMMUNITY_SOURCES
 # Two libraries.  One is the actual backup, one is for the community edition, and doesn't do anything.
 add_library(HotBackup          SHARED ${BACKUP_SOURCES})
 add_library(HotBackupCommunity SHARED ${BACKUP_COMMUNITY_SOURCES})
+# And a Glassbox version of the library in which the visibility is defaul, not hidden
+add_library(HotBackupGlassbox      SHARED ${BACKUP_SOURCES})
+
 
 target_link_libraries(HotBackup          LINK_PUBLIC rt)
 target_link_libraries(HotBackupCommunity LINK_PUBLIC rt)
+target_link_libraries(HotBackupGlassbox LINK_PUBLIC rt)
 
-# If for some reason we go back to static libraries, we'll need this.
+# If for some reason we go back to static libraries, we'll need these two:
 # set_target_properties(HotBackup          PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # set_target_properties(HotBackupCommunity PROPERTIES POSITION_INDEPENDENT_CODE ON)
+# set_target_properties(HotBackupGlassbox  PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+function(add_space_separated_property type obj propname val)
+  get_property(oldval ${type} ${obj} PROPERTY ${propname})
+  if (oldval MATCHES NOTFOUND)
+    set_property(${type} ${obj} PROPERTY ${propname} "${val}")
+  else ()
+    set_property(${type} ${obj} PROPERTY ${propname} "${val} ${oldval}")
+  endif ()
+endfunction(add_space_separated_property)
+
+## add a version script and set -fvisibility=hidden for the shared library.
+configure_file(export.map . COPYONLY)
+if (NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
+  # Don't need this for the community version, since there's nothing in there except the two functions.
+  # And don't need this for glassbox version, since we want everything visible
+  add_space_separated_property(TARGET HotBackup COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
+  add_space_separated_property(TARGET HotBackup LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/export.map")
+endif ()
 
 add_subdirectory(tests)
 
 install(TARGETS HotBackup          DESTINATION lib)
 install(TARGETS HotBackupCommunity DESTINATION lib)
+install(TARGETS HotBackupGlassbox  DESTINATION lib)

@@ -16,7 +16,7 @@ typedef void (*backup_error_fun_t)(int error_number, const char *error_string, v
 
 int tokubackup_create_backup(const char *source_dirs[], const char *dest_dirs[], int dir_count,
                              backup_poll_fun_t poll_fun, void *poll_extra,
-                             backup_error_fun_t error_fun, void *error_extra);
+                             backup_error_fun_t error_fun, void *error_extra) __attribute__((visibility("default")));
 // Effect: Backup the directories in source_dirs into correspnding dest_dirs.
 // Periodically call poll_fun.
 //  If poll_fun returns 0, then the backup continues.
@@ -53,7 +53,7 @@ int tokubackup_create_backup(const char *source_dirs[], const char *dest_dirs[],
 //     backup.  For example the mysql code can abort backup when the user types ctrl-C 
 //     by returning a nonzero value from poll_fun.
 
-void tokubackup_throttle_backup(unsigned long mebibytes_per_second);
+void tokubackup_throttle_backup(unsigned long mebibytes_per_second) __attribute__((visibility("default")));
 // Effect: Throttle the rate at which copying happens.
 //   This function can be called by any thread at any time, and will throttle
 //   future backups as well as any currently running backup.

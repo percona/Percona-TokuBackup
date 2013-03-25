@@ -12,9 +12,7 @@ function(add_valgrind_tool_test tool test)
       )
 endfunction(add_valgrind_tool_test)
 
-set(tests
-  backup_directory_tests
-  copy_files
+set(blackboxtests
   open_write_close
   truncate
   read_and_seek
@@ -22,9 +20,22 @@ set(tests
   test6317b
   )
 
-foreach(test ${tests})
+set(glassboxtests
+  backup_directory_tests
+  copy_files
+  )
+
+foreach(test ${blackboxtests})
   add_executable(${test} ${test} backup_test_helpers)
   target_link_libraries(${test} HotBackup ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+  add_test(${test} ${test})
+  add_valgrind_tool_test(helgrind ${test})
+  add_valgrind_tool_test(drd ${test})
+endforeach(test)
+
+foreach(test ${glassboxtests})
+  add_executable(${test} ${test} backup_test_helpers)
+  target_link_libraries(${test} HotBackupGlassbox ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
   add_test(${test} ${test})
   add_valgrind_tool_test(helgrind ${test})
   add_valgrind_tool_test(drd ${test})

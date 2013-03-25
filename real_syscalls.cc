@@ -96,13 +96,13 @@ int call_real_ftruncate(int fildes, off_t length) {
     return real_ftruncate(fildes, length);
 }
 
-int call_real_truncate(const char *path, off_t length) {
+int call_real_truncate(const char *path, off_t length) throw() {
     static int (*real_truncate)(const char *path, off_t length) = NULL;
     dlsym_set(&real_truncate, "truncate");
     return real_truncate(path, length);
 }
 
-int call_real_unlink(const char *path) {
+int call_real_unlink(const char *path) throw() {
     static int (*real_unlink)(const char* path) = NULL;
     dlsym_set(&real_unlink, "unlink");
     return real_unlink(path);
@@ -114,7 +114,7 @@ int call_real_rename(const char* oldpath, const char* newpath) {
     return real_rename(oldpath, newpath);
 }
 
-int call_real_mkdir(const char *pathname, mode_t mode) {
+int call_real_mkdir(const char *pathname, mode_t mode) throw() {
     static int (*real_mkdir)(const char *pathname, mode_t mode) = NULL;
     dlsym_set(&real_mkdir, "mkdir");
     return real_mkdir(pathname, mode);
