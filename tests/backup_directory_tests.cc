@@ -19,7 +19,6 @@ const char * BACKUP_NAME = __FILE__;
 #define LONG_DIR "/ThisIsALongDirectory/WithNothing/InIt/"
 
 static int backup_sub_dirs(void) {
-    int result = 0;
     setup_destination();
     setup_source();
 
@@ -76,10 +75,10 @@ static int backup_sub_dirs(void) {
 
     free(src);
     free(dst);
-    return result;
+    return r;
 }
 
 int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
-    backup_sub_dirs();
-    return 0;
+    int r = backup_sub_dirs();
+    return r;
 }
