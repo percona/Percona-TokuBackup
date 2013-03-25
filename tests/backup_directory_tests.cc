@@ -58,7 +58,7 @@ static int backup_sub_dirs(void) {
     struct stat sb;
     char dst_long_dir[PATH_MAX];
     {
-        int r = snprintf(dst_long_dir, sizeof(dst_long_dir), "./%s%s", dst, LONG_DIR);
+        int r = snprintf(dst_long_dir, sizeof(dst_long_dir), "%s%s", dst, LONG_DIR);
         assert(r<PATH_MAX);
     }
     int r = stat(dst_long_dir, &sb);
