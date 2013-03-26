@@ -186,5 +186,5 @@ void dummy_error(int error, const char *string, void *extra)
 
 unsigned long dummy_throttle(void)
 {
-    return 1;
+    return ULONG_MAX;
 }
