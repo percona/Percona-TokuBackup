@@ -70,8 +70,8 @@ endfunction(add_space_separated_property)
 configure_file(export.map . COPYONLY)
 if (NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
   # Don't need this for the community version, since there's nothing in there except the two functions.
-  # And don't need this for glassbox version, since we want everything visible
-  add_space_separated_property(TARGET HotBackup COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
+  # And don't need this for glassbox version, since we want everything visible, so we use visibility=default instead of the usual visibility=hidden.
+  add_space_separated_property(TARGET HotBackup COMPILE_FLAGS "-fvisibility=default -fvisibility-inlines-hidden")
   add_space_separated_property(TARGET HotBackup LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/export.map")
 endif ()
 
