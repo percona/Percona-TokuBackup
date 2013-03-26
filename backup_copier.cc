@@ -196,7 +196,7 @@ int backup_copier::copy_full_path(const char *source,
     if (r!=0) {
         r = errno;
         char string[10000];
-        snprintf(string, sizeof(string), "error stat(\"%s\"), errno=%d (%s)", dest, r, strerror(r));
+        snprintf(string, sizeof(string), "error stat(\"%s\"), errno=%d (%s) at %s:%d", dest, r, strerror(r), __FILE__, __LINE__);
         m_calls.report_error(errno, string);
         goto out;
     }
