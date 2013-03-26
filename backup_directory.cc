@@ -147,6 +147,7 @@ bool backup_session::is_prefix(const char *file)
 //
 static int does_file_exist(const char*);
 static void create_subdirectories(const char*);
+int open_path(const char *file_path);
 int open_path(const char *file_path)
 {    
     int r = 0;
