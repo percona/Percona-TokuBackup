@@ -101,6 +101,9 @@ static void* start_backup_thread_fun(void *backup_extra_v) {
     int r = tokubackup_create_backup(srcs, dsts, 1,
                                      backup_extra->poll_fun,  backup_extra->poll_extra,
                                      backup_extra->error_fun, backup_extra->error_extra);
+    if (r!=backup_extra->expect_return_result) {
+        printf("%s:%d Got error %d, Expected %d\n", __FILE__, __LINE__, r, backup_extra->expect_return_result);
+    }
     assert(r==backup_extra->expect_return_result);
     if (backup_extra->src_dir) free(backup_extra->src_dir);
     if (backup_extra->dst_dir) free(backup_extra->dst_dir);

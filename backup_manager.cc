@@ -82,6 +82,7 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
     if (!m_session->directories_set()) {
         // TODO: Disambiguate between whether the source or destination string does not exist.
         calls.report_error(ENOENT, "Either of the given backup directories do not exist");
+        r = ENOENT;
         goto unlock_out;
     }
     
