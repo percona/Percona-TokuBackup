@@ -145,7 +145,7 @@ void finish_backup_thread(pthread_t thread) {
     int r = pthread_join(thread, &retval);
     assert(r==0);
     assert(retval!=NULL);
-    backup_thread_extra_t *extra = retval
+    backup_thread_extra_t *extra = static_cast<backup_thread_extra_t*>retval;
     delete(extra);
 }
 
