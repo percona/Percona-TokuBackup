@@ -23,6 +23,7 @@ private:
     backup_callbacks &m_calls;
     int copy_regular_file(const char *source, const char *dest, off_t file_size);
     int add_dir_entries_to_todo(DIR *dir, const char *file);
+    void cleanup(void);
 public:
     backup_copier(backup_callbacks &calls);
     void set_directories(const char *source, const char *dest);

@@ -114,9 +114,13 @@ int backup_copier::do_copy() {
         // Use n_done/n_files.   We need to do a better estimate involving n_bytes_copied/n_bytes_total
         // This one is very wrongu
         r = m_calls.poll((double)n_done/(double)(n_done+n_known), msg);
-        if (r != 0) goto out;
+        if (r != 0) {
+            goto out;
+        }
         m_todo.pop_back();
         r = this->copy_stripped_file(fname);
+        free((void*)fname);
+        fname = NULL;
         if(r != 0) {
             goto out;
         }
@@ -125,6 +129,7 @@ int backup_copier::do_copy() {
     }
 
 out:
+    this->cleanup();
     return r;
 }
 
@@ -405,7 +410,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
     }
 
 out:
-    delete buf;
+    delete[] buf;
     return r;
 }
 
@@ -449,4 +454,28 @@ int backup_copier::add_dir_entries_to_todo(DIR *dir, const char *file)
     
 out:
     return r;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// cleanup() -
+//
+// Description:
+//
+//     Frees any strings that are still allocated in our todo list.
+//
+// Notes:
+//
+//     This should only be called if there is no future copy work.
+//
+void backup_copier::cleanup(void) {
+    for(std::vector<char *>::size_type i = 0; i < m_todo.size(); ++i) {
+        char *file = m_todo[i];
+        if (file == NULL) {
+            continue;
+        }
+
+        free((void*)file);
+        m_todo[i] = NULL;
+    }
 }
