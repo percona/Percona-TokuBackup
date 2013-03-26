@@ -8,7 +8,7 @@ function(add_valgrind_tool_test tool test)
       NAME
         ${tool}/${test}
       COMMAND
-        valgrind --tool=${tool} --error-exitcode=1 $<TARGET_FILE:${test}>
+        valgrind --tool=${tool} --error-exitcode=1 $<TARGET_FILE:${test}> --testname ${test}.${tool}
       )
 endfunction(add_valgrind_tool_test)
 
@@ -28,7 +28,7 @@ set(glassboxtests
 foreach(test ${blackboxtests})
   add_executable(${test} ${test} backup_test_helpers)
   target_link_libraries(${test} HotBackup ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
-  add_test(${test} ${test})
+  add_test(${test} ${test} --testname ${test})
   add_valgrind_tool_test(helgrind ${test})
   add_valgrind_tool_test(drd ${test})
 endforeach(test)
@@ -36,7 +36,7 @@ endforeach(test)
 foreach(test ${glassboxtests})
   add_executable(${test} ${test} backup_test_helpers)
   target_link_libraries(${test} HotBackupGlassbox ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
-  add_test(${test} ${test})
+  add_test(${test} ${test} --testname ${test})
   add_valgrind_tool_test(helgrind ${test})
   add_valgrind_tool_test(drd ${test})
 endforeach(test)

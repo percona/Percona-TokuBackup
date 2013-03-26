@@ -138,12 +138,13 @@ static void copy_files(void) {
         pass();
     }
 
-    printf(": copy_files()\n");
+    cleanup_dirs();
     free(src);
     free(dst);
+    printf(": copy_files()\n");
 }
 
-int main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
     copy_files();
     return 0;
 }

@@ -14,8 +14,6 @@
 #include <vector>
 #include <dirent.h>
 
-class backup_manager; // need a forward reference for this.
-
 class backup_copier {
 private:
     const char *m_source;

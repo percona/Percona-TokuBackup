@@ -145,10 +145,13 @@ void finish_backup_thread(pthread_t thread) {
     free(retval);
 }
 
+static const char *test_name = NULL;
+
 char *get_dst(void) {
-    size_t size = strlen(BACKUP_NAME)+100;
+    assert(test_name);
+    size_t size = strlen(test_name)+100;
     char s[size];
-    int r = snprintf(s, sizeof(s), "%s.backup", BACKUP_NAME);
+    int r = snprintf(s, sizeof(s), "%s.backup", test_name);
     assert(r<(int)size);
     char *result = strdup(s);
     assert(result);
@@ -156,9 +159,10 @@ char *get_dst(void) {
 }
 
 char *get_src(void) {
-    size_t size = strlen(BACKUP_NAME)+100;
+    assert(test_name);
+    size_t size = strlen(test_name)+100;
     char s[size];
-    int r = snprintf(s, size, "%s.source", BACKUP_NAME);
+    int r = snprintf(s, size, "%s.source", test_name);
     assert(r<(int)size);
     char *result = strdup(s);
     assert(result);
@@ -187,4 +191,28 @@ void dummy_error(int error, const char *string, void *extra)
 unsigned long dummy_throttle(void)
 {
     return ULONG_MAX;
+}
+
+///
+int main (int argc, const char *argv[]) {
+    const char *new_argv[argc];
+    int  new_argc = 0;
+    int  argnum   = 0;
+
+    new_argv[new_argc++] = argv[argnum++];  // copy command
+
+    while (argnum < argc) {
+#define TESTNAME "--testname"
+        if (0==strcmp(argv[argnum], TESTNAME)) {
+            assert(argnum+1 < argc);
+            test_name = argv[argnum+1];
+            argnum+=2;
+        } else if (0==strncmp(argv[argnum], TESTNAME "=", sizeof(TESTNAME))) {
+            test_name = argv[argnum]+sizeof(TESTNAME);
+            argnum++;
+        } else {
+            new_argv[new_argc++] = argv[argnum];
+        }
+    }
+    return test_main(new_argc, new_argv);
 }

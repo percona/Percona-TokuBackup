@@ -65,9 +65,7 @@ void read_and_seek(void) {
     printf(": read_and_seek()\n");
 }
 
-const char *BACKUP_NAME = __FILE__;
-
-int main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
     read_and_seek();
     return 0;
 }

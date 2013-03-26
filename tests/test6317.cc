@@ -22,9 +22,7 @@ static void expect_error(int error_number, const char *error_string, void *error
     if (error_extra!=NULL)           { ok=false; fprintf(stderr, "%s:%d expect error_extra NULL\n", __FILE__, __LINE__); }
 }
     
-const char *BACKUP_NAME = __FILE__;
-
-int main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
     cleanup_dirs(); // remove destination dir
     setup_source();
     setup_dirs();
@@ -36,6 +34,7 @@ int main(int argc __attribute__((__unused__)), const char *argv[] __attribute__(
         ok=false;
         fprintf(stderr, "%s:%d expect error_count==1 but it is %d\n", __FILE__, __LINE__, error_count);
     }
+    cleanup_dirs();
     if (ok) {
         pass();
     } else {

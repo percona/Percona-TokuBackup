@@ -18,8 +18,6 @@
 const char * const WRITTEN_STR = "goodbye\n";
 const int WRITTEN_STR_LEN = 8;
 
-const char *BACKUP_NAME = __FILE__;
-
 //
 static int verify(void)
 {
@@ -61,7 +59,7 @@ static void open_write_close(void) {
     printf(": open_write_close()\n");
 }
 
-int main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
     open_write_close();
     return 0;
 }

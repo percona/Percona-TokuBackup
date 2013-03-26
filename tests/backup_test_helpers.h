@@ -46,7 +46,7 @@ int openf(int flags, int mode, const char *formatstring, ...)  __attribute__((fo
 char *get_src(void); // returns a malloc'd string for the source directory.  If you call twice you get two different strings.  Requires that the main program defined BACKUP_NAME to be something unique across tests.
 char *get_dst(void); // returns a malloc'd string for the destination directory.
 
-extern const char *BACKUP_NAME; // defined in main.
+extern int test_main(int, const char *[]); // user code calls this function.
 
 int dummy_poll(float, const char*, void*);
 void dummy_error(int, const char*, void*);

@@ -12,9 +12,6 @@
 #include "backup_test_helpers.h"
 #include "backup_internal.h"
 #include "backup_directory.h"
-const char * BACKUP_NAME = __FILE__;
-#include "test.h"
-
 
 #define LONG_DIR "/ThisIsALongDirectory/WithNothing/InIt/"
 
@@ -57,19 +54,22 @@ static int backup_sub_dirs(void) {
         assert(r<PATH_MAX);
     }
     int r = stat(dst_long_dir, &sb);
-    if (r) {
-        fail();
-    } else {
-        pass();
-    }
-
-    printf(": backup_sub_dirs()\n");
 
     if(source) free(source);
     if(destination) free(destination);
 
     free(src);
     free(dst);
+
+    if (r) {
+        fail();
+    } else {
+        pass();
+        cleanup_dirs();
+    }
+
+    printf(": backup_sub_dirs()\n");
+
     return r;
 }
 

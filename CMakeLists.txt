@@ -4,8 +4,11 @@ project(HotBackup)
 include(CTest)
 ##set(CMAKE_BUILD_TYPE Debug)
 
-set(CMAKE_C_FLAGS   "-Wall -Werror -Wextra -std=c99   ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "-Wall -Werror -Wextra -std=c++11 ${CMAKE_CXX_FLAGS}")
+#set(OPTFLAGS "-O3 -flto")
+set(OPTFLAGS "")
+
+set(CMAKE_C_FLAGS   "-Wall -Werror -Wextra -std=c99   ${OPTFLAGS} ${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "-Wall -Werror -Wextra -std=c++11 ${OPTFLAGS} ${CMAKE_CXX_FLAGS}")
 
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
@@ -75,6 +78,7 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
   add_space_separated_property(TARGET HotBackup COMPILE_FLAGS "-fvisibility=default -fvisibility-inlines-hidden")
   add_space_separated_property(TARGET HotBackup LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/export.map")
 endif ()
+add_space_separated_property(TARGET HotBackup LINK_FLAGS "${OPTFLAGS}")
 
 add_subdirectory(tests)
 

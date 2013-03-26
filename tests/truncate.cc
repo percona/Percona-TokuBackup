@@ -67,9 +67,7 @@ void test_truncate(void) {
     printf(": test_truncate()\n");
 }
 
-const char *BACKUP_NAME = __FILE__;
-
-int main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
     test_truncate();
     return 0;
 }
