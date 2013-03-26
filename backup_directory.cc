@@ -182,8 +182,6 @@ void create_subdirectories(const char*);
 void create_subdirectories(const char *path)
 {
     const char SLASH = '/';
-    
-    // TODO: Is this a memory leak?
     char *directory = strdup(path);
     char *next_slash = directory;
     ++next_slash;
@@ -233,6 +231,8 @@ void create_subdirectories(const char *path)
         // past recently found slash, and repeat.
         ++next_slash;
     }
+    
+    free((void*)directory);
 }
 
 
