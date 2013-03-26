@@ -141,7 +141,7 @@ void start_backup_thread(pthread_t *thread) {
 
 
 void finish_backup_thread(pthread_t thread) {
-    void *retval;
+    backup_thread_extra_t *retval;
     int r = pthread_join(thread, &retval);
     assert(r==0);
     assert(retval!=NULL);
