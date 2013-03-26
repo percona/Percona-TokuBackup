@@ -72,6 +72,7 @@ backup_session::backup_session(const char* source, const char *dest, backup_call
     // TODO: assert that the destination directory is empty.
     m_source_dir = realpath(source, NULL);
     m_dest_dir = realpath(dest, NULL);
+    m_copier.set_directories(m_source_dir, m_dest_dir);
 }
 
 
@@ -86,13 +87,15 @@ backup_session::~backup_session()
     if(m_dest_dir) {
         free((void*)m_dest_dir);
     }
+    
+    // TODO: Cleanup copier?
 }
 
 //////////////////////////////////////////////////////////////////////////////
 //
 int backup_session::do_copy()
 {
-    print_time("Toku Hot Backup: Started:");
+    print_time("Toku Hot Backup: Started:");    
     int r = m_copier.do_copy();
     print_time("Toku Hot Backup: Finished:");
     return r;
