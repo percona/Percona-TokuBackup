@@ -43,7 +43,8 @@ void test_truncate(void) {
     }
     const int SIZE = 20;
     char buf_source[SIZE];
-    result = pread(fd, buf_source, 20, 0);
+    size_t src_n_read = pread(fd, buf_source, SIZE, 0);
+    assert(src_n_read==6);
 
     finish_backup_thread(thread);
 
@@ -53,8 +54,9 @@ void test_truncate(void) {
     assert(backup_fd>=0);
     free(dst);
     char buf_copy[SIZE];
-    result = read(backup_fd, buf_copy, SIZE);
-    result = strcmp(buf_source, buf_copy);
+    size_t dst_n_read = read(backup_fd, buf_copy, SIZE);
+    assert(dst_n_read==6);
+    result = memcmp(buf_source, buf_copy, src_n_read);
 
     if (result != 0) { 
         fail();
