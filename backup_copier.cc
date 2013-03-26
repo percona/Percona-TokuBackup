@@ -211,7 +211,7 @@ int backup_copier::copy_full_path(const char *source,
             int mkdir_errno = errno;
             if(mkdir_errno != EEXIST) {
                 char string[1000];
-                snprintf(string, sizeof(string), "error mkdir(\"%s\"), errno=%d (%s)", dest, mkdir_errno, strerror(mkdir_errno));
+                snprintf(string, sizeof(string), "error mkdir(\"%s\"), errno=%d (%s) at %s:%de", dest, mkdir_errno, strerror(mkdir_errno), __FILE__, __LINE__);
                 m_calls.report_error(mkdir_errno, string);
                 goto out;
             }
@@ -368,7 +368,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
             if(n_wrote_now < 0) {
                 r = errno;
                 char string[1000];
-                snprintf(string, sizeof(string), "errno=%d (%s) Writing destination file %s", r, strerror(r), dest_path);
+                snprintf(string, sizeof(string), "error write to %s, errno=%d (%s) at %s:%d", dest_path, r, strerror(r), __FILE__, __LINE__);
                 m_calls.report_error(r, string);
                 goto out;
             }
