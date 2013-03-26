@@ -145,7 +145,7 @@ void finish_backup_thread(pthread_t thread) {
     int r = pthread_join(thread, &retval);
     assert(r==0);
     assert(retval!=NULL);
-    free(retval);
+    delete(retval);
 }
 
 static const char *test_name = NULL;
