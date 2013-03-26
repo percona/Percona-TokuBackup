@@ -45,6 +45,7 @@ static int backup_sub_dirs(void) {
 
     *temp = 0;
     create_subdirectories(newpath);
+    free(newpath);
 
     // Verify:
     struct stat sb;
