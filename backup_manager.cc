@@ -142,8 +142,8 @@ int backup_manager::prepare_directories_for_backup(backup_session &session)
 
         char * file_name = session.translate_prefix(source_path);
         file->prepare_for_backup(file_name);
-        free(file_name);
         int r = open_path(file_name);
+        free(file_name);
         if (r != 0) {
             // TODO: Could not open path, abort backup.
             session.abort();
