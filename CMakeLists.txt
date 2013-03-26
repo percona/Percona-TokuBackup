@@ -80,7 +80,10 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
 endif ()
 add_space_separated_property(TARGET HotBackup LINK_FLAGS "${OPTFLAGS}")
 
+# INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/../tokudb
+
 add_subdirectory(tests)
+add_subdirectory(db-benchmark-test)
 
 install(TARGETS HotBackup          DESTINATION lib)
 install(TARGETS HotBackupCommunity DESTINATION lib)
