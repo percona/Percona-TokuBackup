@@ -25,15 +25,77 @@ static void print_time(const char *toku_string) {
     fprintf(stderr, "%s %s\n", toku_string, buf);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////
 //
-// backup_directory():
+//backup_callbacks::backup_callbacks(backup_poll_fun_t poll_fun, 
+//                                   void *poll_extra, 
+//                                   backup_error_fun_t error_fun, 
+//                                   void *error_extra,
+//                                   backup_throttle_fun_t throttle_fun)
+//: m_poll_function(poll_fun), 
+//m_poll_extra(poll_extra), 
+//m_error_function(error_fun), 
+//m_error_extra(error_extra),
+//m_throttle_function(throttle_fun)
+//{}
 //
-// Description: 
+////////////////////////////////////////////////////////////////////////////////
+////
+//int backup_callbacks::poll(float progress, const char *progress_string)
+//{
+//    int r = 0;
+//    r = m_poll_function(progress, progress_string, m_poll_extra);
+//    return r;
+//}
 //
-backup_directory::backup_directory()
-: m_source_dir(NULL), m_dest_dir(NULL)
+////////////////////////////////////////////////////////////////////////////////
+////
+//void backup_callbacks::report_error(int error_number, const char *error_str)
+//{
+//    m_error_function(error_number, error_str, m_error_extra);
+//}
+//
+////////////////////////////////////////////////////////////////////////////////
+////
+//unsigned long backup_callbacks::get_throttle(void)
+//{
+//    return m_throttle_function();
+//}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+backup_session::backup_session(const char* source, const char *dest, backup_callbacks &calls)
+: m_source_dir(NULL), m_dest_dir(NULL), m_copier(calls)
 {
+    // TODO: assert that the directory's are not the same.
+    // TODO: assert that the destination directory is empty.
+    m_source_dir = realpath(source, NULL);
+    m_dest_dir = realpath(dest, NULL);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+//
+backup_session::~backup_session()
+{
+    if(m_source_dir) {
+        free((void*)m_source_dir);
+    }
+
+    if(m_dest_dir) {
+        free((void*)m_dest_dir);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+int backup_session::do_copy()
+{
+    print_time("Toku Hot Backup: Started:");
+    int r = m_copier.do_copy();
+    print_time("Toku Hot Backup: Finished:");
+    return r;
 }
 
 
@@ -46,7 +108,7 @@ backup_directory::backup_directory()
 //     Determines if the source and destination directories have been
 // set for this backup_directory object.
 //
-bool backup_directory::directories_set()
+bool backup_session::directories_set()
 {
     if (m_dest_dir && m_source_dir) {
         return true;
@@ -64,7 +126,7 @@ bool backup_directory::directories_set()
 //     Determines if the given file name is within our source
 // directory or not.
 //
-bool backup_directory::is_prefix(const char *file)
+bool backup_session::is_prefix(const char *file)
 {
     char absfile[PATH_MAX+1];
     realpath(file, absfile);
@@ -83,14 +145,16 @@ bool backup_directory::is_prefix(const char *file)
 //
 //     Creates backup path for given file if it doesn't exist already.
 //
-int backup_directory::open_path(const char *file_path)
+static int does_file_exist(const char*);
+static void create_subdirectories(const char*);
+int open_path(const char *file_path)
 {    
     int r = 0;
     // See if the file exists in the backup copy already...
-    int exists = this->does_file_exist(file_path);
+    int exists = does_file_exist(file_path);
     
     if (exists == 0) {
-        this->create_subdirectories(file_path);
+        create_subdirectories(file_path);
     }
     
     if(exists == -1) {
@@ -110,7 +174,7 @@ int backup_directory::open_path(const char *file_path)
 //     Recursively creates all the backup subdirectories 
 // required for the given path.
 //
-void backup_directory::create_subdirectories(const char *path)
+static void create_subdirectories(const char *path)
 {
     const char SLASH = '/';
     
@@ -173,7 +237,7 @@ void backup_directory::create_subdirectories(const char *path)
 //
 // Description: 
 //
-char* backup_directory::translate_prefix(const char *file)
+char* backup_session::translate_prefix(const char *file)
 {
     char absfile[PATH_MAX+1];
     realpath(file, absfile);
@@ -199,7 +263,7 @@ char* backup_directory::translate_prefix(const char *file)
 //
 // Description:
 //
-int backup_directory::does_file_exist(const char *file)
+static int does_file_exist(const char *file)
 {
     int result = 0;
     struct stat sb;
@@ -215,10 +279,55 @@ int backup_directory::does_file_exist(const char *file)
     } else {
         result = 1;
     }
-    
+
     return result;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//
+char * backup_session::capture_open(const char *file)
+{
+    char *backup_file_name = NULL;
+    if(!this->is_prefix(file)) {
+        return NULL;
+    }
+    
+    backup_file_name = this->translate_prefix(file);
+    int r = open_path(backup_file_name);
+    if (r != 0) {
+        // TODO: open path error, abort backup.
+        this->abort();
+        free((void*)backup_file_name);
+        backup_file_name = NULL;
+    }
+    
+    return backup_file_name;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+char * backup_session::capture_create(const char *file)
+{
+    return this->capture_open(file);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+void backup_session::capture_mkdir(const char *pathname)
+{
+    if(!this->is_prefix(pathname)) {
+        return;
+    }
+
+    char *backup_directory_name = this->translate_prefix(pathname);
+    int r = open_path(backup_directory_name);
+    if (r != 0) {
+        // TODO: Stop backup.
+        this->abort();
+    }
+    
+    free((void*)backup_directory_name);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -227,79 +336,26 @@ int backup_directory::does_file_exist(const char *file)
 // Description: 
 // Note: source and dest are copied (so the caller may free them immediately or otherwise reuse the strings).
 //
-int backup_directory::set_directories(const char *source, const char *dest,
-                                      backup_poll_fun_t poll_fun __attribute__((unused)), void *poll_extra __attribute__((unused)),
-                                      backup_error_fun_t error_fun, void *error_extra)
-{
-    m_source_dir = realpath(source, NULL);
-    m_dest_dir =   realpath(dest,   NULL);
-    if (m_source_dir==NULL) {
-        char string[1000];
-        snprintf(string, sizeof(string), "Source directory %s does not exist", source);
-        error_fun(ENOENT, string, error_extra);
-        return ENOENT;
-    }
-    if (m_dest_dir==NULL) {
-        free((void*)m_source_dir);
-        m_source_dir = NULL;
-        char string[1000];
-        snprintf(string, sizeof(string), "Destination directory %s does not exist", dest);
-        error_fun(ENOENT, string, error_extra);
-        return ENOENT;
-    }
-    return 0;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-//
-int backup_directory::set_source_directory(const char *source)
-{
-    int r = 0;
-    // NOTE: This allocates new memory for the fully resolved path.
-    m_source_dir = realpath(source, NULL);
-
-    // TODO: Return an error if realpath returns an error.
-    return r;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-//
-int backup_directory::set_destination_directory(const char *destination)
-{
-    int r = 0;
-    // NOTE: This allocates new memory for the fully resolved path.
-    m_dest_dir = realpath(destination, NULL);
-    // TODO: Return an error if realpath returns an error.
-    return r;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-//
-// start_copy():
-//
-// Description: 
-//
-//     Copies all files and subdirectories to the destination.
-//
-int backup_directory::do_copy(backup_manager *manager, backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) {
-    m_copier.set_directories(m_source_dir, m_dest_dir);
-    print_time("Toku Hot Backup: Started:");
-    int r = m_copier.do_copy(manager, poll_fun, poll_extra, error_fun, error_extra);
-    print_time("Toku Hot Backup: Finished:");
-    return r;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-//
-void backup_directory::abort_copy(void)
-{
-    // Stop copy thread.
-    pthread_cancel(m_thread);
-    int r = pthread_join(m_thread, NULL);
-    if (r) {
-        perror("Toku Hot Backup: pthread error: ");
-    }
-
-    // TODO: Clean up copier.        
-}
+//int backup_directory::set_directories(const char *source, const char *dest,
+//                                      backup_poll_fun_t poll_fun __attribute__((unused)), void *poll_extra __attribute__((unused)),
+//                                      backup_error_fun_t error_fun, void *error_extra)
+//{
+//    m_source_dir = realpath(source, NULL);
+//    m_dest_dir =   realpath(dest,   NULL);
+//    if (m_source_dir==NULL) {
+//        char string[1000];
+//        snprintf(string, sizeof(string), "Source directory %s does not exist", source);
+//        error_fun(ENOENT, string, error_extra);
+//        return ENOENT;
+//    }
+//    if (m_dest_dir==NULL) {
+//        free((void*)m_source_dir);
+//        m_source_dir = NULL;
+//        char string[1000];
+//        snprintf(string, sizeof(string), "Destination directory %s does not exist", dest);
+//        error_fun(ENOENT, string, error_extra);
+//        return ENOENT;
+//    }
+//    return 0;
+//}
 

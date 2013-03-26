@@ -15,7 +15,7 @@ extern "C"{
 #include <dlfcn.h>
 #include <stdarg.h>
 
-#include "backup.h"
+#include "backup_internal.h"
 #include "backup_manager.h"
 #include "real_syscalls.h"
 #include "backup_debug.h"
@@ -271,12 +271,25 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
             error_fun(EINVAL, "One of the destination directories is NULL", error_extra);
             return EINVAL;
         }
-        int r = manager.add_directory(source_dirs[i], dest_dirs[i], poll_fun, poll_extra, error_fun, error_extra);
-        if (r!=0) return r;
+        //int r = manager.add_directory(source_dirs[i], dest_dirs[i], poll_fun, poll_extra, error_fun, error_extra);
+        //if (r!=0) return r;
     }
-    return manager.do_backup(poll_fun, poll_extra, error_fun, error_extra);
+
+    backup_callbacks calls(poll_fun, poll_extra, error_fun, error_extra, &get_throttle);
+    return manager.do_backup(source_dirs[0], dest_dirs[0], calls);
 }
 
 extern "C" void tokubackup_throttle_backup(unsigned long bytes_per_second) {
     manager.set_throttle(bytes_per_second);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// Description:
+//
+//     Callback used during a backup session to get current throttle level.
+//
+extern "C" unsigned long get_throttle(void)
+{
+    return manager.get_throttle();
 }

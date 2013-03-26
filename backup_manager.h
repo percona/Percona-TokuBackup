@@ -20,19 +20,18 @@ private:
     bool m_doing_backup;
     bool m_doing_copy;
 
-    // TODO: Make this an array or vector of directories.
-    backup_directory m_dir;
     file_descriptor_map m_map;
     pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
-    int m_capture_error;
-    
+
+    backup_session *m_session;
+    // TODO: use reader/writer lock:
+    pthread_mutex_t m_session_mutex;
+
     volatile unsigned long m_throttle;
 
 public:
     backup_manager();
-    int do_backup(backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) __attribute__((warn_unused_result));
-    int add_directory(const char *source_dir, const char *dest_dir,
-                      backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra)  __attribute__((warn_unused_result));
+    int do_backup(const char *source, const char *dest, backup_callbacks calls);
 
     // Methods used during interposition:
     void create(int fd, const char *file);
@@ -51,8 +50,7 @@ public:
     unsigned long get_throttle(void);                 // This is thread-safe.
 
 private:
-    backup_directory* get_directory(int fd);
-    backup_directory* get_directory(const char *file);
+    int prepare_directories_for_backup(backup_session &session);
 };
 
 #endif // End of header guardian.

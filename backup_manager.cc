@@ -28,6 +28,7 @@
 #define ERROR(string, arg) 
 #endif
 
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // backup_manager() -
@@ -39,10 +40,12 @@
 backup_manager::backup_manager() 
     : m_doing_backup(false),
       m_doing_copy(true), // <CER> Set to false to turn off copy, for debugging purposes.
-      m_capture_error(0),
+      m_session(NULL),
       m_throttle(ULONG_MAX)
 {
     int r = pthread_mutex_init(&m_mutex, NULL);
+    assert(r == 0);
+    r = pthread_mutex_init(&m_session_mutex, NULL);
     assert(r == 0);
 }
 
@@ -53,30 +56,76 @@ backup_manager::backup_manager()
 //
 // Description: 
 //
-//     Turns ON boolean flags for both backup and the interpretation
-// of writes.
+//     
 //
-int backup_manager::do_backup(backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra) {
-    int r;
-    {
-        r = poll_fun(0, "Preparing backup", poll_extra);
-        if (r!=0) {
-            error_fun(r, "User aborted backup", error_extra);
-            goto error_out;
-        }
+int backup_manager::do_backup(const char *source, const char *dest, backup_callbacks calls) {
+    
+    int r = calls.poll(0, "Preparing backup");
+    if (r != 0) {
+        calls.report_error(r, "User aborted backup");
+        goto error_out;
     }
 
     r = pthread_mutex_trylock(&m_mutex);
     if (r != 0) {
         if (r==EBUSY) {
-            error_fun(r, "Another backup is in progress.", error_extra);
+            calls.report_error(r, "Another backup is in progress.");
             goto error_out;
         }
         goto error_out;
     }
     
-    // TODO: Assert that the directories have been set.
+    pthread_mutex_lock(&m_session_mutex);
+    m_session = new backup_session(source, dest, calls);
+    pthread_mutex_unlock(&m_session_mutex);
+
+    if (!m_session->directories_set()) {
+        // TODO: Disambiguate between whether the source or destination string does not exist.
+        calls.report_error(ENOENT, "Either of the given backup directories do not exist");
+        goto unlock_out;
+    }
     
+    r = this->prepare_directories_for_backup(*m_session);
+    if (r != 0) {
+        goto unlock_out;
+    }
+
+    r = m_session->do_copy();    
+    if (r != 0) {
+        // This means we couldn't start the copy thread (ex: pthread error).
+        goto unlock_out;
+    }
+
+    // TODO: Print the current time after CAPTURE has been disabled.
+
+unlock_out:
+
+    pthread_mutex_lock(&m_session_mutex);
+    delete m_session;
+    m_session = NULL;
+    pthread_mutex_unlock(&m_session_mutex);
+
+    {
+        int pthread_error = pthread_mutex_unlock(&m_mutex);
+        if (pthread_error != 0) {
+            // TODO: Should there be a way to disable backup permanently in this case?
+            calls.report_error(pthread_error, "pthread_mutex_unlock failed.  Backup system is probably broken");
+            if (r != 0) {
+                r = pthread_error;
+            }
+        }
+    }
+
+error_out:
+    return r;
+}
+
+int open_path(const char *file_path);
+///////////////////////////////////////////////////////////////////////////////
+//
+int backup_manager::prepare_directories_for_backup(backup_session &session)
+{
+    int r = 0;
     // Loop through all the current file descriptions and prepare them
     // for backup.
     for (int i = 0; i < m_map.size(); ++i) {
@@ -86,70 +135,29 @@ int backup_manager::do_backup(backup_poll_fun_t poll_fun, void *poll_extra, back
         }
         
         const char * source_path = file->get_full_source_name();
-        if (!m_dir.is_prefix(source_path)) {
+        if (!session.is_prefix(source_path)) {
             continue;
         }
 
-        const char * file_name = m_dir.translate_prefix(source_path);
+        const char * file_name = session.translate_prefix(source_path);
         file->prepare_for_backup(file_name);
-        int r = m_dir.open_path(file_name);
+        int r = open_path(file_name);
         if (r != 0) {
             // TODO: Could not open path, abort backup.
+            session.abort();
+            goto out;
         }
 
         r = file->create();
         if (r != 0) {
             // TODO: Could not create the file, abort backup.
+            session.abort();
+            goto out;
         }
     }
     
-    // NOTE: This boolean is for testing.
-    r = m_dir.do_copy(this, poll_fun, poll_extra, error_fun, error_extra);
-    
-    if (r != 0) {
-        // This means we couldn't start the copy thread (ex: pthread error).
-        goto unlock_out;
-    }
-
-    // TODO: Print the current time after CAPTURE has been disabled.
-
-unlock_out:
-    {
-        int pthread_error = pthread_mutex_unlock(&m_mutex);
-        if (pthread_error != 0) {
-            // TODO: Should there be a way to disable backup permanently in this case?
-            error_fun(pthread_error, "pthread_mutex_unlock failed.  Backup system is probably broken", error_extra);
-            if (r!=0) r = pthread_error;
-        }
-    }
-
-error_out:
+out:
     return r;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// add_directory() -
-//
-// Description: 
-//
-//     Adds the given source directory to our set of directories
-// to backup.  This also uses the given destination argument as
-// the top level of our backup directory.  All files underneath
-// each directory tree should match once the backup is complete.
-//
-int backup_manager::add_directory(const char *source_dir,
-                                  const char *dest_dir,
-                                  backup_poll_fun_t poll_fun, void *poll_extra, backup_error_fun_t error_fun, void *error_extra)
-{
-    assert(source_dir);
-    assert(dest_dir);
-
-    // TODO: assert that the directory's are not the same.
-    // TODO: assert that the destination directory is empty.
-    // TEMP: We only have one directory object at this point, for now...
-    return m_dir.set_directories(source_dir, dest_dir, poll_fun, poll_extra, error_fun, error_extra);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -168,29 +176,24 @@ void backup_manager::create(int fd, const char *file)
     m_map.put(fd);
     file_description *description = m_map.get(fd);
     description->set_full_source_name(file);
+    
+    pthread_mutex_lock(&m_session_mutex);
+    
+    if (m_session != NULL) {
+        char *backup_file_name = m_session->capture_create(file);
+        if (backup_file_name != NULL) {
+            description->prepare_for_backup(backup_file_name);
+            int r = description->create();
+            if(r != 0) {
+                // TODO: abort backup, creation of backup file failed.
+                m_session->abort();
+            }
 
-    // If this file is not in the path of our source dir, don't create it.
-    backup_directory *directory = this->get_directory(file);
-    if (directory == NULL) {
-        return;
+            free((void*)backup_file_name);
+        }
     }
     
-    // If we aren't doing backup, don't bother creating the backup copy.
-    if (!m_doing_backup) {
-        return;
-    }
-
-    char *backup_file_name = directory->translate_prefix(file);
-    int r = directory->open_path(backup_file_name);
-    if(r != 0) {
-        // TODO: open path error, abort backup.
-    }
-
-    description->prepare_for_backup(backup_file_name);
-    r = description->create();
-    if(r != 0) {
-        // TODO: abort backup, creation of backup file failed.
-    }
+    pthread_mutex_unlock(&m_session_mutex);
 }
 
 
@@ -212,30 +215,26 @@ void backup_manager::open(int fd, const char *file, int oflag)
     m_map.put(fd);
     file_description *description = m_map.get(fd);
     description->set_full_source_name(file);
+    
+    pthread_mutex_lock(&m_session_mutex);
 
-    // If this file is not in the path of our source dir, don't open it.
-    backup_directory *directory = this->get_directory(file);
-    if (directory == NULL) {
-        return;
+    if(m_session != NULL) {
+        char *backup_file_name = m_session->capture_open(file);
+        if(backup_file_name != NULL) {
+            description->prepare_for_backup(backup_file_name);
+            int r = description->open();
+            if(r != 0) {
+                // TODO: abort backup, open failed.
+                m_session->abort();
+            }
+            
+            free((void*)backup_file_name);
+        }
     }
 
-    // If we aren't doing backup don't bother opening the backup copy.    
-    if (!m_doing_backup) {
-        return;
-    }
+    pthread_mutex_unlock(&m_session_mutex);
 
-    char *backup_file_name = directory->translate_prefix(file);
-    int r = directory->open_path(backup_file_name);
-    if(r != 0) {
-        // TODO: open path error, abort backup.
-    }
-
-    description->prepare_for_backup(backup_file_name);
-    r = description->open();
-    if(r != 0) {
-        // TODO: abort backup, open failed.
-    }
-
+    // TODO: Remove this dead code.
     oflag++;
 }
 
@@ -429,64 +428,23 @@ void backup_manager::truncate(const char *path, off_t length)
 //
 void backup_manager::mkdir(const char *pathname)
 {
-    backup_directory *directory = this->get_directory(pathname);
-    if (directory == NULL) {
-        return;
+    pthread_mutex_lock(&m_session_mutex);
+    if(m_session != NULL) {
+        m_session->capture_mkdir(pathname);
     }
 
-    TRACE("entering mkdir() for:", pathname); 
-    char *backup_directory_name = directory->translate_prefix(pathname);
-    int r = directory->open_path(backup_directory_name);
-    if(r != 0) {
-        // TODO: open path error, abort backup.
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// get_directory() -
-//
-// Description: 
-//
-//     TODO: When there are multiple directories, this method
-// will use the given file descriptor to return the backup
-// directory associated with that file descriptor.
-//
-backup_directory* backup_manager::get_directory(int fd)
-{
-    fd++;
-    return &m_dir;
+    pthread_mutex_unlock(&m_session_mutex);
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// get_directory() -
-//
-// Description: 
-//
-//     TODO: Needs to change for multiple directories.
-//
-backup_directory* backup_manager::get_directory(const char *file)
-{
-    //TODO: Add relevant tracing.
-    if (!m_dir.directories_set())
-    {
-        return NULL;
-    }
-    
-    // See if file is in backup directory or not...
-    if (!m_dir.is_prefix(file)) {
-        return NULL;
-    }
-    
-    return &m_dir;
-}
-
 void backup_manager::set_throttle(unsigned long bytes_per_second) {
     __atomic_store(&m_throttle, &bytes_per_second, __ATOMIC_SEQ_CST); // sequential consistency is probably too much, but this isn't called often
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//
 unsigned long backup_manager::get_throttle(void) {
     unsigned long ret;
     __atomic_load(&m_throttle, &ret, __ATOMIC_SEQ_CST);
