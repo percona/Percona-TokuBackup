@@ -214,5 +214,6 @@ int main (int argc, const char *argv[]) {
             new_argv[new_argc++] = argv[argnum];
         }
     }
+    if (test_name==NULL) test_name=argv[0]; // make the function work with no arguments.
     return test_main(new_argc, new_argv);
 }
