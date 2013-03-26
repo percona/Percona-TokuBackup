@@ -28,6 +28,28 @@ file_descriptor_map::file_descriptor_map()
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// ~file_descriptor_map():
+//
+// Description: 
+//
+//     Destructor.
+//
+file_descriptor_map::~file_descriptor_map()
+{
+    for(std::vector<file_description *>::size_type i = 0; i < m_map.size(); ++i)
+    {
+        file_description *file = m_map[i];
+        if (file == NULL) {
+            continue;
+        }
+        
+        delete file;
+        m_map[i] = NULL;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // get():
 //
 // Description: 

@@ -18,6 +18,7 @@ private:
     std::vector<file_description *> m_map;
 public:
     file_descriptor_map();
+    ~file_descriptor_map();
     file_description* get(int fd);
     file_description* put(int fd); // create a file description, put it in the map, and return it.
     void erase(int fd);
