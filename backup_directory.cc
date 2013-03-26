@@ -131,11 +131,17 @@ bool backup_session::directories_set()
 //
 bool backup_session::is_prefix(const char *file)
 {
-    char absfile[PATH_MAX+1];
-    realpath(file, absfile);
+    // mallocing this to make memcheck happy.  I don't like the extra malloc, but I'm more worried about testability than speed right now. -Bradley
+    char *absfile = realpath(file, NULL);
     for (int i = 0; true; i++) {
-        if (m_source_dir[i] == 0) return true;
-        if (m_source_dir[i] != absfile[i]) return false;
+        if (m_source_dir[i] == 0) {
+            free(absfile);
+            return true;
+        }
+        if (m_source_dir[i] != absfile[i]) {
+            free(absfile);
+            return false;
+        }
     }
 }
 
@@ -244,8 +250,7 @@ void create_subdirectories(const char *path)
 //
 char* backup_session::translate_prefix(const char *file)
 {
-    char absfile[PATH_MAX+1];
-    realpath(file, absfile);
+    char *absfile = realpath(file, NULL);
 
     // TODO: Should we have a copy of these lengths already?
     size_t len_op = strlen(m_source_dir);
@@ -258,6 +263,7 @@ char* backup_session::translate_prefix(const char *file)
     
     // Copy the file name from the directory with the newline at the end.
     memcpy(new_string + len_np, absfile + len_op, len_s - len_op + 1);
+    free(absfile);
     return new_string;
 }
 

@@ -43,10 +43,14 @@ int systemf(const char *formatstring, ...) {
 int openf(int flags, int mode, const char *formatstring, ...) {
     va_list ap;
     va_start(ap, formatstring);
-    char string[PATH_MAX];
-    int r = vsnprintf(string, sizeof(string), formatstring, ap);
-    assert(r<=(int)sizeof(string));
-    return open(string, flags, mode);
+    char *string  = (char*)malloc(PATH_MAX);
+    {
+        int r = vsnprintf(string, PATH_MAX, formatstring, ap);
+        assert(r<=PATH_MAX);
+    }
+    int r = open(string, flags, mode);
+    free(string);
+    return r;
 }
 
 void setup_destination(void) {
