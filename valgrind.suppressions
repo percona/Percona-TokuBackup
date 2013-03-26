@@ -1,0 +1,7 @@
+{
+   dlsym_leaks_are_ok
+   Memcheck:Leak
+   fun:calloc
+   fun:_dlerror_run
+   fun:dlsym
+}
