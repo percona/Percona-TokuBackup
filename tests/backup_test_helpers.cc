@@ -141,11 +141,12 @@ void start_backup_thread(pthread_t *thread) {
 
 
 void finish_backup_thread(pthread_t thread) {
-    backup_thread_extra_t *retval;
+    void *retval;
     int r = pthread_join(thread, &retval);
     assert(r==0);
     assert(retval!=NULL);
-    delete(retval);
+    backup_thread_extra_t *extra = retval
+    delete(extra);
 }
 
 static const char *test_name = NULL;
