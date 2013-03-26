@@ -15,9 +15,9 @@ int systemf(const char formatstring, ...); // Effect: run system on the snprintf
 
 void pass(void);
 void fail(void);
-void setup_destination(void);   // Make the destination be an empty directory.
-void setup_source(void);
-void setup_dirs(void);
+void setup_destination(void);   // Make the destination be an empty directory (delete first if needed).
+void setup_source(void); // make an empty source dir (delete first if needed).
+void setup_dirs(void); // fill in data in source.
 void cleanup_dirs(void);
 void read_and_seek(void);
 void test_truncate(void);

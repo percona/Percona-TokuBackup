@@ -18,6 +18,7 @@ set(blackboxtests
   read_and_seek
   test6317
   test6317b
+  test6361
   )
 
 set(glassboxtests
