@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.8)
 project(HotBackup)
 
 include(CTest)
-set(CMAKE_BUILD_TYPE Debug)
+##set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_C_FLAGS   "-Wall -Werror -Wextra -std=c99   ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "-Wall -Werror -Wextra -std=c++11 ${CMAKE_CXX_FLAGS}")
