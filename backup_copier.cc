@@ -348,7 +348,9 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
     while (1) {
                 
         ssize_t n_read = call_real_read(srcfd, buf, buf_size);
-        if(n_read < 0) {
+        if (n_read == 0) {
+            break;
+        } else if (n_read < 0) {
             r = -1;
             goto out;
         }

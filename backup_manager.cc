@@ -7,15 +7,16 @@
 #include "real_syscalls.h"
 #include "backup_debug.h"
 
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <assert.h>
-#include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CaptureWarn(string, arg)
@@ -38,7 +39,8 @@
 backup_manager::backup_manager() 
     : m_doing_backup(false),
       m_doing_copy(true), // <CER> Set to false to turn off copy, for debugging purposes.
-      m_capture_error(0)
+      m_capture_error(0),
+      m_throttle(ULONG_MAX)
 {
     int r = pthread_mutex_init(&m_mutex, NULL);
     assert(r == 0);
