@@ -146,7 +146,7 @@ bool backup_session::is_prefix(const char *file)
 //     Creates backup path for given file if it doesn't exist already.
 //
 static int does_file_exist(const char*);
-static void create_subdirectories(const char*);
+void create_subdirectories(const char*);
 int open_path(const char *file_path);
 int open_path(const char *file_path)
 {    
@@ -175,7 +175,8 @@ int open_path(const char *file_path)
 //     Recursively creates all the backup subdirectories 
 // required for the given path.
 //
-static void create_subdirectories(const char *path)
+void create_subdirectories(const char*);
+void create_subdirectories(const char *path)
 {
     const char SLASH = '/';
     

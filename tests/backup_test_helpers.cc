@@ -11,7 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "backup_test_helpers.h"
-#include "backup.h"
+#include "backup_internal.h"
+#include "backup_callbacks.h"
 
 const char * const DEFAULT_TERM = "\033[0m";
 const char * const RED_TERM = "\033[31m";
@@ -162,4 +163,28 @@ char *get_src(void) {
     char *result = strdup(s);
     assert(result);
     return result;
+}
+
+//////////////////////////////////////////////////////////////////
+//
+// Dummy callbacks:
+//
+int dummy_poll(float progress, const char *string, void *extra)
+{
+    if(extra)
+    progress++;
+    string++;
+    return 0;
+}
+
+void dummy_error(int error, const char *string, void *extra)
+{
+    if(extra)
+    error++;
+    string++;
+}
+
+unsigned long dummy_throttle(void)
+{
+    return 1;
 }

@@ -48,4 +48,8 @@ char *get_dst(void); // returns a malloc'd string for the destination directory.
 
 extern const char *BACKUP_NAME; // defined in main.
 
+int dummy_poll(float, const char*, void*);
+void dummy_error(int, const char*, void*);
+unsigned long dummy_throttle(void);
+
 #endif // End of header guardian.

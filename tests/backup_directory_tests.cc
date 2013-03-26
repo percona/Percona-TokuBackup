@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 
 #include "backup_test_helpers.h"
-#include "backup.h"
+#include "backup_internal.h"
 #include "backup_directory.h"
 const char * BACKUP_NAME = __FILE__;
 #include "test.h"
@@ -47,12 +47,7 @@ static int backup_sub_dirs(void) {
     }
 
     *temp = 0;
-    backup_directory dir;
-    {
-        int r = dir.set_directories(source, destination, simple_poll_fun, NULL, NULL, NULL);
-        assert(r==0);
-    }
-    dir.create_subdirectories(newpath);
+    create_subdirectories(newpath);
 
     // Verify:
     struct stat sb;

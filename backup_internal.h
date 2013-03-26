@@ -13,4 +13,7 @@ extern "C" {
     unsigned long get_throttle(void);
 }
 
+void create_subdirectories(const char*);
+
+
 #endif // end of header guardian.
