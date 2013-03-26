@@ -193,7 +193,13 @@ int backup_copier::copy_full_path(const char *source,
     int r = 0;
     struct stat sbuf;
     r = stat(source, &sbuf);
-    // TODO: check return value.
+    if (r!=0) {
+        r = errno;
+        char string[10000];
+        snprintf(string, sizeof(string), "error stat(\"%s\"), errno=%d (%s)", dest, r, strerror(r));
+        m_calls.report_error(errno, string);
+        goto out;
+    }
     
     // See if the source path is a directory or a real file.
     if (S_ISREG(sbuf.st_mode)) {
