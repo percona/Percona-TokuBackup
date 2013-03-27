@@ -16,6 +16,7 @@ set(blackboxtests
   open_write_close
   truncate
   read_and_seek
+  test6128
   test6317
   test6317b
   test6361

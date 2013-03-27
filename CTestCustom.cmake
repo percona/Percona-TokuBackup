@@ -1,5 +1,15 @@
 # Don't run helgrind and drd when we are running valgrind
-foreach(test backup_directory_tests copy_files open_write_close truncate read_and_seek test6317 test6317b test6361)
+foreach(test 
+ backup_directory_tests
+ copy_files
+ open_write_close
+ truncate
+ read_and_seek
+ test6128
+ test6317
+ test6317b
+ test6361
+)
     list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE
       helgrind/${test}
       drd/${test}
