@@ -84,16 +84,17 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
     
     r = this->prepare_directories_for_backup(m_session);
     if (r != 0) {
-        goto unlock_out;
+        goto disable_out;
     }
 
-    r = m_session->do_copy();    
+    r = m_session->do_copy();
     if (r != 0) {
         // This means we couldn't start the copy thread (ex: pthread error).
-        goto unlock_out;
+        goto disable_out;
     }
 
-    // TODO: Print the current time after CAPTURE has been disabled.
+disable_out:
+    this->disable_descriptions();
 
 unlock_out:
 

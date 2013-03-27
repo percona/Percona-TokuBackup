@@ -53,8 +53,12 @@ file_description::~file_description(void)
 //
 void file_description::prepare_for_backup(const char *name)
 {
-    // TODO: strdup this string, then free it later.
+    char *temp = m_backup_name;
     m_backup_name = strdup(name);
+    if (temp != NULL) {
+        free((void*)temp);
+    }
+
     m_in_source_dir = true;
 }
 
@@ -62,10 +66,6 @@ void file_description::prepare_for_backup(const char *name)
 //
 void file_description::disable_from_backup(void)
 {
-    if (m_backup_name != NULL) {
-        free((void*) m_backup_name);
-    }
-    
     m_in_source_dir = false;
 }
 
