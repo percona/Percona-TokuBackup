@@ -76,15 +76,15 @@ backup_session::backup_session(const char* source, const char *dest, backup_call
 
     int r = 0;
     m_source_dir = realpath(source, NULL);
-    m_dest_dir = realpath(dest, NULL);
+    m_dest_dir   = realpath(dest,   NULL);
     if (!m_dest_dir) {
-        char *str = malloc_printf(PATH_MAX + 100, "This backup destination directory does not exist: %s", dest);
+        char *str = malloc_snprintf(strlen(dest) + 100, "This backup destination directory does not exist: %s", dest);
         calls->report_error(ENOENT, str); 
         r = ENOENT;
         free(str);
     }
     if (!m_source_dir) {
-        char *str = malloc_printf(PATH_MAX + 100, "This backup source directory does not exist: %s", source);
+        char *str = malloc_snprintf(strlen(source) + 100, "This backup source directory does not exist: %s", source);
         calls->report_error(ENOENT, str);
         r = ENOENT;
         free(str);

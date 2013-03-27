@@ -109,12 +109,12 @@ int backup_copier::do_copy() {
         
         fname = m_todo.back();
         TRACE("Copying: ", fname);
-        char msg[1000];
-        snprintf(msg, sizeof(msg), "Copying file number %ld of %ld seen so far (%s)", n_done, n_known, fname);
-        msg[sizeof(msg)-1]=0; // be paranoid
+        
+        char *msg = malloc_snprintf(strlen(fname)+100, "Copying file number %ld of %ld seen so far (%s)", n_done, n_known, fname);
         // Use n_done/n_files.   We need to do a better estimate involving n_bytes_copied/n_bytes_total
         // This one is very wrongu
         r = m_calls->poll((double)n_done/(double)(n_done+n_known), msg);
+        free(msg);
         if (r != 0) {
             goto out;
         }
@@ -201,9 +201,9 @@ int backup_copier::copy_full_path(const char *source,
     r = stat(source, &sbuf);
     if (r!=0) {
         r = errno;
-        char string[10000];
-        snprintf(string, sizeof(string), "error stat(\"%s\"), errno=%d (%s) at %s:%d", dest, r, strerror(r), __FILE__, __LINE__);
+        char *string = malloc_snprintf(strlen(dest)+100, "error stat(\"%s\"), errno=%d (%s) at %s:%d", dest, r, strerror(r), __FILE__, __LINE__);
         m_calls->report_error(errno, string);
+        free(string);
         goto out;
     }
     
@@ -216,9 +216,9 @@ int backup_copier::copy_full_path(const char *source,
         if (r < 0) {
             int mkdir_errno = errno;
             if(mkdir_errno != EEXIST) {
-                char string[1000];
-                snprintf(string, sizeof(string), "error mkdir(\"%s\"), errno=%d (%s) at %s:%de", dest, mkdir_errno, strerror(mkdir_errno), __FILE__, __LINE__);
+                char *string = malloc_snprintf(strlen(dest)+100, "error mkdir(\"%s\"), errno=%d (%s) at %s:%d", dest, mkdir_errno, strerror(mkdir_errno), __FILE__, __LINE__);
                 m_calls->report_error(mkdir_errno, string);
+                free(string);
                 goto out;
             }
             

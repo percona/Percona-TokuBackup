@@ -286,7 +286,7 @@ unsigned long get_throttle(void) {
     return manager.get_throttle();
 }
 
-char *malloc_printf(size_t size, const char *format, ...) {
+char *malloc_snprintf(size_t size, const char *format, ...) {
     va_list ap;
     va_start(ap, format);
     char *result = (char*)malloc(size);

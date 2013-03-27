@@ -15,7 +15,7 @@ unsigned long get_throttle(void);
 
 void create_subdirectories(const char*);
 
-char *malloc_printf(size_t size, const char *format, ...) __attribute__((format (printf, 2, 3)));
+char *malloc_snprintf(size_t size, const char *format, ...) __attribute__((format (printf, 2, 3)));
 // Effect: Return a malloced string of the given size containing the results of doing snprintf(string,size,format,...)
 //  No errors occur if the size isn't big enough, instead a properly null-terminated string of at most size is returned without overflowing any buffers.
 
