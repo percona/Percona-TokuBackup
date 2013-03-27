@@ -80,6 +80,8 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
 endif ()
 add_space_separated_property(TARGET HotBackup LINK_FLAGS "${OPTFLAGS}")
 
+configure_file(CTestCustom.cmake . COPYONLY)
+
 # INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/../tokudb
 
 add_subdirectory(tests)
