@@ -294,3 +294,5 @@ char *malloc_snprintf(size_t size, const char *format, ...) {
     va_end(ap);
     return result;
 }
+
+const char tokubackup_sql_suffix[] = "-E"; // Tim says that we want it to say -E on the end.

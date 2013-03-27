@@ -21,3 +21,5 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[]  __attribute__
 extern "C" void tokubackup_throttle_backup(unsigned long bytes_per_second __attribute__((unused))) {
     fprintf(stderr, "Sorry, backup is not implemented\n");
 }
+
+const char tokubackup_sql_suffix[] = "";
