@@ -52,7 +52,8 @@ public:
     unsigned long get_throttle(void);                 // This is thread-safe.
 
 private:
-    int prepare_directories_for_backup(backup_session &session);
+    // N.B. google style guide says that non-constant reference variables are not allowed.
+    int prepare_directories_for_backup(backup_session *session);
 };
 
 #endif // End of header guardian.

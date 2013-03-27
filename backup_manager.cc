@@ -82,7 +82,7 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
         goto unlock_out;
     }
     
-    r = this->prepare_directories_for_backup(*m_session);
+    r = this->prepare_directories_for_backup(m_session);
     if (r != 0) {
         goto unlock_out;
     }
@@ -119,7 +119,7 @@ error_out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int backup_manager::prepare_directories_for_backup(backup_session &session)
+int backup_manager::prepare_directories_for_backup(backup_session *session)
 {
     int r = 0;
     // Loop through all the current file descriptions and prepare them
@@ -131,24 +131,24 @@ int backup_manager::prepare_directories_for_backup(backup_session &session)
         }
         
         const char * source_path = file->get_full_source_name();
-        if (!session.is_prefix(source_path)) {
+        if (!session->is_prefix(source_path)) {
             continue;
         }
 
-        char * file_name = session.translate_prefix(source_path);
+        char * file_name = session->translate_prefix(source_path);
         file->prepare_for_backup(file_name);
         int r = open_path(file_name);
         free(file_name);
         if (r != 0) {
             // TODO: Could not open path, abort backup.
-            session.abort();
+            session->abort();
             goto out;
         }
 
         r = file->create();
         if (r != 0) {
             // TODO: Could not create the file, abort backup.
-            session.abort();
+            session->abort();
             goto out;
         }
     }
