@@ -60,6 +60,17 @@ void file_description::prepare_for_backup(const char *name)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
+void file_description::disable_from_backup(void)
+{
+    if (m_backup_name != NULL) {
+        free((void*) m_backup_name);
+    }
+    
+    m_in_source_dir = false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
 void file_description::set_full_source_name(const char *name)
 {
     // TODO: strdup this string, then free it later.

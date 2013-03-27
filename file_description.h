@@ -28,6 +28,7 @@ public:
     file_description(void);
     ~file_description(void);
     void prepare_for_backup(const char *name);
+    void disable_from_backup(void);
     void set_full_source_name(const char *name);
     const char * get_full_source_name(void);
     void lock(void);

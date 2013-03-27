@@ -54,6 +54,7 @@ public:
 private:
     // N.B. google style guide says that non-constant reference variables are not allowed.
     int prepare_directories_for_backup(backup_session *session);
+    void disable_descriptions(void);
 };
 
 #endif // End of header guardian.

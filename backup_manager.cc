@@ -159,6 +159,20 @@ out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
+void backup_manager::disable_descriptions(void)
+{
+    for (int i = 0; i < m_map.size(); ++i) {
+        file_description *file = m_map.get(i);
+        if (file == NULL) {
+            continue;
+        }
+        
+        file->disable_from_backup();
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
 // create() -
 //
 // Description:
