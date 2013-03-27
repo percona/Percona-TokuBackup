@@ -31,10 +31,10 @@ public:
 class backup_session
 {
 public:
-    backup_session(const char *source, const char *dest, backup_callbacks &call);
+    backup_session(const char *source, const char *dest, backup_callbacks *call, int *errnum); // returns a nonzero in *errnum if an error callback has occured.
     ~backup_session();
     int do_copy();
-    bool directories_set();
+    int directories_set(backup_callbacks*);
     bool is_prefix(const char *file);
     char* translate_prefix(const char *file);
     // TODO: Add error code and string to abort().

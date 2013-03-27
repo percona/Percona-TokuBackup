@@ -20,12 +20,12 @@ private:
     const char *m_dest;
     int m_copy_error;
     std::vector<char *> m_todo;
-    backup_callbacks &m_calls;
+    backup_callbacks *m_calls;
     int copy_regular_file(const char *source, const char *dest, off_t file_size);
     int add_dir_entries_to_todo(DIR *dir, const char *file);
     void cleanup(void);
 public:
-    backup_copier(backup_callbacks &calls);
+    backup_copier(backup_callbacks *calls);
     void set_directories(const char *source, const char *dest);
     void set_error(int error);
     int get_error(void);

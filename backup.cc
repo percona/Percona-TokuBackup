@@ -3,17 +3,16 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-extern "C"{
 #include <stdio.h> // rename(),
 #include <fcntl.h> // open()
 #include <unistd.h> // close(), write(), read(), unlink(), truncate(), etc.
 #include <sys/stat.h> // mkdir()
-}
 
 //#include <sys/types.h>
 #include <errno.h>
 #include <dlfcn.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "backup_internal.h"
 #include "backup_manager.h"
@@ -276,20 +275,22 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
     }
 
     backup_callbacks calls(poll_fun, poll_extra, error_fun, error_extra, &get_throttle);
-    return manager.do_backup(source_dirs[0], dest_dirs[0], calls);
+    return manager.do_backup(source_dirs[0], dest_dirs[0], &calls);
 }
 
 extern "C" void tokubackup_throttle_backup(unsigned long bytes_per_second) {
     manager.set_throttle(bytes_per_second);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-//
-// Description:
-//
-//     Callback used during a backup session to get current throttle level.
-//
-extern "C" unsigned long get_throttle(void)
-{
+unsigned long get_throttle(void) {
     return manager.get_throttle();
+}
+
+char *malloc_printf(size_t size, const char *format, ...) {
+    va_list ap;
+    va_start(ap, format);
+    char *result = (char*)malloc(size);
+    vsnprintf(result, size, format, ap);
+    va_end(ap);
+    return result;
 }

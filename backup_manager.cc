@@ -58,31 +58,27 @@ backup_manager::backup_manager()
 //
 //     
 //
-int backup_manager::do_backup(const char *source, const char *dest, backup_callbacks calls) {
+int backup_manager::do_backup(const char *source, const char *dest, backup_callbacks *calls) {
     
-    int r = calls.poll(0, "Preparing backup");
+    int r = calls->poll(0, "Preparing backup");
     if (r != 0) {
-        calls.report_error(r, "User aborted backup");
+        calls->report_error(r, "User aborted backup");
         goto error_out;
     }
 
     r = pthread_mutex_trylock(&m_mutex);
     if (r != 0) {
         if (r==EBUSY) {
-            calls.report_error(r, "Another backup is in progress.");
+            calls->report_error(r, "Another backup is in progress.");
             goto error_out;
         }
         goto error_out;
     }
     
     pthread_mutex_lock(&m_session_mutex);
-    m_session = new backup_session(source, dest, calls);
+    m_session = new backup_session(source, dest, calls, &r);
     pthread_mutex_unlock(&m_session_mutex);
-
-    if (!m_session->directories_set()) {
-        // TODO: Disambiguate between whether the source or destination string does not exist.
-        calls.report_error(ENOENT, "Either of the given backup directories do not exist");
-        r = ENOENT;
+    if (r!=0) {
         goto unlock_out;
     }
     
@@ -110,7 +106,7 @@ unlock_out:
         int pthread_error = pthread_mutex_unlock(&m_mutex);
         if (pthread_error != 0) {
             // TODO: Should there be a way to disable backup permanently in this case?
-            calls.report_error(pthread_error, "pthread_mutex_unlock failed.  Backup system is probably broken");
+            calls->report_error(pthread_error, "pthread_mutex_unlock failed.  Backup system is probably broken");
             if (r != 0) {
                 r = pthread_error;
             }

@@ -31,7 +31,9 @@ private:
 
 public:
     backup_manager();
-    int do_backup(const char *source, const char *dest, backup_callbacks calls);
+    // N.B. the google style guide requires all references to be either labeled as a const, or declared to be pointers.
+    // I see no reason to use reference variables.  They are redundant with pointers.
+    int do_backup(const char *source, const char *dest, backup_callbacks *calls);
 
     // Methods used during interposition:
     void create(int fd, const char *file);

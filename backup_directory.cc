@@ -65,14 +65,32 @@ static void print_time(const char *toku_string) {
 
 //////////////////////////////////////////////////////////////////////////////
 //
-backup_session::backup_session(const char* source, const char *dest, backup_callbacks &calls)
+backup_session::backup_session(const char* source, const char *dest, backup_callbacks *calls, int *errnum)
 : m_source_dir(NULL), m_dest_dir(NULL), m_copier(calls)
 {
     // TODO: assert that the directory's are not the same.
     // TODO: assert that the destination directory is empty.
+
+    // This code is ugly because we are using a constructor.  We need to do the error propagation now, while we have the source and dest paths,
+    // instead of later in what used to be the set_directories() method.  BTW, the google style guide prohibits using constructors.
+
+    int r = 0;
     m_source_dir = realpath(source, NULL);
     m_dest_dir = realpath(dest, NULL);
+    if (!m_dest_dir) {
+        char *str = malloc_printf(PATH_MAX + 100, "This backup destination directory does not exist: %s", dest);
+        calls->report_error(ENOENT, str); 
+        r = ENOENT;
+        free(str);
+    }
+    if (!m_source_dir) {
+        char *str = malloc_printf(PATH_MAX + 100, "This backup source directory does not exist: %s", source);
+        calls->report_error(ENOENT, str);
+        r = ENOENT;
+        free(str);
+    }
     m_copier.set_directories(m_source_dir, m_dest_dir);
+    *errnum = r;
 }
 
 
@@ -99,25 +117,6 @@ int backup_session::do_copy()
     int r = m_copier.do_copy();
     print_time("Toku Hot Backup: Finished:");
     return r;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// directories_set():
-//
-// Description: 
-//
-//     Determines if the source and destination directories have been
-// set for this backup_directory object.
-//
-bool backup_session::directories_set()
-{
-    if (m_dest_dir && m_source_dir) {
-        return true;
-    }
-
-    return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

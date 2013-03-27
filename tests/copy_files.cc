@@ -127,7 +127,7 @@ static void copy_files(void) {
     setup_large_dir();
 
     backup_callbacks calls(&dummy_poll, NULL, &dummy_error, NULL, &dummy_throttle);
-    backup_copier copier(calls);
+    backup_copier copier(&calls);
     copier.set_directories(src, dst);
     copier.do_copy();
 

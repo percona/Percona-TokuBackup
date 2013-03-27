@@ -54,7 +54,7 @@ static bool is_dot(struct dirent const *entry)
 //
 //     Constructor for this copier object.
 //
-backup_copier::backup_copier(backup_callbacks &calls)
+backup_copier::backup_copier(backup_callbacks *calls)
 : m_source(0), m_dest(0), m_calls(calls)
 {}
 
@@ -114,7 +114,7 @@ int backup_copier::do_copy() {
         msg[sizeof(msg)-1]=0; // be paranoid
         // Use n_done/n_files.   We need to do a better estimate involving n_bytes_copied/n_bytes_total
         // This one is very wrongu
-        r = m_calls.poll((double)n_done/(double)(n_done+n_known), msg);
+        r = m_calls->poll((double)n_done/(double)(n_done+n_known), msg);
         if (r != 0) {
             goto out;
         }
@@ -203,7 +203,7 @@ int backup_copier::copy_full_path(const char *source,
         r = errno;
         char string[10000];
         snprintf(string, sizeof(string), "error stat(\"%s\"), errno=%d (%s) at %s:%d", dest, r, strerror(r), __FILE__, __LINE__);
-        m_calls.report_error(errno, string);
+        m_calls->report_error(errno, string);
         goto out;
     }
     
@@ -218,7 +218,7 @@ int backup_copier::copy_full_path(const char *source,
             if(mkdir_errno != EEXIST) {
                 char string[1000];
                 snprintf(string, sizeof(string), "error mkdir(\"%s\"), errno=%d (%s) at %s:%de", dest, mkdir_errno, strerror(mkdir_errno), __FILE__, __LINE__);
-                m_calls.report_error(mkdir_errno, string);
+                m_calls->report_error(mkdir_errno, string);
                 goto out;
             }
             
@@ -302,16 +302,16 @@ out:
 }
 
 
-static int gettime_reporting_error(struct timespec *ts, backup_callbacks &calls) {
+static int gettime_reporting_error(struct timespec *ts, backup_callbacks *calls) {
     int r = clock_gettime(CLOCK_MONOTONIC, ts);
     if (r!=0) {
         char string[1000];
         int er = errno;
         if (er!=0) {
             snprintf(string, sizeof(string), "clock_gettime returned an error: errno=%d (%s)", er, strerror(er));
-            calls.report_error(er, string);
+            calls->report_error(er, string);
         } else {
-            calls.report_error(-1, "clock_gettime returned an error, but errno==0");
+            calls->report_error(-1, "clock_gettime returned an error, but errno==0");
             er = -1;
         }
         return er;
@@ -362,9 +362,9 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
         ssize_t n_wrote_this_buf = 0;
         while (n_wrote_this_buf < n_read) {
             snprintf(poll_string, sizeof(poll_string), "Copying file: %ld/%ld bytes done of %s to %s.", total_written, source_file_size, source_path, dest_path);
-            r = m_calls.poll(0, poll_string);
+            r = m_calls->poll(0, poll_string);
             if (r!=0) {
-                m_calls.report_error(r, "User aborted backup");
+                m_calls->report_error(r, "User aborted backup");
                 goto out;
             }
 
@@ -375,7 +375,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
                 r = errno;
                 char string[1000];
                 snprintf(string, sizeof(string), "error write to %s, errno=%d (%s) at %s:%d", dest_path, r, strerror(r), __FILE__, __LINE__);
-                m_calls.report_error(r, string);
+                m_calls->report_error(r, string);
                 goto out;
             }
             total_written += n_wrote_now;
@@ -388,7 +388,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
             r = gettime_reporting_error(&endtime, m_calls);
             if (r!=0) goto out;
             double actual_time = tdiff(endtime, starttime);
-            unsigned long throttle = m_calls.get_throttle();
+            unsigned long throttle = m_calls->get_throttle();
             double budgeted_time = total_written / (double)throttle;
             if (budgeted_time <= actual_time) break;
             double sleep_time = budgeted_time - actual_time;  // if we were supposed to copy 10MB at 2MB/s, then our budget was 5s.  If we took 1s, then sleep 4s.
@@ -396,10 +396,10 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
                 char string[1000];
                 snprintf(string, sizeof(string), "Backup throttled: copied %ld/%ld bytes of %s to %s. Sleeping %.2fs for throttling.",
                          total_written, source_file_size, source_path, dest_path, sleep_time);
-                r = m_calls.poll(0, string);
+                r = m_calls->poll(0, string);
             }
             if (r!=0) {
-                m_calls.report_error(r, "User aborted backup");
+                m_calls->report_error(r, "User aborted backup");
                 goto out;
             }
             if (sleep_time>1) {

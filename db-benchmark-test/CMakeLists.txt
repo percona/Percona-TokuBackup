@@ -4,6 +4,7 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS _GNU_SOURCE DONT_DEPR
 
 set(all_bins
   db-benchmark-test
+  backup1
 #  scanscan
 #  ptquery
 #  txncommit
@@ -18,4 +19,5 @@ find_library(LIBTOKUDB          NAMES tokudb          PATHS "${PROJECT_SOURCE_DI
 foreach(tokudb_bin ${all_bins})
   add_executable(${tokudb_bin} ${tokudb_bin})
   target_link_libraries(${tokudb_bin} ${LIBTOKUDB} ${LIBTOKUPORTABILITY} HotBackup ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+  add_test(${tokudb_bin} ${tokudb_bin} 1)
 endforeach(tokudb_bin)
