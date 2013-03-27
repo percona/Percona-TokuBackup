@@ -117,7 +117,6 @@ error_out:
     return r;
 }
 
-int open_path(const char *file_path);
 ///////////////////////////////////////////////////////////////////////////////
 //
 int backup_manager::prepare_directories_for_backup(backup_session &session)

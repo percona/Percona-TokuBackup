@@ -144,6 +144,7 @@ bool backup_session::is_prefix(const char *file)
     }
 }
 
+static int does_file_exist(const char*);
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -153,11 +154,7 @@ bool backup_session::is_prefix(const char *file)
 //
 //     Creates backup path for given file if it doesn't exist already.
 //
-static int does_file_exist(const char*);
-void create_subdirectories(const char*);
-int open_path(const char *file_path);
-int open_path(const char *file_path)
-{    
+int open_path(const char *file_path) {    
     int r = 0;
     // See if the file exists in the backup copy already...
     int exists = does_file_exist(file_path);
@@ -273,8 +270,7 @@ char* backup_session::translate_prefix(const char *file)
 //
 // Description:
 //
-static int does_file_exist(const char *file)
-{
+static int does_file_exist(const char *file) {
     int result = 0;
     struct stat sb;
     // We use stat to determine if the file does not exist.

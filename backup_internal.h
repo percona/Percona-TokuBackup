@@ -19,4 +19,7 @@ char *malloc_snprintf(size_t size, const char *format, ...) __attribute__((forma
 // Effect: Return a malloced string of the given size containing the results of doing snprintf(string,size,format,...)
 //  No errors occur if the size isn't big enough, instead a properly null-terminated string of at most size is returned without overflowing any buffers.
 
+int open_path(const char *file_path);
+// Effect: Create a backup path for a given file if it doesn't exist already.
+
 #endif // end of header guardian.
