@@ -39,7 +39,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
             char *src = get_src();
             char len = strlen(src)+100;
             char name[len];
-            int r = snprintf(name, len, "%sdata", src);
+            int r = snprintf(name, len, "%s/data", src);
             assert(r<len);
             free(src);
             printf("opened %s\n", name);
@@ -69,7 +69,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         char len = strlen(dst)+100;
         char name[len];
         {
-            int r = snprintf(name, len, "%sdata", dst);
+            int r = snprintf(name, len, "%s/data", dst);
             assert(r<len);
         }
         free(dst);
