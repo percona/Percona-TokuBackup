@@ -17,6 +17,7 @@ void pass(void);
 void fail(void);
 void setup_destination(void);   // Make the destination be an empty directory (delete first if needed).
 void setup_source(void); // make an empty source dir (delete first if needed).
+void setup_directory(char*); // Make an empty directory with the given path string.
 void setup_dirs(void); // fill in data in source.
 void cleanup_dirs(void);
 void read_and_seek(void);
@@ -34,6 +35,10 @@ void start_backup_thread_with_funs(pthread_t *thread,
 void start_backup_thread(pthread_t *thread);
 // Effect: start doing backup (on a thread, the thread is returned in *thread).  Use a simple polling function
 //   and exect there to be no errors.
+
+void start_backup_thread(pthread_t *thread, char* destination);
+// Effect: start doing backup on a seperate thread, creating the
+// backup in the given destination directory.
 
 int simple_poll_fun(float progress, const char *progress_string, void *poll_extra);
 // A simple polling function.

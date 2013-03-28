@@ -67,6 +67,11 @@ void setup_source(void) {
     free(src);
 }
 
+void setup_directory(char *dir) {
+    systemf("rm -rf %s", dir);
+    systemf("mkdir %s", dir);
+}
+
 void setup_dirs(void) {
     char *src = get_src();
     systemf("touch %s/foo", src);
@@ -143,6 +148,10 @@ void start_backup_thread(pthread_t *thread) {
     start_backup_thread_with_funs(thread, src, dst, simple_poll_fun, NULL, expect_no_error_fun, NULL, BACKUP_SUCCESS);
 }
 
+void start_backup_thread(pthread_t *thread, char* destination) {
+    char *src = get_src();
+    start_backup_thread_with_funs(thread, src, destination, simple_poll_fun, NULL, expect_no_error_fun, NULL, BACKUP_SUCCESS);
+}
 
 void finish_backup_thread(pthread_t thread) {
     void *retval;
