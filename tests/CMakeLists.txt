@@ -15,7 +15,7 @@ endfunction(add_valgrind_tool_test)
 set(blackboxtests
   multiple_backups
   open_write_close
-  truncate
+  ftruncate
   read_and_seek
   test6128
   test6317

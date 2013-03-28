@@ -4,7 +4,7 @@ foreach(test
  copy_files
  open_write_close
  multiple_backups
- truncate
+ ftruncate
  read_and_seek
  test6128
  test6317
