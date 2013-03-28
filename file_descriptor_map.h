@@ -21,6 +21,7 @@ public:
     ~file_descriptor_map();
     file_description* get(int fd);
     file_description* put(int fd); // create a file description, put it in the map, and return it.
+    file_description* get_unlocked(int fd); // use this one instead of get() when you already have the lock.
     void erase(int fd);
     int size(void);
 private:
@@ -28,5 +29,9 @@ private:
     
 friend class file_descriptor_map_unit_test;
 };
+
+// Global locks used when the file descriptor map is updated.   Sometimes the backup system needs to hold the lock for several operations.
+void lock_file_descriptor_map(void);
+void unlock_file_descriptor_map(void);
 
 #endif // End of header guardian.

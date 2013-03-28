@@ -63,16 +63,20 @@ file_description* file_descriptor_map::get(int fd)
     if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
-
-    assert(fd >= 0);
     pthread_mutex_lock(&get_put_mutex);
+    file_description *result = this->get_unlocked(fd);
+    pthread_mutex_unlock(&get_put_mutex);
+    return result;
+}
+
+file_description* file_descriptor_map::get_unlocked(int fd) {
+    assert(fd >= 0);
     file_description *result;
     if ((size_t)fd >= m_map.size()) {
         result = NULL;
     } else {
         result = m_map[fd];
     }
-    pthread_mutex_unlock(&get_put_mutex);
     return result;
 }
 
@@ -169,3 +173,9 @@ void file_descriptor_map::grow_array(int fd)
     }
 }
 
+void lock_file_descriptor_map(void) {
+    pthread_mutex_lock(&get_put_mutex);
+}
+void unlock_file_descriptor_map(void) {
+    pthread_mutex_unlock(&get_put_mutex);
+}
