@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 2.8.8)
 project(HotBackup)
 
 include(CTest)
-##set(CMAKE_BUILD_TYPE Debug)
 
 #set(OPTFLAGS "-O3 -flto")
 set(OPTFLAGS "")
@@ -85,7 +84,7 @@ configure_file(CTestCustom.cmake . COPYONLY)
 # INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/../tokudb
 
 add_subdirectory(tests)
-add_subdirectory(db-benchmark-test)
+##add_subdirectory(db-benchmark-test)
 
 install(TARGETS HotBackup          DESTINATION lib)
 install(TARGETS HotBackupCommunity DESTINATION lib)
