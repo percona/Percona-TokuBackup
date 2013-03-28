@@ -147,7 +147,6 @@ static void pathcat(char *dest, size_t destlen, const char *a, int alen, const c
         ecount++;
         if (ecount==0) fprintf(stderr, "pathcat length computation error in backup\n");
     }
-    fprintf(stderr, "pathcat %s %s --> %s\n", a, b, dest);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
