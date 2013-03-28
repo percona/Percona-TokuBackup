@@ -3,6 +3,7 @@ foreach(test
  backup_directory_tests
  copy_files
  open_write_close
+ multiple_backups
  truncate
  read_and_seek
  test6128

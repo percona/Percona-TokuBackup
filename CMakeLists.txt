@@ -84,7 +84,7 @@ configure_file(CTestCustom.cmake . COPYONLY)
 # INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/../tokudb
 
 add_subdirectory(tests)
-##add_subdirectory(db-benchmark-test)
+add_subdirectory(db-benchmark-test)
 
 install(TARGETS HotBackup          DESTINATION lib)
 install(TARGETS HotBackupCommunity DESTINATION lib)

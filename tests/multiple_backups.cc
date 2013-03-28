@@ -112,7 +112,8 @@ static int check_it(char *magic, int size, int count)
 static int multiple_backups(void) {
     setup_source();
     setup();
-    write_lots_of_dummy_data(get_src());
+    char * src = get_src();
+    write_lots_of_dummy_data(src);
 
     int result = 0;
 
@@ -123,7 +124,7 @@ static int multiple_backups(void) {
         const int SIZE = 7;
         char buf[SIZE] = {0};
         snprintf(buf, SIZE, "magic%i", i);
-        work_it(get_src(), buf, SIZE);
+        work_it(src, buf, SIZE);
         finish_backup_thread(thread);
         snprintf(buf, SIZE, "magic");
         int r = check_it(buf, SIZE, i);
@@ -132,6 +133,7 @@ static int multiple_backups(void) {
         }
     }
 
+    free(src);
     if(result < 0) {
         printf("Backup # %d failed.\n", result * -1);
         fail();
