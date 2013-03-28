@@ -40,5 +40,7 @@ int test_main (int argc __attribute__((__unused__)), const char *argv[] __attrib
         assert(WIFEXITED(status));
         assert(WEXITSTATUS(status)==0);
     }
+    free(src);
+    free(dst);
     return 0;
 }
