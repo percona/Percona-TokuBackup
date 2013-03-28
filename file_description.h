@@ -41,7 +41,7 @@ public:
     void lseek(off_t new_offset);        
     int close(void);
     int truncate(off_t offset);
-    bool m_in_source_dir;
+    volatile bool m_in_source_dir; // this is communicating information asynchronously.  It ought to be atomic.
 };
 
 #endif // end of header guardian.

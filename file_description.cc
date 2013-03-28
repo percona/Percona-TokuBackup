@@ -59,14 +59,17 @@ void file_description::prepare_for_backup(const char *name)
         free((void*)temp);
     }
 
-    m_in_source_dir = true;
+    __sync_bool_compare_and_swap(&m_in_source_dir, false, true);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 void file_description::disable_from_backup(void)
 {
-    m_in_source_dir = false;
+    // Set this atomically.  It's a little bit overkill, but the atomic primitives didn't convince drd to keep quiet.
+    // __sync_lock_release(&m_in_source_dir); // this is a way to write a zero atomically.  drd won't keep quiet here either.
+    __sync_bool_compare_and_swap(&m_in_source_dir, true, false);
+    //bool new_false = false; __atomic_store(&m_in_source_dir, &new_false, __ATOMIC_SEQ_CST);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
