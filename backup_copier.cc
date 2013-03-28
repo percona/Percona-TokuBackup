@@ -352,7 +352,8 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
     const size_t buf_size = 1024 * 1024;
     char *buf = new char[buf_size]; // this cannot be on the stack.
     ssize_t n_wrote_now = 0;
-    char *poll_string = new char [2000];
+    size_t poll_string_size = 2000;
+    char *poll_string = new char [poll_string_size];
     size_t total_written_this_file = 0;
 
     struct timespec starttime;
@@ -371,7 +372,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
         
         ssize_t n_wrote_this_buf = 0;
         while (n_wrote_this_buf < n_read) {
-            snprintf(poll_string, sizeof(poll_string), "Backup progress %ld bytes, %ld files.  Copying file: %ld/%ld bytes done of %s to %s.",
+            snprintf(poll_string, poll_string_size, "Backup progress %ld bytes, %ld files.  Copying file: %ld/%ld bytes done of %s to %s.",
                      *total_bytes_backed_up, total_files_backed_up, total_written_this_file, source_file_size, source_path, dest_path);
             r = m_calls->poll(0, poll_string);
             if (r!=0) {
@@ -384,9 +385,8 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
                                           n_read - n_wrote_this_buf);
             if(n_wrote_now < 0) {
                 r = errno;
-                char string[1000];
-                snprintf(string, sizeof(string), "error write to %s, errno=%d (%s) at %s:%d", dest_path, r, strerror(r), __FILE__, __LINE__);
-                m_calls->report_error(r, string);
+                snprintf(poll_string, poll_string_size, "error write to %s, errno=%d (%s) at %s:%d", dest_path, r, strerror(r), __FILE__, __LINE__);
+                m_calls->report_error(r, poll_string);
                 goto out;
             }
             n_wrote_this_buf        += n_wrote_now;

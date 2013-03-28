@@ -19,17 +19,32 @@
 //
 void test_truncate(void) {
     int result = 0;
-    int fd = 0;
     setup_source();
     setup_dirs();
     setup_destination();
+
+    char *src = get_src();
+
+    // write a megabyte so that the throttle will make it very likely that the ftruncate will run while the backup is still going.
+    {
+        int fd = openf(O_CREAT | O_WRONLY, 0777, "%s/big.data", src);
+        const size_t bufsize=1024;
+        char buf[bufsize];
+        for (size_t i=0; i<bufsize; i++) {
+            buf[i]=i%256;
+        }
+        for (size_t i=0; i<1025; i++) {
+            ssize_t l = write(fd, buf, bufsize);
+            assert(l==(ssize_t)bufsize);
+        }
+    }
+    tokubackup_throttle_backup(700000); // so it will take more than one second to do the backup.
 
     pthread_t thread;
     start_backup_thread(&thread);
 
     // Create a new file.
-    char *src = get_src();
-    fd = openf(O_CREAT | O_RDWR, 0777, "%s/my.data", src);
+    int fd = openf(O_CREAT | O_RDWR, 0777, "%s/my.data", src);
     assert(fd >= 0);
     free(src);
 
