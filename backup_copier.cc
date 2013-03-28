@@ -135,6 +135,21 @@ out:
 }
 
 
+static void pathcat(char *dest, size_t destlen, const char *a, int alen, const char *b)
+// Effect: Concatenate paths A and B (insert a / between if needed) into dest.  If a ends with a / and b starts with a / then put only 1 / in.
+// Requires: destlen is big enough.  A is nonempty.
+{
+    bool a_has_slash_at_end = (alen>0) && (a[alen-1]=='/');
+    if (b[0]=='/') b++;
+    int r = snprintf(dest, destlen, "%s%s%s", a, a_has_slash_at_end ? "" : "/", b);
+    if (r>=(int)destlen) {
+        static bool ecount=0;
+        ecount++;
+        if (ecount==0) fprintf(stderr, "pathcat length computation error in backup\n");
+    }
+    fprintf(stderr, "pathcat %s %s --> %s\n", a, b, dest);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // copy_stripped_file() -
@@ -156,20 +171,16 @@ int backup_copier::copy_stripped_file(const char *file) {
         }
     } else {
         // Prepend the source directory path to the file name.
-        int slen = strlen(m_source) + strlen(file) + 2;
+        int m_source_len = strlen(m_source);
+        int slen = m_source_len + strlen(file) + 2;
         char full_source_file_path[slen];
-        r = snprintf(full_source_file_path, slen, "%s/%s", m_source, file);
-        if(r + 1 != slen) {
-            goto out;
-        }
+        pathcat(full_source_file_path, slen, m_source, m_source_len, file);
 
         // Prepend the destination directory path to the file name.
-        int dlen = strlen(m_dest) + strlen(file) + 2;
+        int m_dest_len = strlen(m_dest);
+        int dlen = m_dest_len + strlen(file) + 2;
         char full_dest_file_path[dlen];
-        r = snprintf(full_dest_file_path, dlen, "%s/%s", m_dest, file);
-        if(r + 1 != dlen) {
-            goto out;
-        }
+        pathcat(full_dest_file_path, dlen, m_dest, m_dest_len, file);
         
         r = this->copy_full_path(full_source_file_path, full_dest_file_path, file);
         if(r != 0) {
