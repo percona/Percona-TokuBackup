@@ -10,6 +10,7 @@
 #include "backup.h"
 #include "backup_callbacks.h"
 
+#include <stdint.h>
 #include <sys/types.h>
 #include <vector>
 #include <dirent.h>
@@ -21,7 +22,7 @@ private:
     int m_copy_error;
     std::vector<char *> m_todo;
     backup_callbacks *m_calls;
-    int copy_regular_file(const char *source, const char *dest, off_t file_size);
+    int copy_regular_file(const char *source, const char *dest, off_t file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up);
     int add_dir_entries_to_todo(DIR *dir, const char *file);
     void cleanup(void);
 public:
@@ -30,9 +31,9 @@ public:
     void set_error(int error);
     int get_error(void);
     int do_copy();
-    int copy_stripped_file(const char *file);
-    int copy_full_path(const char *source, const char* dest, const char *file);
-    int copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, off_t source_file_size);
+    int copy_stripped_file(const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up);
+    int copy_full_path(const char *source, const char* dest, const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up);
+    int copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up);
 };
 
 #endif // End of header guardian.
