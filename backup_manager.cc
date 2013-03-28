@@ -164,14 +164,16 @@ out:
 //
 void backup_manager::disable_descriptions(void)
 {
+    lock_file_descriptor_map(); // TODO.  This is racy too, but this isn't so bad because it's fast.
     for (int i = 0; i < m_map.size(); ++i) {
-        file_description *file = m_map.get(i);
+        file_description *file = m_map.get_unlocked(i);
         if (file == NULL) {
             continue;
         }
         
         file->disable_from_backup();
     }
+    unlock_file_descriptor_map();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
