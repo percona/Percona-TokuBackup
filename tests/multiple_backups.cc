@@ -23,7 +23,8 @@ static void setup(void)
 {
     for (int i = 0; i < TRIES; ++i) {
         char s[LEN];
-        snprintf(s, sizeof(s), "multiple_backups.backup_%d", i);
+        int r = snprintf(s, sizeof(s), "multiple_backups.backup_%d", i);
+        assert(r<(int)sizeof(s));
         systemf("rm -rf %s", s);
         dirs[i] = strdup(s);
         assert(dirs[i]);
@@ -32,13 +33,7 @@ static void setup(void)
 
 static void breakdown(void)
 {
-    for (int i = 0; i < TRIES; ++i) {
-        if (dirs[i] == NULL) {
-            continue;
-        }
-
-        free((void*)dirs[i]);
-    }
+    // The backup thread helpers free dirs[i].
 }
 
 static void write_lots_of_dummy_data(char *src)
