@@ -13,6 +13,7 @@ function(add_valgrind_tool_test tool test)
 endfunction(add_valgrind_tool_test)
 
 set(blackboxtests
+  backup_no_fractal_tree_threaded
   multiple_backups
   open_write_close
   ftruncate

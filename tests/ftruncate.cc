@@ -3,36 +3,22 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <valgrind/helgrind.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "backup.h"
 #include "backup_test_helpers.h"
 
-volatile int ftruncate_done = 0;
-
-static int ftruncate_poll(float progress, const char *progress_string, void *extra) {
-    assert(0<=progress && progress<1);
-    assert(extra==NULL);
-    assert(strlen(progress_string)>8);
-    while (!ftruncate_done) {
-        sched_yield();
-    }
-    return 0;
-}
-    
 //
 void test_truncate(void) {
-    VALGRIND_HG_DISABLE_CHECKING(&ftruncate_done, sizeof(ftruncate_done));
-
     int result = 0;
     setup_source();
     setup_dirs();
@@ -41,10 +27,8 @@ void test_truncate(void) {
     char *src = get_src();
 
     pthread_t thread;
-    start_backup_thread_with_funs(&thread, get_src(), get_dst(),
-                                  ftruncate_poll, NULL,
-                                  dummy_error, NULL,
-                                  0);
+    client_n_polls_wait = 1;
+    start_backup_thread_with_pollwait(&thread);
 
     // Create a new file.
     int fd = openf(O_CREAT | O_RDWR, 0777, "%s/my.data", src);
@@ -59,7 +43,7 @@ void test_truncate(void) {
         int r = ftruncate(fd, 6);
         assert(r==0);
     }
-    ftruncate_done  = 1;
+    client_done  = 1;
     const int SIZE = 20;
     char buf_source[SIZE];
     size_t src_n_read = pread(fd, buf_source, SIZE, 0);

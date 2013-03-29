@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <valgrind/helgrind.h>
+
 #include "backup_test_helpers.h"
 #include "backup_internal.h"
 #include "backup_callbacks.h"
@@ -227,4 +229,30 @@ int main (int argc, const char *argv[]) {
     }
     if (test_name==NULL) test_name=argv[0]; // make the function work with no arguments.
     return test_main(new_argc, new_argv);
+}
+
+// For a version of the poll function that waits until the client is done
+volatile int client_done = 0;
+int client_n_polls_wait = 0;
+static int client_poll_count = 0;
+
+static int client_wait_poll(float progress, const char *progress_string, void *extra) {
+    if (client_poll_count == 0) {
+        while (!client_done) {
+            sched_yield();
+        }
+    }
+    client_poll_count++;
+    assert(0<=progress && progress<1);
+    assert(extra==NULL);
+    assert(strlen(progress_string)>8);
+    return 0;
+}
+
+void start_backup_thread_with_pollwait(pthread_t *thread) {
+    VALGRIND_HG_DISABLE_CHECKING(&client_done, sizeof(client_done));
+    start_backup_thread_with_funs(thread, get_src(), get_dst(),
+                                  client_wait_poll, NULL,
+                                  dummy_error, NULL,
+                                  0);
 }

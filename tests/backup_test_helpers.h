@@ -57,4 +57,9 @@ int dummy_poll(float, const char*, void*);
 void dummy_error(int, const char*, void*);
 unsigned long dummy_throttle(void);
 
+extern int client_n_polls_wait; // poll the first few times fast, and then one of the polls waits for the client to be done, then the polls go normally.
+extern volatile int client_done; // set this when it's OK for the poll to return
+
+void start_backup_thread_with_pollwait(pthread_t *thread);
+
 #endif // End of header guardian.
