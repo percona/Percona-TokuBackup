@@ -7,7 +7,6 @@
 #include "real_syscalls.h"
 #include "backup_debug.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -44,9 +43,21 @@ backup_manager::backup_manager()
       m_throttle(ULONG_MAX)
 {
     int r = pthread_mutex_init(&m_mutex, NULL);
-    assert(r == 0);
+    VALGRIND_HG_DISABLE_CHECKING(&m_is_dead, sizeof(m_is_dead));
+    m_is_dead = false;
+    if (r!=0) {
+        int e = errno;
+        fprintf(stderr, "Backup manager failed to initialize mutex: %s:%d errno=%d (%s)\n", __FILE__, __LINE__, e, strerror(e));
+        m_is_dead = true;
+        return;
+    }
     r = pthread_mutex_init(&m_session_mutex, NULL);
-    assert(r == 0);
+    if (r!=0) {
+        int e = errno;
+        fprintf(stderr, "Backup manager failed to initialize mutex: %s:%d errno=%d (%s)\n", __FILE__, __LINE__, e, strerror(e));
+        m_is_dead = true;
+        return;
+    }
 }
 
 
@@ -59,8 +70,13 @@ backup_manager::backup_manager()
 //     
 //
 int backup_manager::do_backup(const char *source, const char *dest, backup_callbacks *calls) {
-    
-    int r = calls->poll(0, "Preparing backup");
+    int r;
+    if (m_is_dead) {
+        calls->report_error(-1, "Backup system is dead");
+        r = -1;
+        goto error_out;
+    }
+    r = calls->poll(0, "Preparing backup");
     if (r != 0) {
         calls->report_error(r, "User aborted backup");
         goto error_out;
@@ -191,8 +207,9 @@ void backup_manager::disable_descriptions(void)
 //
 void backup_manager::create(int fd, const char *file) 
 {
+    if (m_is_dead) return; 
     TRACE("entering create() with fd = ", fd);
-    m_map.put(fd);
+    m_map.put(fd, &m_is_dead);
     file_description *description = m_map.get(fd);
     description->set_full_source_name(file);
     
@@ -230,8 +247,9 @@ void backup_manager::create(int fd, const char *file)
 //
 void backup_manager::open(int fd, const char *file, int oflag)
 {
+    if (m_is_dead) return;
     TRACE("entering open() with fd = ", fd);
-    m_map.put(fd);
+    m_map.put(fd, &m_is_dead);
     file_description *description = m_map.get(fd);
     description->set_full_source_name(file);
     
@@ -268,6 +286,7 @@ void backup_manager::open(int fd, const char *file, int oflag)
 //
 void backup_manager::close(int fd) 
 {
+    if (m_is_dead) return;
     TRACE("entering close() with fd = ", fd);
     m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
 }
@@ -285,9 +304,10 @@ void backup_manager::close(int fd)
 //
 ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 {
+    if (m_is_dead) return call_real_write(fd, buf, nbyte);
     TRACE("entering write() with fd = ", fd);
-    ssize_t r = 0;
     file_description *description = m_map.get(fd);
+    ssize_t r = 0;
     if (description == NULL) {
         r = call_real_write(fd, buf, nbyte);
     } else {
@@ -311,6 +331,7 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 //     Do the read.
 //
 ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
+    if (m_is_dead) return call_real_read(fd, buf, nbyte);
     ssize_t r = 0;
     TRACE("entering write() with fd = ", fd);
     file_description *description = m_map.get(fd);
@@ -338,6 +359,7 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
 //
 void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 {
+    if (m_is_dead) return;
     TRACE("entering pwrite() with fd = ", fd);
 
     file_description *description = NULL;
@@ -363,6 +385,7 @@ void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 // upcoming intercepted writes to be backed up properly.
 //
 off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
+    if (m_is_dead) return call_real_lseek(fd, nbyte, whence);
     TRACE("entering seek() with fd = ", fd);
     file_description *description = NULL;
     description = m_map.get(fd);
@@ -388,6 +411,7 @@ off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
 //
 void backup_manager::rename(const char *oldpath, const char *newpath)
 {
+    if (m_is_dead) return;
     TRACE("entering rename()...", "");
     TRACE("-> old path = ", oldpath);
     TRACE("-> new path = ", newpath);
@@ -406,6 +430,7 @@ void backup_manager::rename(const char *oldpath, const char *newpath)
 //
 void backup_manager::ftruncate(int fd, off_t length)
 {
+    if (m_is_dead) return;
     int r = 0;
     TRACE("entering ftruncate with fd = ", fd);
     file_description *description = m_map.get(fd);
@@ -428,6 +453,7 @@ void backup_manager::ftruncate(int fd, off_t length)
 //
 void backup_manager::truncate(const char *path, off_t length)
 {
+    if (m_is_dead) return;
     TRACE("entering truncate() with path = ", path);
     // TODO:
     // 1. Convert the path to the backup dir.
@@ -447,6 +473,7 @@ void backup_manager::truncate(const char *path, off_t length)
 //
 void backup_manager::mkdir(const char *pathname)
 {
+    if (m_is_dead) return;
     pthread_mutex_lock(&m_session_mutex);
     if(m_session != NULL) {
         m_session->capture_mkdir(pathname);

@@ -4,7 +4,6 @@
 #ident "$Id$"
 
 #include <dlfcn.h>
-#include <assert.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <unistd.h>
@@ -14,21 +13,23 @@
 
 static pthread_mutex_t dlsym_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+volatile bool backup_system_is_dead = false;
+
 template <class T> static void dlsym_set(T *ptr, const char *name)
 // Effect: lookup up NAME using dlsym, and store the result into *PTR.  Do it atomically, using dlsym_mutex for mutual exclusion.
 // Rationale:  There were a whole bunch of these through this code, and they all are the same except the type.  Rather than
 //   programming it with macros, I do it in a type-safe way with templates. -Bradley
 {
     if (*ptr==NULL) {
-        pthread_mutex_lock(&dlsym_mutex);
+        pthread_mutex_lock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.    Try to continue.
         if (*ptr==NULL) {
             // the pointer is still NULL, so do the set,  otherwise someone else changed it while I held the pointer.
             T ptr_local = (T)(dlsym(RTLD_NEXT, name));
-            assert(ptr_local != NULL);
-            bool did_it = __sync_bool_compare_and_swap(ptr, NULL, ptr_local);
-            assert(did_it);
+            // If an error occured, we are hosed, and the system cannot run.  We cannot run even in a degraded mode.  I guess we'll just take the segfault when the call takes place.
+            bool did_it __attribute__((__unused__)) = __sync_bool_compare_and_swap(ptr, NULL, ptr_local);
+            // If the did_it is false, what can we do.  Try to continue.
         }
-        pthread_mutex_unlock(&dlsym_mutex);
+        pthread_mutex_unlock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.    Try to continue.
     }
 }
 

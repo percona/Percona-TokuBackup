@@ -18,6 +18,9 @@ class backup_manager
 {
 private:
     volatile bool m_keep_capturing; // For test purposes, we can arrange to keep capturing the backup until the client tells us to stop.
+
+    bool m_is_dead; // true if some error occured so that the backup system shouldn't try any more.
+
     file_descriptor_map m_map;
     pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
 

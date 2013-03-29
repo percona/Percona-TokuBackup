@@ -20,7 +20,7 @@ public:
     file_descriptor_map();
     ~file_descriptor_map();
     file_description* get(int fd);
-    file_description* put(int fd); // create a file description, put it in the map, and return it.
+    file_description* put(int fd, volatile bool *is_dead); // create a file description, put it in the map, and return it.  If things go bad, set *is_dead=true.
     file_description* get_unlocked(int fd); // use this one instead of get() when you already have the lock.
     void erase(int fd);
     int size(void);

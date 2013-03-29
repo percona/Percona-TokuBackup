@@ -6,7 +6,6 @@
 #include "file_descriptor_map.h"
 #include "backup_debug.h"
 
-#include <assert.h>
 #include <cstdlib>
 #include <pthread.h>
 #include <stdio.h>
@@ -70,7 +69,7 @@ file_description* file_descriptor_map::get(int fd)
 }
 
 file_description* file_descriptor_map::get_unlocked(int fd) {
-    assert(fd >= 0);
+    if (fd < 0) return NULL;
     file_description *result;
     if ((size_t)fd >= m_map.size()) {
         result = NULL;
@@ -91,13 +90,13 @@ file_description* file_descriptor_map::get_unlocked(int fd) {
 // then the array is expanded from it's current length, putting a NULL pointer 
 // in each expanded slot.
 //
-file_description* file_descriptor_map::put(int fd)
+file_description* file_descriptor_map::put(int fd, volatile bool *is_dead)
 {
     if (HotBackup::MAP_DBG) { 
         printf("put() called with fd = %d \n", fd);
     }
     
-    file_description *description = new file_description;
+    file_description *description = new file_description(is_dead);
     
     // <CER> Is this to make space for the backup fd?
     // <CER> Shouldn't we do this when we are adding a file descriptor?
@@ -167,9 +166,12 @@ int file_descriptor_map::size(void)
 // Requires: the get_put_mutex is held
 void file_descriptor_map::grow_array(int fd)
 {
-    assert(fd >= 0);
-    while(m_map.size() <= (size_t)fd) {
-        m_map.push_back(NULL);
+    if (fd>=0) {
+        while(m_map.size() <= (size_t)fd) {
+            m_map.push_back(NULL);
+        }
+    } else {
+        // Don't bother complaining if someone manages to pass a negative fd.
     }
 }
 

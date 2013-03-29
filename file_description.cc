@@ -7,7 +7,6 @@
 #include "real_syscalls.h"
 #include "backup_debug.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -25,7 +24,7 @@ const int DEST_FD_INIT = -1;
 //
 //     ...
 //
-file_description::file_description(void)
+file_description::file_description(volatile bool *is_dead)
 : m_refcount(1), 
 m_offset(0), 
 m_fd_in_dest_space(DEST_FD_INIT), 
@@ -34,7 +33,11 @@ m_full_source_name(NULL),
 m_in_source_dir(false)
 {
     int r = pthread_mutex_init(&m_mutex, NULL);
-    assert(r==0);
+    if (r!=0) {
+        int e = errno;
+        fprintf(stderr, "Failed to initialize mutex: %s:%d errno=%d (%s)\n", __FILE__, __LINE__, e, strerror(e));
+        *is_dead = true;
+    }
 }
 
 file_description::~file_description(void)
