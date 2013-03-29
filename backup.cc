@@ -296,3 +296,9 @@ char *malloc_snprintf(size_t size, const char *format, ...) {
 }
 
 const char tokubackup_sql_suffix[] = "-E"; // Tim says that we want it to say -E on the end.
+
+void backup_set_keep_capturing(bool b)
+// Effect: see backup_internal.h
+{
+    manager.set_keep_capturing(b);
+}

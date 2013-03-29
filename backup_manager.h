@@ -17,9 +17,7 @@
 class backup_manager
 {
 private:
-    bool m_doing_backup;
-    bool m_doing_copy;
-
+    volatile bool m_keep_capturing; // For test purposes, we can arrange to keep capturing the backup until the client tells us to stop.
     file_descriptor_map m_map;
     pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
 
@@ -50,6 +48,8 @@ public:
     
     void set_throttle(unsigned long bytes_per_second); // This is thread-safe.
     unsigned long get_throttle(void);                 // This is thread-safe.
+
+    void set_keep_capturing(bool keep_capturing);     // This is thread safe.
 
 private:
     // N.B. google style guide says that non-constant reference variables are not allowed.

@@ -8,6 +8,7 @@
 #include <pthread.h>
 
 #include "backup_test_helpers.h"
+#include "backup_internal.h"
 
 #define FIRSTBYTES "first bytes"
 #define MOREBYTES  "more bytes"
@@ -77,11 +78,11 @@ int test_main (int argc __attribute__((__unused__)), const char *argv[] __attrib
     src = get_src();
     dst = get_dst();
 
-    client_n_polls_wait = 1;
+    backup_set_keep_capturing(true);
     pthread_t thread;
-    start_backup_thread_with_pollwait(&thread);
+    start_backup_thread(&thread);
     multithreaded_work();
-    client_done = 1;
+    backup_set_keep_capturing(false);
     finish_backup_thread(thread);
     {
         int status = systemf("diff -r %s %s", src, dst);

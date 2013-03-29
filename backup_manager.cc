@@ -17,6 +17,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <valgrind/helgrind.h>
 
 #if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CaptureWarn(string, arg)
@@ -38,8 +39,7 @@
 //     Constructor.
 //
 backup_manager::backup_manager() 
-    : m_doing_backup(false),
-      m_doing_copy(true), // <CER> Set to false to turn off copy, for debugging purposes.
+    : m_keep_capturing(false),
       m_session(NULL),
       m_throttle(ULONG_MAX)
 {
@@ -94,6 +94,9 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
     }
 
 disable_out:
+    // If the client asked us to keep capturing till they tell us to stop, then do what they said.
+    while (m_keep_capturing) sched_yield();
+
     this->disable_descriptions();
 
 unlock_out:
@@ -456,13 +459,21 @@ void backup_manager::mkdir(const char *pathname)
 ///////////////////////////////////////////////////////////////////////////////
 //
 void backup_manager::set_throttle(unsigned long bytes_per_second) {
-    __atomic_store(&m_throttle, &bytes_per_second, __ATOMIC_SEQ_CST); // sequential consistency is probably too much, but this isn't called often
+    VALGRIND_HG_DISABLE_CHECKING(&m_throttle, sizeof(m_throttle));
+    m_throttle = bytes_per_second;
+    //__atomic_store(&m_throttle, &bytes_per_second, __ATOMIC_SEQ_CST); // sequential consistency is probably too much, but this isn't called often
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 unsigned long backup_manager::get_throttle(void) {
-    unsigned long ret;
-    __atomic_load(&m_throttle, &ret, __ATOMIC_SEQ_CST);
-    return ret;
+    return m_throttle;
+    //unsigned long ret;
+    //__atomic_load(&m_throttle, &ret, __ATOMIC_SEQ_CST);
+    //return ret;
+}
+
+void backup_manager::set_keep_capturing(bool keep_capturing) {
+    VALGRIND_HG_DISABLE_CHECKING(&m_keep_capturing, sizeof(m_keep_capturing));
+    m_keep_capturing = keep_capturing;
 }

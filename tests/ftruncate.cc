@@ -14,8 +14,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "backup.h"
 #include "backup_test_helpers.h"
+#include "backup_internal.h"
 
 //
 void test_truncate(void) {
@@ -26,9 +26,9 @@ void test_truncate(void) {
 
     char *src = get_src();
 
+    backup_set_keep_capturing(true);
     pthread_t thread;
-    client_n_polls_wait = 1;
-    start_backup_thread_with_pollwait(&thread);
+    start_backup_thread(&thread);
 
     // Create a new file.
     int fd = openf(O_CREAT | O_RDWR, 0777, "%s/my.data", src);
@@ -43,7 +43,7 @@ void test_truncate(void) {
         int r = ftruncate(fd, 6);
         assert(r==0);
     }
-    client_done  = 1;
+    backup_set_keep_capturing(false);
     const int SIZE = 20;
     char buf_source[SIZE];
     size_t src_n_read = pread(fd, buf_source, SIZE, 0);

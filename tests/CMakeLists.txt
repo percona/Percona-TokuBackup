@@ -13,10 +13,8 @@ function(add_valgrind_tool_test tool test)
 endfunction(add_valgrind_tool_test)
 
 set(blackboxtests
-  backup_no_fractal_tree_threaded
   multiple_backups
   open_write_close
-  ftruncate
   read_and_seek
   test6128
   test6317
@@ -26,6 +24,8 @@ set(blackboxtests
 
 set(glassboxtests
   backup_directory_tests
+  backup_no_fractal_tree_threaded ## Needs the keep_capturing API
+  ftruncate                       ## Needs the keep_capturing API
   copy_files
   )
 

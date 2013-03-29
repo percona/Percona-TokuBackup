@@ -22,4 +22,9 @@ char *malloc_snprintf(size_t size, const char *format, ...) __attribute__((forma
 int open_path(const char *file_path);
 // Effect: Create a backup path for a given file if it doesn't exist already.
 
+void backup_set_keep_capturing(bool b);
+// Effect:  By default, when a backup finishes, it disables capturing.  If before the backup finishes, someone calls backup_set_keep_capturing(true)
+//  then the capturing will keep running until someone calls backup_set_capturing(false).
+//  This can be called by any thread.
+
 #endif // end of header guardian.
