@@ -12,12 +12,27 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <valgrind/helgrind.h>
 
 #include "backup.h"
 #include "backup_test_helpers.h"
 
+volatile int ftruncate_done = 0;
+
+static int ftruncate_poll(float progress, const char *progress_string, void *extra) {
+    assert(0<=progress && progress<1);
+    assert(extra==NULL);
+    assert(strlen(progress_string)>8);
+    while (!ftruncate_done) {
+        sched_yield();
+    }
+    return 0;
+}
+    
 //
 void test_truncate(void) {
+    VALGRIND_HG_DISABLE_CHECKING(&ftruncate_done, sizeof(ftruncate_done));
+
     int result = 0;
     setup_source();
     setup_dirs();
@@ -25,23 +40,11 @@ void test_truncate(void) {
 
     char *src = get_src();
 
-    // write a megabyte so that the throttle will make it very likely that the ftruncate will run while the backup is still going.
-    {
-        int fd = openf(O_CREAT | O_WRONLY, 0777, "%s/big.data", src);
-        const size_t bufsize=1024;
-        char buf[bufsize];
-        for (size_t i=0; i<bufsize; i++) {
-            buf[i]=i%256;
-        }
-        for (size_t i=0; i<1025; i++) {
-            ssize_t l = write(fd, buf, bufsize);
-            assert(l==(ssize_t)bufsize);
-        }
-    }
-    tokubackup_throttle_backup(700000); // so it will take more than one second to do the backup.
-
     pthread_t thread;
-    start_backup_thread(&thread);
+    start_backup_thread_with_funs(&thread, get_src(), get_dst(),
+                                  ftruncate_poll, NULL,
+                                  dummy_error, NULL,
+                                  0);
 
     // Create a new file.
     int fd = openf(O_CREAT | O_RDWR, 0777, "%s/my.data", src);
@@ -56,6 +59,7 @@ void test_truncate(void) {
         int r = ftruncate(fd, 6);
         assert(r==0);
     }
+    ftruncate_done  = 1;
     const int SIZE = 20;
     char buf_source[SIZE];
     size_t src_n_read = pread(fd, buf_source, SIZE, 0);

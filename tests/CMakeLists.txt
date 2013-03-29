@@ -21,7 +21,6 @@ set(blackboxtests
   test6317
   test6317b
   test6361
-  test6361b
   )
 
 set(glassboxtests

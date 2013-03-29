@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <valgrind/helgrind.h>
 
 #include "backup.h"
 #include "backup_test_helpers.h"
@@ -32,13 +33,31 @@ static int verify(void)
     return r;
 }
 
+volatile int write_done = 0;
+
+static int write_poll(float progress, const char *progress_string, void *extra) {
+    assert(0<=progress && progress<1);
+    assert(extra==NULL);
+    assert(strlen(progress_string)>8);
+    while (!write_done) {
+        sched_yield();
+    }
+    return 0;
+}
+
+
 //
 static void open_write_close(void) {
+    VALGRIND_HG_DISABLE_CHECKING(&write_done, sizeof(write_done));
+
     setup_source();
     setup_dirs();
     setup_destination();
     pthread_t thread;
-    start_backup_thread(&thread);
+    start_backup_thread_with_funs(&thread, get_src(), get_dst(),
+                                  write_poll, NULL,
+                                  dummy_error, NULL,
+                                  0);
 
     char *src = get_src();
     int fd = openf(O_WRONLY, 0, "%s/bar.data", src);
@@ -46,6 +65,7 @@ static void open_write_close(void) {
     free(src);
     int result = write(fd, WRITTEN_STR, WRITTEN_STR_LEN);
     assert(result == 8);
+    write_done = 1; // let the poll return, so that the backup will not finish before this write took place.
     result = close(fd);
     assert(result == 0);
 

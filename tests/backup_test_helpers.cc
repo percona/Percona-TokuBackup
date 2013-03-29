@@ -190,19 +190,13 @@ char *get_src(void) {
 //
 // Dummy callbacks:
 //
-int dummy_poll(float progress, const char *string, void *extra)
+int dummy_poll(float progress __attribute__((__unused__)), const char *string __attribute__((__unused__)), void *extra __attribute__((__unused__)))
 {
-    if(extra)
-    progress++;
-    string++;
     return 0;
 }
 
-void dummy_error(int error, const char *string, void *extra)
+void dummy_error(int error __attribute__((__unused__)), const char *string __attribute__((__unused__)), void *extra __attribute__((__unused__)))
 {
-    if(extra)
-    error++;
-    string++;
 }
 
 unsigned long dummy_throttle(void)
