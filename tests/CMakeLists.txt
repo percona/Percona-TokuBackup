@@ -24,7 +24,9 @@ set(blackboxtests
 
 set(glassboxtests
   backup_directory_tests
+  backup_no_fractal_tree          ## Needs the keep_capturing API
   backup_no_fractal_tree_threaded ## Needs the keep_capturing API
+  backup_no_ft2                   ## Needs the keep_capturing API
   ftruncate                       ## Needs the keep_capturing API
   copy_files
   )
