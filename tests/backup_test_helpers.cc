@@ -127,7 +127,14 @@ void start_backup_thread_with_funs(pthread_t *thread,
                                    backup_error_fun_t error_fun, void *error_extra,
                                    int expect_return_result) {
     backup_thread_extra_t *p = new backup_thread_extra_t;
-    *p = {src_dir, dst_dir, poll_fun, poll_extra, error_fun, error_extra, expect_return_result};
+    //    *p = {src_dir, dst_dir, poll_fun, poll_extra, error_fun, error_extra, expect_return_result};
+    p->src_dir = src_dir;
+    p->dst_dir = dst_dir;
+    p->poll_fun = poll_fun;
+    p->poll_extra = poll_extra;
+    p->error_fun = error_fun;
+    p->error_extra = error_extra;
+    p->expect_return_result = expect_return_result;
     int r = pthread_create(thread, NULL, start_backup_thread_fun, p);
     assert(r==0);
 }
