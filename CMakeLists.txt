@@ -17,11 +17,8 @@ set(BACKUP_SOURCES
 	real_syscalls.cc)
 
 add_library(HotBackup          SHARED ${BACKUP_SOURCES})
-# And a Glassbox version of the library in which the visibility is defaul, not hidden
-add_library(HotBackupGlassbox      SHARED ${BACKUP_SOURCES})
 
 target_link_libraries(HotBackup          LINK_PUBLIC rt)
-target_link_libraries(HotBackupGlassbox LINK_PUBLIC rt)
 
 # If for some reason we go back to static libraries, we'll need these two:
 # set_target_properties(HotBackup          PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -50,10 +47,16 @@ configure_file(CTestCustom.cmake . COPYONLY)
 
 # INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/../tokudb
 
-add_subdirectory(tests)
+IF(BACKUP_TESTS)
+  add_subdirectory(tests)
+  # And a Glassbox version of the library in which the visibility is defaul, not hidden
+  add_library(HotBackupGlassbox      SHARED ${BACKUP_SOURCES})
+  target_link_libraries(HotBackupGlassbox LINK_PUBLIC rt)
+  install(TARGETS HotBackupGlassbox  DESTINATION lib)
+ENDIF()
+
 ##add_subdirectory(db-benchmark-test)
 
 install(TARGETS HotBackup          DESTINATION lib)
-install(TARGETS HotBackupGlassbox  DESTINATION lib)
 
 set(HOT_BACKUP_LIBS HotBackup PARENT_SCOPE)
