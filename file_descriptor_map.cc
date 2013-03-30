@@ -9,7 +9,10 @@
 #include <cstdlib>
 #include <pthread.h>
 #include <stdio.h>
+#include <vector>
 
+class file_description;
+template class std::vector<file_description *>;
 
 // This mutx protects the file descriptor map
 static pthread_mutex_t get_put_mutex = PTHREAD_MUTEX_INITIALIZER;

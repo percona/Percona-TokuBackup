@@ -18,6 +18,9 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <vector>
+
+template class std::vector<char *>;
 
 #if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CopyWarn(string, arg)
