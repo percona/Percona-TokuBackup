@@ -26,4 +26,7 @@ int call_real_mkdir(const char *pathname, mode_t mode) throw() __attribute__((__
 typedef ssize_t (*pwrite_fun_t)(int, const void *, size_t, off_t);
 pwrite_fun_t register_pwrite(pwrite_fun_t new_pwrite); // Effect: The system will call new_pwrite in the future.  The function it would have called is returned (so that the new_pwrite function can use it, if it wants)
 
+typedef ssize_t (*write_fun_t)(int, const void *, size_t);
+write_fun_t register_write(write_fun_t new_write);
+
 #endif // end of header guardian.

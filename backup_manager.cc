@@ -183,6 +183,7 @@ out:
 //
 void backup_manager::disable_descriptions(void)
 {
+    printf("disabling\n");
     lock_file_descriptor_map();
     for (int i = 0; i < m_map.size(); ++i) {
         file_description *file = m_map.get_unlocked(i);
@@ -191,6 +192,7 @@ void backup_manager::disable_descriptions(void)
         }
         
         file->disable_from_backup();
+        printf("sleeping\n"); usleep(1000);
     }
     unlock_file_descriptor_map();
 }

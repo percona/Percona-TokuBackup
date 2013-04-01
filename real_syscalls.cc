@@ -67,10 +67,16 @@ int call_real_close(int fd) {
     return real_close(fd);
 }
 
+static ssize_t (*real_write)(int fd, const void *buf, size_t nbyte) = NULL;
 ssize_t call_real_write(int fd, const void *buf, size_t nbyte) {
-    static ssize_t (*real_write)(int fd, const void *buf, size_t nbyte) = NULL;
     dlsym_set(&real_write, "write");
     return real_write(fd, buf, nbyte);
+}
+write_fun_t register_write(write_fun_t f) {
+    dlsym_set(&real_write, "write");
+    write_fun_t r = real_write;
+    real_write = f;
+    return r;
 }
 
 ssize_t call_real_read(int fildes, const void *buf, size_t nbyte) {
