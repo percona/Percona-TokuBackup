@@ -29,6 +29,7 @@ set(glassboxtests
   backup_no_ft2                   ## Needs the keep_capturing API
   ftruncate                       ## Needs the keep_capturing API
   copy_files
+  test6415_enospc_injection
   )
 
 foreach(test ${blackboxtests})

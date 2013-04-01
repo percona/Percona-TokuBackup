@@ -79,10 +79,17 @@ ssize_t call_real_read(int fildes, const void *buf, size_t nbyte) {
     return real_read(fildes, buf, nbyte);
 }
 
+static pwrite_fun_t real_pwrite = NULL;
+
 ssize_t call_real_pwrite(int fildes, const void *buf, size_t nbyte, off_t offset) {
-    static ssize_t (*real_pwrite)(int fildes, const void *buf, size_t nbyte, off_t offset) = NULL;
     dlsym_set(&real_pwrite, "pwrite");
     return real_pwrite(fildes, buf, nbyte, offset);
+}
+pwrite_fun_t register_pwrite(pwrite_fun_t f) {
+    dlsym_set(&real_pwrite, "pwrite");
+    pwrite_fun_t r = real_pwrite;
+    real_pwrite = f;
+    return r;
 }
 
 off_t call_real_lseek(int fd, off_t offset, int whence) {

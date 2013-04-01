@@ -23,4 +23,7 @@ int call_real_unlink(const char *path) throw() __attribute__((__nonnull__ (1)));
 int call_real_rename(const char* oldpath, const char* newpath);
 int call_real_mkdir(const char *pathname, mode_t mode) throw() __attribute__((__nonnull__ (1)));
 
+typedef ssize_t (*pwrite_fun_t)(int, const void *, size_t, off_t);
+pwrite_fun_t register_pwrite(pwrite_fun_t new_pwrite); // Effect: The system will call new_pwrite in the future.  The function it would have called is returned (so that the new_pwrite function can use it, if it wants)
+
 #endif // end of header guardian.
