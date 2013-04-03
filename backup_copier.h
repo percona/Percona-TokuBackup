@@ -22,18 +22,17 @@ private:
     int m_copy_error;
     std::vector<char *> m_todo;
     backup_callbacks *m_calls;
-    int copy_regular_file(const char *source, const char *dest, off_t file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up);
-    int add_dir_entries_to_todo(DIR *dir, const char *file);
+    int copy_regular_file(const char *source, const char *dest, off_t file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up)  __attribute__((warn_unused_result));
+    int add_dir_entries_to_todo(DIR *dir, const char *file)  __attribute__((warn_unused_result));
     void cleanup(void);
 public:
     backup_copier(backup_callbacks *calls);
     void set_directories(const char *source, const char *dest);
     void set_error(int error);
-    int get_error(void);
-    int do_copy();
-    int copy_stripped_file(const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up);
-    int copy_full_path(const char *source, const char* dest, const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up);
-    int copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up);
+    int do_copy() __attribute__((warn_unused_result))  __attribute__((warn_unused_result));
+    int copy_stripped_file(const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) __attribute__((warn_unused_result));
+    int copy_full_path(const char *source, const char* dest, const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) __attribute__((warn_unused_result));
+    int copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up)  __attribute__((warn_unused_result));
 };
 
 #endif // End of header guardian.

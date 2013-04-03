@@ -79,21 +79,6 @@ void backup_copier::set_directories(const char *source, const char *dest)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-void backup_copier::set_error(int error)
-{
-    m_copy_error = error;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//
-int backup_copier::get_error(void)
-{
-    return m_copy_error;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-//
 // start_copy() -
 //
 // Description: 
@@ -223,7 +208,11 @@ int backup_copier::copy_full_path(const char *source,
     
     // See if the source path is a directory or a real file.
     if (S_ISREG(sbuf.st_mode)) {
-        this->copy_regular_file(source, dest, sbuf.st_size, total_bytes_backed_up, total_files_backed_up);
+        r = this->copy_regular_file(source, dest, sbuf.st_size, total_bytes_backed_up, total_files_backed_up);
+        if (r != 0) {
+            // The error should already have been reported, so we simply return r.
+            goto out;
+        }
     } else if (S_ISDIR(sbuf.st_mode)) {
         // Make the directory in the backup destination.
         r = call_real_mkdir(dest, 0777);
