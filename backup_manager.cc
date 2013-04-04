@@ -38,7 +38,8 @@
 //     Constructor.
 //
 backup_manager::backup_manager() 
-    : m_keep_capturing(false),
+    : m_start_copying(true),
+      m_keep_capturing(false),
       m_is_capturing(false),
       m_session(NULL),
       m_throttle(ULONG_MAX)
