@@ -88,7 +88,7 @@ out:
 //     Closes the file associated with the provided file descriptor
 // in both the source and backup directories.
 //
-int close(int fd) {
+extern "C" int close(int fd) {
     int r = 0;
     TRACE("close() intercepted, fd = ", fd);
     r = call_real_close(fd);
@@ -106,7 +106,7 @@ int close(int fd) {
 //     Writes to the file associated with the given file descriptor
 // in both the source and backup directories.
 //
-ssize_t write(int fd, const void *buf, size_t nbyte) {
+extern "C" ssize_t write(int fd, const void *buf, size_t nbyte) {
     TRACE("write() intercepted, fd = ", fd);
 
     // Moved the write down into file_description->write, where a lock can be obtained
@@ -129,7 +129,7 @@ ssize_t write(int fd, const void *buf, size_t nbyte) {
 // given file descriptor has changed, even though no bytes are
 // read from the backup copy of the same file.
 //
-ssize_t read(int fd, void *buf, size_t nbyte) {
+extern "C" ssize_t read(int fd, void *buf, size_t nbyte) {
     TRACE("read() intercepted, fd = ", fd);
     // Moved the read down into file_description->read, where a lock can be obtained.
     
@@ -146,7 +146,7 @@ ssize_t read(int fd, void *buf, size_t nbyte) {
 //     Writes to the file associated with the given file descriptor
 // in both the source and backup directories.
 //
-ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset) {
+extern "C" ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset) {
     ssize_t r = 0;
     TRACE("pwrite() intercepted, fd = ", fd);
     r = call_real_pwrite(fd, buf, nbyte, offset);
@@ -170,7 +170,7 @@ off_t lseek(int fd, off_t offset, int whence) {
 //
 //     Deletes a portion of the file based on the given file descriptor.
 //
-int ftruncate(int fd, off_t length) {
+extern "C" int ftruncate(int fd, off_t length) {
     int r = 0;
     TRACE("ftruncate() intercepted, fd = ", fd);
     r = call_real_ftruncate(fd, length);
@@ -187,7 +187,7 @@ int ftruncate(int fd, off_t length) {
 //
 //     Deletes a portion of the given file based on the given length.
 //
-int truncate(const char *path, off_t length) throw() {
+extern "C" int truncate(const char *path, off_t length) throw() {
     int r = 0;
     TRACE("truncate() intercepted, path = ", path);
     r = call_real_truncate(path, length);
@@ -202,7 +202,7 @@ int truncate(const char *path, off_t length) throw() {
 //
 // Description: 
 //
-int unlink(const char *path) throw() {
+extern "C" int unlink(const char *path) throw() {
     int r = 0;
     TRACE("unlink() intercepted, path = ", path);
     r = call_real_unlink(path);
@@ -216,7 +216,7 @@ int unlink(const char *path) throw() {
 //
 // Description: 
 //
-int rename(const char *oldpath, const char *newpath) {
+extern "C" int rename(const char *oldpath, const char *newpath) {
     int r = 0;
     TRACE("rename() intercepted","");
     TRACE("-> oldpath = ", oldpath);
