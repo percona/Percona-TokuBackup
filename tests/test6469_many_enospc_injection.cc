@@ -91,6 +91,7 @@ static void testit(void) {
                                   my_error_fun, NULL,
                                   ENOSPC);
     while(!backup_is_capturing()) sched_yield(); // wait for the backup to be capturing.
+    fprintf(stderr, "The backup is supposedly capturing\n");
     {
         ssize_t r = pwrite(fd, "hello", 5, 10);
         assert(r==5);

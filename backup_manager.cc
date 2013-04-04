@@ -37,14 +37,19 @@
 //
 //     Constructor.
 //
-backup_manager::backup_manager() 
+backup_manager::backup_manager(void)
     : m_start_copying(true),
       m_keep_capturing(false),
       m_is_capturing(false),
+      m_backup_is_running(false),
       m_session(NULL),
-      m_throttle(ULONG_MAX)
+      m_throttle(ULONG_MAX),
+      m_an_error_happened(false),
+      m_errnum(BACKUP_SUCCESS),
+      m_errstring(NULL)
 {
     int r = pthread_mutex_init(&m_mutex, NULL);
+    VALGRIND_HG_DISABLE_CHECKING(&m_backup_is_running, sizeof(m_backup_is_running));
     VALGRIND_HG_DISABLE_CHECKING(&m_is_dead, sizeof(m_is_dead));
     m_is_dead = false;
     if (r!=0) {
@@ -60,8 +65,21 @@ backup_manager::backup_manager()
         m_is_dead = true;
         return;
     }
+    r = pthread_mutex_init(&m_error_mutex, NULL);
+    if (r!=0) {
+        int e = errno;
+        fprintf(stderr, "Backup manager failed to initialize mutex: %s:%d errno=%d (%s)\n", __FILE__, __LINE__, e, strerror(e));
+        m_is_dead = true;
+        return;
+    }
 }
 
+backup_manager::~backup_manager(void) {
+    pthread_mutex_destroy(&m_mutex);
+    pthread_mutex_destroy(&m_session_mutex);
+    pthread_mutex_destroy(&m_error_mutex);
+    if (m_errstring) free(m_errstring);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -78,6 +96,7 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
         r = -1;
         goto error_out;
     }
+    m_backup_is_running = true;
     r = calls->poll(0, "Preparing backup");
     if (r != 0) {
         calls->report_error(r, "User aborted backup");
@@ -120,6 +139,7 @@ disable_out:
     // If the client asked us to keep capturing till they tell us to stop, then do what they said.
     while (m_keep_capturing) sched_yield();
 
+    m_backup_is_running = false;
     this->disable_descriptions();
 
     VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
@@ -141,6 +161,11 @@ unlock_out:
                 r = pthread_error;
             }
         }
+    }
+
+    if (m_an_error_happened) {
+        calls->report_error(m_errnum, m_errstring);
+        r = m_errnum;
     }
 
 error_out:
@@ -370,8 +395,9 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
 // to write to a particular position in the backup file.
 //
 void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
+// Do the write.  If the destination gets a short write, that's an error.
 {
-    if (m_is_dead) return;
+    if (m_is_dead || !m_backup_is_running) return;
     TRACE("entering pwrite() with fd = ", fd);
 
     file_description *description = NULL;
@@ -382,7 +408,7 @@ void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 
     int r = description->pwrite(buf, nbyte, offset);
     if(r != 0) {
-        // TODO: abort backup, pwrite on the backup file failed.
+        set_error(r, "failed write while backing up %s", description->get_full_source_name());
     }
 }
 
@@ -512,6 +538,32 @@ unsigned long backup_manager::get_throttle(void) {
     //return ret;
 }
 
+void backup_manager::set_error(int errnum, const char *format_string, ...) {
+    va_list ap;
+    va_start(ap, format_string);
+
+    m_backup_is_running = false;
+    {
+        int r = pthread_mutex_lock(&m_error_mutex);
+        if (r!=0) {
+            m_is_dead = true;  // go ahead and set the error, however
+        }
+    }
+    if (!m_an_error_happened) {
+        int len = 2*PATH_MAX + strlen(format_string) + 1000; // should be big enough for all our errors
+        char *string = (char*)malloc(len);
+        int nwrote = vsnprintf(string, len, format_string, ap);
+        snprintf(string+nwrote, len-nwrote, "   error %d (%s)", errnum, strerror(errnum));
+        if (m_errstring) free(m_errstring);
+        m_errstring = string;
+        m_errnum = errnum;
+        m_an_error_happened = true;
+    }
+    va_end(ap);
+    
+}
+
+// Test routines.
 void backup_manager::set_keep_capturing(bool keep_capturing) {
     VALGRIND_HG_DISABLE_CHECKING(&m_keep_capturing, sizeof(m_keep_capturing));
     m_keep_capturing = keep_capturing;

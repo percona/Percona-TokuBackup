@@ -167,7 +167,10 @@ ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset) {
     ssize_t r = 0;
     TRACE("pwrite() intercepted, fd = ", fd);
     r = call_real_pwrite(fd, buf, nbyte, offset);
-    manager.pwrite(fd, buf, nbyte, offset);
+    if (r>0) {
+        // Don't try to write if there was an error in the application.
+        manager.pwrite(fd, buf, r, offset);
+    }
     return r;
 }
 

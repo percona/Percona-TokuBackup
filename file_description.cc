@@ -275,8 +275,9 @@ void file_description::lseek(off_t new_offset) {
 // pwrite() -
 //
 // Description: 
-//
-//     ...
+//     If there is no destination version, then do nothing and return nbyte.
+//     If there is a destination file, then pwrite it and return whatever the pwrite returns
+//       (that is, return the number of bytes written, or a -1 and set errno)
 //
 int file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
 {
@@ -289,12 +290,21 @@ int file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
         goto out;
     }
     
-    r = call_real_pwrite(this->m_fd_in_dest_space, buf, nbyte, offset);
-    if (r < 0) {
-        perror("Toku Hot Backup: pwrite() to backup file failed:"); 
-        r = -1;
+    // Get the data written out, or do 
+    while (nbyte>0) {
+        ssize_t wr = call_real_pwrite(this->m_fd_in_dest_space, buf, nbyte, offset);
+        if (wr==-1) {
+            r = errno;
+            break;
+        }
+        if (wr==0) {
+            // Can this happen?  Don't see how.  If it does happen, treat it as an error.
+            r = -1;  
+            break;
+        }
+        nbyte -= wr;
+        offset += wr;
     }
-
 out:
     return r;
 }
