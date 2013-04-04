@@ -154,13 +154,13 @@ static int does_file_exist(const char*);
 //
 //     Creates backup path for given file if it doesn't exist already.
 //
-int open_path(const char *file_path) {    
+int open_path(const char *file_path) {
     int r = 0;
     // See if the file exists in the backup copy already...
     int exists = does_file_exist(file_path);
     
     if (exists == 0) {
-        create_subdirectories(file_path);
+        r = create_subdirectories(file_path);
     }
     
     if(exists == -1) {
@@ -180,13 +180,13 @@ int open_path(const char *file_path) {
 //     Recursively creates all the backup subdirectories 
 // required for the given path.
 //
-void create_subdirectories(const char*);
-void create_subdirectories(const char *path)
-{
+int create_subdirectories(const char *path) {
     const char SLASH = '/';
     char *directory = strdup(path);
     char *next_slash = directory;
     ++next_slash;
+
+    int r = 0;
 
     while(next_slash != NULL) {
         // 1. scan for next slash
@@ -208,21 +208,18 @@ void create_subdirectories(const char *path)
         *next_slash = 0;
         
         // 4. mkdir
-        int r = 0;
         if (*directory) {
             r = call_real_mkdir(directory, 0777);
-        }
         
-        if(r) {
-            int error = errno;
-            
-            //printf("WARN: <CAPTURE>: %s\n", directory);
-            // For now, just ignore already existing dir,
-            // this is a race between the backup copier
-            // and the intercepted open() calls.
-            if(error != EEXIST) {
-                // TODO: Handle this screw case.
-                perror("Toku Hot Backup: Making backup subdirectory failed:");
+            if(r) {
+                //printf("WARN: <CAPTURE>: %s\n", directory);
+                // For now, just ignore already existing dir,
+                // this is a race between the backup copier
+                // and the intercepted open() calls.
+                if(errno != EEXIST) {
+                    r = errno;
+                    goto out;
+                }
             }
         }
         
@@ -234,7 +231,9 @@ void create_subdirectories(const char *path)
         ++next_slash;
     }
     
+out:
     free((void*)directory);
+    return r;
 }
 
 

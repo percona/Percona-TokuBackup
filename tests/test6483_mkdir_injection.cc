@@ -5,6 +5,8 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
 
@@ -14,14 +16,14 @@
 
 static bool disable_injections = true;
 static std::vector<long> injection_pattern; // On the Kth pwrite or write, return ENOSPC, if K is in this vector.
-static std::vector<int>  ignore_fds;        // Don't count pwrite or write to any fd in this vector.
 static long injection_write_count = 0;
 
-static bool inject_this_time(int fd) {
-    if (disable_injections) return false;
-    for (size_t i=0; i<ignore_fds.size(); i++) {
-        if (ignore_fds[i]==fd) return false;
-    }
+static char *src;
+static char *dst;
+
+static bool inject_this_time(const char *path) {
+    printf("src=%s path=%s\n", dst, path);
+    if (strncmp(dst, path, strlen(dst))!=0) return false;
     long old_count = __sync_fetch_and_add(&injection_write_count,1);
     for (size_t i=0; i<injection_pattern.size(); i++) {
         if (injection_pattern[i]==old_count) {
@@ -31,28 +33,16 @@ static bool inject_this_time(int fd) {
     return false;
 }
 
-static pwrite_fun_t original_pwrite;
+static mkdir_fun_t original_mkdir;
 
-static ssize_t my_pwrite(int fd, const void *buf, size_t nbyte, off_t offset) {
-    fprintf(stderr, "Doing pwrite on fd=%d\n", fd); // ok to do a write, since we aren't further interposing writes in this test.
-    if (inject_this_time(fd)) {
+static int my_mkdir(const char *path, mode_t mode) {
+    fprintf(stderr, "Doing mkdir(%s, %d)\n", path, mode); // ok to do a write, since we aren't further interposing writes in this test.
+    if (inject_this_time(path)) {
         fprintf(stderr, "Injecting error\n");
         errno = ENOSPC;
         return -1;
     } else {
-        return original_pwrite(fd, buf, nbyte, offset);
-    }
-}
-
-static write_fun_t  original_write;
-static ssize_t my_write(int fd, const void *buf, size_t nbyte) {
-    fprintf(stderr, "Doing write(%d, %p, %ld)\n", fd, buf, nbyte); // ok to do a write, since we aren't further interposing writes in this test.
-    if (inject_this_time(fd)) {
-        fprintf(stderr, "Injecting error\n");
-        errno = ENOSPC;
-        return -1;
-    } else {
-        return original_write(fd, buf, nbyte);
+        return original_mkdir(path, mode);
     }
 }
 
@@ -63,8 +53,6 @@ static void my_error_fun(int e, const char *s, void *ignore) {
     fprintf(stderr, "Got error %d (I expected errno=%d) (%s)\n", e, ENOSPC, s);
 }
     
-static char *src;
-
 static void testit(void) {
     disable_injections = true;
     injection_write_count = 0;
@@ -80,10 +68,23 @@ static void testit(void) {
 
     pthread_t thread;
 
-    int fd = openf(O_RDWR|O_CREAT, 0777, "%s/my.data", src);
+    {
+        char s[1000];
+        snprintf(s, sizeof(s), "%s/dir0", src);
+        int r = mkdir(s, 0777);
+        assert(r==0);
+    }
+
+    {
+        char s[1000];
+        snprintf(s, sizeof(s), "%s/dir0/dir1", src);
+        int r = mkdir(s, 0777);
+        assert(r==0);
+    }
+
+    int fd = openf(O_RDWR|O_CREAT, 0777, "%s/dir0/my.data", src);
     assert(fd>=0);
     fprintf(stderr, "fd=%d\n", fd);
-    ignore_fds.push_back(fd);
 
     start_backup_thread_with_funs(&thread,
                                   get_src(), get_dst(),
@@ -110,8 +111,8 @@ static void testit(void) {
 
 int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
     src = get_src();
-    original_pwrite = register_pwrite(my_pwrite);
-    original_write  = register_write(my_write);
+    dst = get_dst();
+    original_mkdir  = register_mkdir(my_mkdir);
 
     injection_pattern.push_back(0);
     testit();
@@ -127,5 +128,6 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     testit();
 
     free(src);
+    free(dst);
     return 0;
 }

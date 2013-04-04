@@ -119,7 +119,7 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
         goto unlock_out;
     }
     
-    r = this->prepare_directories_for_backup(m_session);
+    r = this->prepare_directories_for_backup(m_session, calls);
     if (r != 0) {
         goto disable_out;
     }
@@ -174,8 +174,7 @@ error_out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int backup_manager::prepare_directories_for_backup(backup_session *session)
-{
+int backup_manager::prepare_directories_for_backup(backup_session *session, backup_callbacks *calls) {
     int r = 0;
     // Loop through all the current file descriptions and prepare them
     // for backup.
@@ -193,10 +192,11 @@ int backup_manager::prepare_directories_for_backup(backup_session *session)
 
         char * file_name = session->translate_prefix(source_path);
         file->prepare_for_backup(file_name);
-        int r = open_path(file_name);
+        r = open_path(file_name);
         free(file_name);
         if (r != 0) {
             // TODO: Could not open path, abort backup.
+            calls->report_error(r, "Trying to open path");
             session->abort();
             goto out;
         }

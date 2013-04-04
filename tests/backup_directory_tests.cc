@@ -44,7 +44,10 @@ static int backup_sub_dirs(void) {
     }
 
     *temp = 0;
-    create_subdirectories(newpath);
+    {
+        int r = create_subdirectories(newpath);
+        assert(r==0);
+    }
     free(newpath);
 
     // Verify:

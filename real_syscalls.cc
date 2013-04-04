@@ -128,8 +128,16 @@ int call_real_rename(const char* oldpath, const char* newpath) {
     return real_rename(oldpath, newpath);
 }
 
+static mkdir_fun_t real_mkdir = NULL;
+
 int call_real_mkdir(const char *pathname, mode_t mode) throw() {
-    static int (*real_mkdir)(const char *pathname, mode_t mode) = NULL;
     dlsym_set(&real_mkdir, "mkdir");
     return real_mkdir(pathname, mode);
+}
+
+mkdir_fun_t register_mkdir(mkdir_fun_t f) {
+    dlsym_set(&real_mkdir, "mkdir");
+    mkdir_fun_t r = real_mkdir;
+    real_mkdir = f;
+    return r;
 }
