@@ -56,36 +56,8 @@ const int COPIER_AFTER_WRITE                = 0x04;
 const int MANAGER_IN_PREPARE                = 0x08;
 const int MANAGER_IN_DISABLE                = 0x10;
 
-bool should_pause(int flag)
-{
-    bool result = false;
-    switch (flag) {
-        case COPIER_BEFORE_READ:
-            result = COPIER_BEFORE_READ & PAUSE_POINTS;
-            break;
-        case COPIER_AFTER_READ_BEFORE_WRITE:
-            result = COPIER_AFTER_READ_BEFORE_WRITE & PAUSE_POINTS;
-            break;
-        case COPIER_AFTER_WRITE:
-            result = COPIER_AFTER_WRITE & PAUSE_POINTS;
-            break;
-        case MANAGER_IN_PREPARE:
-            result = MANAGER_IN_PREPARE;
-            break;
-        case MANAGER_IN_DISABLE:
-            result = MANAGER_IN_DISABLE;
-            break;
-        default:
-            break;
-    }
-
-    return result;
-}
-
-void set_pause(int flag)
-{
-    PAUSE_POINTS = PAUSE_POINTS & flag;
-}
+bool should_pause(int);
+void set_pause(int);
 
 } // End of namespace.
 

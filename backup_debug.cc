@@ -97,5 +97,37 @@ void InterposeError(const char *s, const char *arg)
     }
 }
 
+bool should_pause(int flag)
+{
+    bool result = false;
+    switch (flag) {
+        case COPIER_BEFORE_READ:
+            result = COPIER_BEFORE_READ & PAUSE_POINTS;
+            break;
+        case COPIER_AFTER_READ_BEFORE_WRITE:
+            result = COPIER_AFTER_READ_BEFORE_WRITE & PAUSE_POINTS;
+            break;
+        case COPIER_AFTER_WRITE:
+            result = COPIER_AFTER_WRITE & PAUSE_POINTS;
+            break;
+        case MANAGER_IN_PREPARE:
+            result = MANAGER_IN_PREPARE;
+            break;
+        case MANAGER_IN_DISABLE:
+            result = MANAGER_IN_DISABLE;
+            break;
+        default:
+            break;
+    }
+
+    return result;
+}
+
+void set_pause(int flag)
+{
+    PAUSE_POINTS = PAUSE_POINTS & flag;
+}
+
+
 }
 
