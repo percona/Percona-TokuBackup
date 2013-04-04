@@ -21,7 +21,7 @@ static int fd;
 const char ONE = 'a';
 const char ZERO = 'b';
 
-void* write_ones(void *p) {
+static void* write_ones(void *p __attribute__((__unused__))) {
     void *ret = NULL;
     char data[SIZE] = {ONE};    
     int r = write(fd, data, SIZE);
@@ -29,7 +29,7 @@ void* write_ones(void *p) {
     return ret;
 }
 
-int write_race(void) {
+static int write_race(void) {
     int result = 0;
 
     // 1. Create one file in source with a few bytes.
