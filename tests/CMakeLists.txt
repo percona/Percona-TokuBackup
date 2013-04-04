@@ -32,6 +32,7 @@ set(glassboxtests
   test6415_enospc_injection
   test6469_many_enospc_injection
   test6431_postcopy
+  write_race
   )
 
 foreach(test ${blackboxtests})
