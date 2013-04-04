@@ -1,3 +1,4 @@
+
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
@@ -26,10 +27,12 @@ template class std::vector<char *>;
 #define WARN(string, arg) HotBackup::CopyWarn(string, arg)
 #define TRACE(string, arg) HotBackup::CopyTrace(string, arg)
 #define ERROR(string, arg) HotBackup::CopyError(string, arg)
+#define PAUSE(int) while(HotBackup::should_pause(int)) { sched_yield(); }
 #else
 #define WARN(string, arg) 
 #define TRACE(string, arg) 
 #define ERROR(string, arg) 
+#define PAUSE(int)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +356,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
     if (r!=0) goto out;
 
     while (1) {
-                
+        PAUSE(HotBackup::COPIER_BEFORE_READ);
         ssize_t n_read = call_real_read(srcfd, buf, buf_size);
         if (n_read == 0) {
             break;
@@ -361,7 +364,8 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
             r = -1;
             goto out;
         }
-        
+
+        PAUSE(HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);        
         ssize_t n_wrote_this_buf = 0;
         while (n_wrote_this_buf < n_read) {
             snprintf(poll_string, poll_string_size, "Backup progress %ld bytes, %ld files.  Copying file: %ld/%ld bytes done of %s to %s.",
@@ -385,6 +389,8 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
             total_written_this_file += n_wrote_now;
             *total_bytes_backed_up  += n_wrote_now;
         }
+
+        PAUSE(HotBackup::COPIER_AFTER_WRITE);
         while (1) {
             // Sleep until we've used up enough time.  Be sure to keep polling once per second.
             struct timespec endtime;
