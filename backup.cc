@@ -302,3 +302,10 @@ void backup_set_keep_capturing(bool b)
 {
     manager.set_keep_capturing(b);
 }
+bool backup_is_capturing(void) {
+    return manager.is_capturing();
+}
+void backup_set_start_copying(bool b)
+{
+    manager.set_start_copying(b);
+}

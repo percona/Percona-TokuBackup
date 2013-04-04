@@ -17,9 +17,11 @@
 class backup_manager
 {
 private:
+    volatile bool m_start_copying; // For test purposes, we can arrange to initialize the backup but not actually start copying.
     volatile bool m_keep_capturing; // For test purposes, we can arrange to keep capturing the backup until the client tells us to stop.
+    volatile bool m_is_capturing;   // Backup manager sets to true when capturing is running, sets to false when capturing has stopped.   We look at m_start_copying after setting m_is_capturing=true.
 
-    bool m_is_dead; // true if some error occured so that the backup system shouldn't try any more.
+    volatile bool m_is_dead; // true if some error occured so that the backup system shouldn't try any more.
 
     file_descriptor_map m_map;
     pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
@@ -52,7 +54,9 @@ public:
     void set_throttle(unsigned long bytes_per_second); // This is thread-safe.
     unsigned long get_throttle(void);                 // This is thread-safe.
 
-    void set_keep_capturing(bool keep_capturing);     // This is thread safe.
+    void set_keep_capturing(bool keep_capturing);    // Tell the manager to keep capturing until told not to. This is thread safe.
+    bool is_capturing(void);                         // Is the manager capturing?
+    void set_start_copying(bool start_copying);     // Tell the manager not to start copying (by passing false) and then to start copying (by passing true). This is thread safe.
 
 private:
     // N.B. google style guide says that non-constant reference variables are not allowed.

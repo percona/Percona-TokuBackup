@@ -30,6 +30,7 @@ set(glassboxtests
   ftruncate                       ## Needs the keep_capturing API
   copy_files
   test6415_enospc_injection
+  test6415_many_enospc_injection
   test6431_postcopy
   )
 

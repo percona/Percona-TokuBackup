@@ -39,6 +39,7 @@
 //
 backup_manager::backup_manager() 
     : m_keep_capturing(false),
+      m_is_capturing(false),
       m_session(NULL),
       m_throttle(ULONG_MAX)
 {
@@ -103,6 +104,11 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
         goto disable_out;
     }
 
+    VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
+    m_is_capturing = true;
+
+    while (!m_start_copying) sched_yield();
+
     r = m_session->do_copy();
     if (r != 0) {
         // This means we couldn't start the copy thread (ex: pthread error).
@@ -114,6 +120,9 @@ disable_out:
     while (m_keep_capturing) sched_yield();
 
     this->disable_descriptions();
+
+    VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
+    m_is_capturing = false;
 
 unlock_out:
 
@@ -505,4 +514,13 @@ unsigned long backup_manager::get_throttle(void) {
 void backup_manager::set_keep_capturing(bool keep_capturing) {
     VALGRIND_HG_DISABLE_CHECKING(&m_keep_capturing, sizeof(m_keep_capturing));
     m_keep_capturing = keep_capturing;
+}
+
+bool backup_manager::is_capturing(void) {
+    return m_is_capturing;
+}
+
+void backup_manager::set_start_copying(bool start_copying) {
+    VALGRIND_HG_DISABLE_CHECKING(&m_start_copying, sizeof(m_start_copying));
+    m_start_copying = start_copying;
 }
