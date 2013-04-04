@@ -43,7 +43,6 @@ void InterposeError(const char *s, const char *arg);
 
 // Pause Points:
 //
-
 // Pause Point Flags:
 //
 const int COPIER_BEFORE_READ                = 0x01;

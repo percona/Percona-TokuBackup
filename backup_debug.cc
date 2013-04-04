@@ -99,6 +99,8 @@ void InterposeError(const char *s, const char *arg)
     }
 }
 
+static int PAUSE_POINTS = 0x00;
+
 bool should_pause(int flag)
 {
     bool result = false;
