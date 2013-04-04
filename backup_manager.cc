@@ -559,6 +559,12 @@ void backup_manager::set_error(int errnum, const char *format_string, ...) {
         m_errnum = errnum;
         m_an_error_happened = true;
     }
+    {
+        int r = pthread_mutex_unlock(&m_error_mutex);
+        if (r!=0) {
+            m_is_dead = true;
+        }
+    }
     va_end(ap);
     
 }

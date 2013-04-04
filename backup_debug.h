@@ -44,10 +44,6 @@ void InterposeError(const char *s, const char *arg);
 // Pause Points:
 //
 
-// Shared flag across .cc files.
-//
-static int PAUSE_POINTS = 0x00;
-
 // Pause Point Flags:
 //
 const int COPIER_BEFORE_READ                = 0x01;

@@ -21,8 +21,7 @@ static bool inject_this_time(int fd) {
     for (size_t i=0; i<ignore_fds.size(); i++) {
         if (ignore_fds[i]==fd) return false;
     }
-    long old_count = injection_write_count;
-    injection_write_count++;
+    long old_count = __sync_fetch_and_add(&injection_write_count,1);
     for (size_t i=0; i<injection_pattern.size(); i++) {
         if (injection_pattern[i]==old_count) {
             return true;

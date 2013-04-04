@@ -8,6 +8,8 @@
 
 namespace HotBackup {
 
+static int PAUSE_POINTS = 0x00;
+
 // TODO: Set each flag with getenv...
 int BACKUP_TRACE_FLAGS = 0x0F;
 int BACKUP_WARN_FLAGS = 0x0F;
