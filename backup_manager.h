@@ -20,6 +20,7 @@ private:
     volatile bool m_start_copying; // For test purposes, we can arrange to initialize the backup but not actually start copying.
     volatile bool m_keep_capturing; // For test purposes, we can arrange to keep capturing the backup until the client tells us to stop.
     volatile bool m_is_capturing;   // Backup manager sets to true when capturing is running, sets to false when capturing has stopped.   We look at m_start_copying after setting m_is_capturing=true.
+    volatile bool m_done_copying;   // Backup manager sets this true when copying is done.  Happens after m_is_captring
 
     volatile bool m_is_dead; // true if some error occured so that the backup system shouldn't try any more.
     volatile bool m_backup_is_running; // true if the backup is running.  This can be accessed without any locks.
@@ -71,6 +72,7 @@ public:
     // Test interface.  We'd probably like to compile all this stuff away in production code.
     void set_keep_capturing(bool keep_capturing);    // Tell the manager to keep capturing until told not to. This is thread safe.
     bool is_capturing(void);                         // Is the manager capturing?
+    bool is_done_copying(void);                      // Is the manager done copying (true sometime after is_capturing)
     void set_start_copying(bool start_copying);     // Tell the manager not to start copying (by passing false) and then to start copying (by passing true). This is thread safe.
     // end of test interface
 

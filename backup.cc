@@ -294,6 +294,9 @@ void backup_set_keep_capturing(bool b)
 bool backup_is_capturing(void) {
     return manager.is_capturing();
 }
+bool backup_done_copying(void) {
+    return manager.is_done_copying();
+}
 void backup_set_start_copying(bool b)
 {
     manager.set_start_copying(b);

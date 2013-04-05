@@ -29,6 +29,9 @@ pwrite_fun_t register_pwrite(pwrite_fun_t new_pwrite); // Effect: The system wil
 typedef ssize_t (*write_fun_t)(int, const void *, size_t);
 write_fun_t register_write(write_fun_t new_write);
 
+typedef ssize_t (*read_fun_t)(int, void *, size_t);
+read_fun_t register_read(read_fun_t new_read);
+
 typedef int (*mkdir_fun_t)(const char *, mode_t);
 mkdir_fun_t register_mkdir(mkdir_fun_t new_mkdir);
 

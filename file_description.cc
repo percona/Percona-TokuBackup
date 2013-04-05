@@ -281,6 +281,7 @@ void file_description::lseek(off_t new_offset) {
 //
 int file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
 {
+    printf("%s:%d\n", __FILE__, __LINE__);
     int r = 0;
     if(!m_in_source_dir) {
         goto out;
@@ -292,6 +293,7 @@ int file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
     
     // Get the data written out, or do 
     while (nbyte>0) {
+        printf("writing at offset %ld\n", offset);
         ssize_t wr = call_real_pwrite(this->m_fd_in_dest_space, buf, nbyte, offset);
         if (wr==-1) {
             r = errno;

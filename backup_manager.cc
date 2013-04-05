@@ -46,6 +46,7 @@ backup_manager::backup_manager(void)
     : m_start_copying(true),
       m_keep_capturing(false),
       m_is_capturing(false),
+      m_done_copying(false),
       m_is_dead(false),
       m_backup_is_running(false),
       m_session(NULL),
@@ -56,6 +57,7 @@ backup_manager::backup_manager(void)
 {
     VALGRIND_HG_DISABLE_CHECKING(&m_backup_is_running, sizeof(m_backup_is_running));
     VALGRIND_HG_DISABLE_CHECKING(&m_is_dead, sizeof(m_is_dead));
+    VALGRIND_HG_DISABLE_CHECKING(&m_done_copying, sizeof(m_done_copying));
 }
 
 backup_manager::~backup_manager(void) {
@@ -108,6 +110,7 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
 
     VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
     m_is_capturing = true;
+    m_done_copying = false;
 
     while (!m_start_copying) sched_yield();
 
@@ -118,6 +121,7 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
     }
 
 disable_out:
+    m_done_copying = true;
     // If the client asked us to keep capturing till they tell us to stop, then do what they said.
     while (m_keep_capturing) sched_yield();
 
@@ -362,6 +366,7 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
     } else {
         description->lock();
         r = call_real_read(fd, buf, nbyte);
+        printf("%s:%d r=%ld\n", __FILE__, __LINE__, r);
         // TODO: Don't perform our read if the first one fails.
         description->read(r);
         description->unlock();
@@ -563,6 +568,9 @@ void backup_manager::set_keep_capturing(bool keep_capturing) {
     m_keep_capturing = keep_capturing;
 }
 
+bool backup_manager::is_done_copying(void) {
+    return m_done_copying;
+}
 bool backup_manager::is_capturing(void) {
     return m_is_capturing;
 }

@@ -33,6 +33,7 @@ set(glassboxtests
   test6431_postcopy
   test6469_many_enospc_injection
   test6477_close_injection
+  test6478_read_injection
   test6483_mkdir_injection
   write_race
   )

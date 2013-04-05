@@ -26,6 +26,7 @@ int open_path(const char *file_path) __attribute__((warn_unused_result));
 
 void backup_set_start_copying(bool b); // When the backup has started and is about to start copying, wait for this boolean to be true (true by default).
 bool backup_is_capturing(void);        // Return true if the backup has started capturing.
+bool backup_done_copying(void);          // Return true if the backup has finished copying.  This goes true sometime after is_capturing goes true. 
 void backup_set_keep_capturing(bool b);
 // Effect:  By default, when a backup finishes, it disables capturing.  If before the backup finishes, someone calls backup_set_keep_capturing(true)
 //  then the capturing will keep running until someone calls backup_set_capturing(false).
