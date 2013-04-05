@@ -61,10 +61,17 @@ int call_real_open(const char *file, int oflag, ...) {
     }
 }
 
+static close_fun_t real_close = NULL;
+
 int call_real_close(int fd) {
-    static int (*real_close)(int fd) = NULL;
     dlsym_set(&real_close, "close");
     return real_close(fd);
+}
+close_fun_t register_close(close_fun_t f) {
+    dlsym_set(&real_close, "close");
+    close_fun_t r = real_close;
+    real_close = f;
+    return r;
 }
 
 static ssize_t (*real_write)(int fd, const void *buf, size_t nbyte) = NULL;

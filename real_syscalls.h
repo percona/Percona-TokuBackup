@@ -32,4 +32,7 @@ write_fun_t register_write(write_fun_t new_write);
 typedef int (*mkdir_fun_t)(const char *, mode_t);
 mkdir_fun_t register_mkdir(mkdir_fun_t new_mkdir);
 
+typedef int (*close_fun_t)(int);
+close_fun_t register_close(close_fun_t new_close);
+
 #endif // end of header guardian.
