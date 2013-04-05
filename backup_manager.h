@@ -25,16 +25,16 @@ private:
     volatile bool m_backup_is_running; // true if the backup is running.  This can be accessed without any locks.
 
     file_descriptor_map m_map;
-    pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
+    static pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
 
     backup_session *m_session;
     // TODO: use reader/writer lock:
-    pthread_mutex_t m_session_mutex;
+    static pthread_mutex_t m_session_mutex;
 
     volatile unsigned long m_throttle;
 
     // Error handling.
-    pthread_mutex_t m_error_mutex;     // When testing errors grab this mutex. 
+    static pthread_mutex_t m_error_mutex;     // When testing errors grab this mutex. 
     volatile bool m_an_error_happened; // True if an error has happened.  This can be read without the mutex.
     int m_errnum;                      // The error number to be passed to the polling function.
     char *m_errstring;                 // The error string to be passed to the polling function.  This string is malloc'd and owned by the backup_manager.

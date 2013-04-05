@@ -29,6 +29,11 @@
 #endif
 
 
+pthread_mutex_t backup_manager::m_mutex         = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t backup_manager::m_session_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t backup_manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // backup_manager() -
@@ -41,6 +46,7 @@ backup_manager::backup_manager(void)
     : m_start_copying(true),
       m_keep_capturing(false),
       m_is_capturing(false),
+      m_is_dead(false),
       m_backup_is_running(false),
       m_session(NULL),
       m_throttle(ULONG_MAX),
@@ -48,36 +54,11 @@ backup_manager::backup_manager(void)
       m_errnum(BACKUP_SUCCESS),
       m_errstring(NULL)
 {
-    int r = pthread_mutex_init(&m_mutex, NULL);
     VALGRIND_HG_DISABLE_CHECKING(&m_backup_is_running, sizeof(m_backup_is_running));
     VALGRIND_HG_DISABLE_CHECKING(&m_is_dead, sizeof(m_is_dead));
-    m_is_dead = false;
-    if (r!=0) {
-        int e = errno;
-        fprintf(stderr, "Backup manager failed to initialize mutex: %s:%d errno=%d (%s)\n", __FILE__, __LINE__, e, strerror(e));
-        m_is_dead = true;
-        return;
-    }
-    r = pthread_mutex_init(&m_session_mutex, NULL);
-    if (r!=0) {
-        int e = errno;
-        fprintf(stderr, "Backup manager failed to initialize mutex: %s:%d errno=%d (%s)\n", __FILE__, __LINE__, e, strerror(e));
-        m_is_dead = true;
-        return;
-    }
-    r = pthread_mutex_init(&m_error_mutex, NULL);
-    if (r!=0) {
-        int e = errno;
-        fprintf(stderr, "Backup manager failed to initialize mutex: %s:%d errno=%d (%s)\n", __FILE__, __LINE__, e, strerror(e));
-        m_is_dead = true;
-        return;
-    }
 }
 
 backup_manager::~backup_manager(void) {
-    pthread_mutex_destroy(&m_mutex);
-    pthread_mutex_destroy(&m_session_mutex);
-    pthread_mutex_destroy(&m_error_mutex);
     if (m_errstring) free(m_errstring);
 }
 
