@@ -20,10 +20,11 @@ static long injection_write_count = 0;
 
 static char *src;
 static char *dst;
+static char *realdst;
 
 static bool inject_this_time(const char *path) {
-    printf("src=%s path=%s\n", dst, path);
-    if (strncmp(dst, path, strlen(dst))!=0) return false;
+    //printf("realdst=%s\npath   =%s\n", realdst, path);
+    if (strncmp(realdst, path, strlen(realdst))!=0) return false;
     long old_count = __sync_fetch_and_add(&injection_write_count,1);
     for (size_t i=0; i<injection_pattern.size(); i++) {
         if (injection_pattern[i]==old_count) {
@@ -99,8 +100,10 @@ static void testit(void) {
 int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
     src = get_src();
     dst = get_dst();
+    realdst = realpath(dst, NULL);
     original_mkdir  = register_mkdir(my_mkdir);
 
+    printf("1st test\n");
     injection_pattern.push_back(0);
     testit();
     
@@ -116,5 +119,6 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
 
     free(src);
     free(dst);
+    free(realdst);
     return 0;
 }
