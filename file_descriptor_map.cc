@@ -122,8 +122,8 @@ file_description* file_descriptor_map::put(int fd, volatile bool *is_dead)
 //
 // Requires: the fd is something currently mapped.
 
-void file_descriptor_map::erase(int fd)
-{
+int file_descriptor_map::erase(int fd) {
+    int r = 0;
     if (HotBackup::MAP_DBG) { 
         printf("erase() called with fd = %d \n", fd);
     }
@@ -138,10 +138,11 @@ void file_descriptor_map::erase(int fd)
 
         // Do this after releasing the lock
         if (description!=NULL) {
-            description->close();
+            r = description->close();
             delete description;
         }
     }
+    return r;
 }
 
 

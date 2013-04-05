@@ -215,12 +215,12 @@ int file_description::close(void)
     // the file.  Otherwise, if there are any references left, 
     // we can only decrement the refcount; other file descriptors
     // are still open in the main application.
-    r = call_real_close(this->m_fd_in_dest_space);
-    if (r != 0) {
-        perror("Toku Hot Backup: close() of backup file failed."); 
-        r = -1;
+    {
+        int r2 = call_real_close(this->m_fd_in_dest_space);
+        if (r2==-1) {
+            r = errno;
+        }
     }
-
 out:    
     return r;
 }

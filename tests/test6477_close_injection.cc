@@ -44,16 +44,18 @@ static int my_close(int fd) {
     }
 }
 
+static int expect_error = 0;
 static int ercount=0;
 static void my_error_fun(int e, const char *s, void *ignore) {
     assert(ignore==NULL);
     ercount++;
-    fprintf(stderr, "Got error %d (I expected errno=%d) (%s)\n", e, ENOSPC, s);
+    fprintf(stderr, "Got error %d (I expected errno=%d) (%s)\n", e, expect_error, s);
 }
     
 static char *src;
 
-static void testit(void) {
+static void testit(int expect) {
+    expect_error = expect;
     disable_injections = true;
     injection_write_count = 0;
 
@@ -77,7 +79,7 @@ static void testit(void) {
                                   get_src(), get_dst(),
                                   simple_poll_fun, NULL,
                                   my_error_fun, NULL,
-                                  ENOSPC);
+                                  expect);
     while(!backup_is_capturing()) sched_yield(); // wait for the backup to be capturing.
     fprintf(stderr, "The backup is supposedly capturing\n");
     {
@@ -101,17 +103,12 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     original_close = register_close(my_close);
 
     injection_pattern.push_back(0);
-    testit();
+    testit(EIO);
     
     printf("2nd test\n");
     injection_pattern.resize(0);
     injection_pattern.push_back(1);
-    testit();
-
-    printf("3rd test\n");
-    injection_pattern.resize(0);
-    injection_pattern.push_back(2);
-    testit();
+    testit(0);
 
     free(src);
     return 0;

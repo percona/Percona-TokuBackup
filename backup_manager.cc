@@ -305,9 +305,12 @@ void backup_manager::open(int fd, const char *file, int oflag)
 //
 void backup_manager::close(int fd) 
 {
-    if (m_is_dead) return;
+    if (m_is_dead || !m_backup_is_running) return;
     TRACE("entering close() with fd = ", fd);
-    m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
+    int r = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
+    if (r!=0) {
+        set_error(r, "failed close(%d) while backing up", fd);
+    }
 }
 
 
