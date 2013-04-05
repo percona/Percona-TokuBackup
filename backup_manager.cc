@@ -367,8 +367,9 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
         description->lock();
         r = call_real_read(fd, buf, nbyte);
         printf("%s:%d r=%ld\n", __FILE__, __LINE__, r);
-        // TODO: Don't perform our read if the first one fails.
-        description->read(r);
+        if (r>0) {
+            description->read(r); //moves the offset
+        }
         description->unlock();
     }
     
