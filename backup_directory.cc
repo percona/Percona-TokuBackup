@@ -219,6 +219,9 @@ int create_subdirectories(const char *path) {
                 if(errno != EEXIST) {
                     r = errno;
                     goto out;
+                } else {
+                    // EEXIST is ok
+                    r = 0;
                 }
             }
         }
