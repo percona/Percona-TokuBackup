@@ -68,6 +68,13 @@ static void testit(void) {
 
     pthread_t thread;
 
+    start_backup_thread_with_funs(&thread,
+                                  get_src(), get_dst(),
+                                  simple_poll_fun, NULL,
+                                  my_error_fun, NULL,
+                                  ENOSPC);
+    while(!backup_is_capturing()) sched_yield(); // wait for the backup to be capturing.
+    fprintf(stderr, "The backup is supposedly capturing\n");
     {
         char s[1000];
         snprintf(s, sizeof(s), "%s/dir0", src);
@@ -81,28 +88,8 @@ static void testit(void) {
         int r = mkdir(s, 0777);
         assert(r==0);
     }
-
-    int fd = openf(O_RDWR|O_CREAT, 0777, "%s/dir0/my.data", src);
-    assert(fd>=0);
-    fprintf(stderr, "fd=%d\n", fd);
-
-    start_backup_thread_with_funs(&thread,
-                                  get_src(), get_dst(),
-                                  simple_poll_fun, NULL,
-                                  my_error_fun, NULL,
-                                  ENOSPC);
-    while(!backup_is_capturing()) sched_yield(); // wait for the backup to be capturing.
-    fprintf(stderr, "The backup is supposedly capturing\n");
-    {
-        ssize_t r = pwrite(fd, "hello", 5, 10);
-        assert(r==5);
-    }
     fprintf(stderr,"About to start copying\n");
     backup_set_start_copying(true);
-    {
-        int r = close(fd);
-        assert(r==0);
-    }
 
     backup_set_keep_capturing(false);
     finish_backup_thread(thread);

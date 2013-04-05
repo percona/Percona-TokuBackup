@@ -43,7 +43,8 @@ public:
     // Capture interface.
     char * capture_open(const char *file);
     char * capture_create(const char *file);
-    void capture_mkdir(const char *pathname);
+
+    int capture_mkdir(const char *pathname) __attribute__((warn_unused_result)); // return 0 on success, error otherwise.
 protected:
 
 private:

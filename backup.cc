@@ -236,7 +236,10 @@ int mkdir(const char *pathname, mode_t mode) throw() {
     int r = 0;
     TRACE("mkidr() intercepted", pathname);
     r = call_real_mkdir(pathname, mode);
-    manager.mkdir(pathname);
+    if (r==0) {
+        // Don't try to write if there was an error in the application.
+        manager.mkdir(pathname);
+    }
     return r;
 }
 

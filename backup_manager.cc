@@ -514,7 +514,10 @@ void backup_manager::mkdir(const char *pathname)
     if (m_is_dead) return;
     pthread_mutex_lock(&m_session_mutex);
     if(m_session != NULL) {
-        m_session->capture_mkdir(pathname);
+        int r = m_session->capture_mkdir(pathname);
+        if (r != 0) {
+            set_error(r, "failed mkdir creating %s", pathname);
+        }
     }
 
     pthread_mutex_unlock(&m_session_mutex);

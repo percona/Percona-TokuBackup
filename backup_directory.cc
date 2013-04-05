@@ -318,20 +318,16 @@ char * backup_session::capture_create(const char *file)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void backup_session::capture_mkdir(const char *pathname)
+int backup_session::capture_mkdir(const char *pathname)
 {
     if(!this->is_prefix(pathname)) {
-        return;
+        return 0;
     }
 
     char *backup_directory_name = this->translate_prefix(pathname);
     int r = open_path(backup_directory_name);
-    if (r != 0) {
-        // TODO: Stop backup.
-        this->abort();
-    }
-    
     free((void*)backup_directory_name);
+    return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
