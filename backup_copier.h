@@ -29,9 +29,9 @@ public:
     backup_copier(backup_callbacks *calls);
     void set_directories(const char *source, const char *dest);
     void set_error(int error);
-    int do_copy() __attribute__((warn_unused_result))  __attribute__((warn_unused_result));
-    int copy_stripped_file(const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) __attribute__((warn_unused_result));
-    int copy_full_path(const char *source, const char* dest, const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) __attribute__((warn_unused_result));
+    int do_copy() __attribute__((warn_unused_result)) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
+    int copy_stripped_file(const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
+    int copy_full_path(const char *source, const char* dest, const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
     int copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up)  __attribute__((warn_unused_result));
 };
 

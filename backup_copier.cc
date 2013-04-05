@@ -225,6 +225,7 @@ int backup_copier::copy_full_path(const char *source,
                 char *string = malloc_snprintf(strlen(dest)+100, "error mkdir(\"%s\"), errno=%d (%s) at %s:%d", dest, mkdir_errno, strerror(mkdir_errno), __FILE__, __LINE__);
                 m_calls->report_error(mkdir_errno, string);
                 free(string);
+                r = mkdir_errno;
                 goto out;
             }
             

@@ -24,6 +24,10 @@ static char *realdst;
 
 static bool inject_this_time(const char *path) {
     //printf("realdst=%s\npath   =%s\n", realdst, path);
+    {
+        struct stat buf;
+        if (stat(path, &buf)==0) return false; // don't inject a failure when the path is already there.
+    }
     if (strncmp(realdst, path, strlen(realdst))!=0) return false;
     long old_count = __sync_fetch_and_add(&injection_write_count,1);
     for (size_t i=0; i<injection_pattern.size(); i++) {
@@ -54,7 +58,7 @@ static void my_error_fun(int e, const char *s, void *ignore) {
     fprintf(stderr, "Got error %d (I expected errno=%d) (%s)\n", e, ENOSPC, s);
 }
     
-static void testit(void) {
+static void testit(int expect_error) {
     disable_injections = true;
     injection_write_count = 0;
 
@@ -73,7 +77,7 @@ static void testit(void) {
                                   get_src(), get_dst(),
                                   simple_poll_fun, NULL,
                                   my_error_fun, NULL,
-                                  ENOSPC);
+                                  expect_error);
     while(!backup_is_capturing()) sched_yield(); // wait for the backup to be capturing.
     fprintf(stderr, "The backup is supposedly capturing\n");
     {
@@ -103,19 +107,12 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     realdst = realpath(dst, NULL);
     original_mkdir  = register_mkdir(my_mkdir);
 
-    printf("1st test\n");
-    injection_pattern.push_back(0);
-    testit();
-    
-    printf("2nd test\n");
-    injection_pattern.resize(0);
-    injection_pattern.push_back(1);
-    testit();
-
-    printf("3rd test\n");
-    injection_pattern.resize(0);
-    injection_pattern.push_back(2);
-    testit();
+    for (int i=0; i<7; i++) {
+        printf("test #%d\n", i);
+        injection_pattern.resize(0);
+        injection_pattern.push_back(i);
+        testit((i<3) ? ENOSPC : 0);
+    }
 
     free(src);
     free(dst);

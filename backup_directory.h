@@ -33,7 +33,7 @@ class backup_session
 public:
     backup_session(const char *source, const char *dest, backup_callbacks *call, int *errnum); // returns a nonzero in *errnum if an error callback has occured.
     ~backup_session();
-    int do_copy();
+    int do_copy() __attribute__((warn_unused_result)); // returns the error code (not in errno)
     int directories_set(backup_callbacks*);
     bool is_prefix(const char *file);
     char* translate_prefix(const char *file);

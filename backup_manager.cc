@@ -90,12 +90,13 @@ backup_manager::~backup_manager(void) {
 //     
 //
 int backup_manager::do_backup(const char *source, const char *dest, backup_callbacks *calls) {
-    int r;
+    int r = 0;
     if (m_is_dead) {
         calls->report_error(-1, "Backup system is dead");
         r = -1;
         goto error_out;
     }
+    m_an_error_happened = false;
     m_backup_is_running = true;
     r = calls->poll(0, "Preparing backup");
     if (r != 0) {
