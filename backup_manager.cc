@@ -18,6 +18,9 @@
 #include <unistd.h>
 #include <valgrind/helgrind.h>
 
+// TODO: Get rid of this assert again.
+#include <assert.h>
+
 #if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CaptureWarn(string, arg)
 #define TRACE(string, arg) HotBackup::CaptureTrace(string, arg)
@@ -96,9 +99,9 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
         goto error_out;
     }
     
-    pthread_mutex_lock(&m_session_mutex);
+    pthread_mutex_lock(&m_session_mutex);  // TODO: handle any errors
     m_session = new backup_session(source, dest, calls, &r);
-    pthread_mutex_unlock(&m_session_mutex);
+    pthread_mutex_unlock(&m_session_mutex);   // TODO: handle any errors
     if (r!=0) {
         goto unlock_out;
     }
@@ -133,15 +136,15 @@ disable_out:
 
 unlock_out:
 
-    pthread_mutex_lock(&m_session_mutex);
+    pthread_mutex_lock(&m_session_mutex);   // TODO: handle any errors
     delete m_session;
     m_session = NULL;
-    pthread_mutex_unlock(&m_session_mutex);
+    pthread_mutex_unlock(&m_session_mutex);   // TODO: handle any errors
 
     {
         int pthread_error = pthread_mutex_unlock(&m_mutex);
         if (pthread_error != 0) {
-            // TODO: Should there be a way to disable backup permanently in this case?
+            m_is_dead = true; // disable backup permanently if the pthread mutexes are failing.
             calls->report_error(pthread_error, "pthread_mutex_unlock failed.  Backup system is probably broken");
             if (r != 0) {
                 r = pthread_error;
@@ -236,7 +239,7 @@ void backup_manager::create(int fd, const char *file)
     file_description *description = m_map.get(fd);
     description->set_full_source_name(file);
     
-    pthread_mutex_lock(&m_session_mutex);
+    pthread_mutex_lock(&m_session_mutex); // TODO: handle any errors
     
     if (m_session != NULL) {
         char *backup_file_name = m_session->capture_create(file);
@@ -252,7 +255,7 @@ void backup_manager::create(int fd, const char *file)
         }
     }
     
-    pthread_mutex_unlock(&m_session_mutex);
+    pthread_mutex_unlock(&m_session_mutex); // TODO: handle any errors
 }
 
 
@@ -276,7 +279,7 @@ void backup_manager::open(int fd, const char *file, int oflag)
     file_description *description = m_map.get(fd);
     description->set_full_source_name(file);
     
-    pthread_mutex_lock(&m_session_mutex);
+    pthread_mutex_lock(&m_session_mutex); // TODO: handle any errors
 
     if(m_session != NULL) {
         char *backup_file_name = m_session->capture_open(file);
@@ -292,7 +295,7 @@ void backup_manager::open(int fd, const char *file, int oflag)
         }
     }
 
-    pthread_mutex_unlock(&m_session_mutex);
+    pthread_mutex_unlock(&m_session_mutex); // TODO: handle any errors
 
     // TODO: Remove this dead code.
     oflag++;
@@ -337,11 +340,11 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
     if (description == NULL) {
         r = call_real_write(fd, buf, nbyte);
     } else {
-        description->lock();
+        { int r = description->lock(); assert(r==0); } // TODO: Handle any errors
         r = call_real_write(fd, buf, nbyte);
         // TODO: Don't call our write if the first one fails.
         description->write(r, buf);
-        description->unlock();
+        { int r = description->unlock(); assert(r==0); } // TODO: Handle any errors
     }
     
     return r;
@@ -364,13 +367,16 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
     if (description == NULL) {
         r = call_real_read(fd, buf, nbyte);
     } else {
-        description->lock();
+        { int r = description->lock(); assert(r==0); } // TODO: Handle any errors
         r = call_real_read(fd, buf, nbyte);
         printf("%s:%d r=%ld\n", __FILE__, __LINE__, r);
         if (r>0) {
             description->read(r); //moves the offset
         }
-        description->unlock();
+        {
+            int r = description->unlock();
+            assert(r==0); // TODO: Handle any errors
+        }
     }
     
     return r;
@@ -421,10 +427,10 @@ off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
     if (description == NULL) {
         return call_real_lseek(fd, nbyte, whence);
     } else {
-        description->lock();
+        { int r = description->lock(); assert(r==0); } // TODO: Handle any errors 
         off_t new_offset = call_real_lseek(fd, nbyte, whence);
         description->lseek(new_offset);
-        description->unlock();
+        { int r = description->unlock(); assert(r==0); } // TODO: Handle any errors
         return new_offset;
     }
 }
@@ -503,7 +509,7 @@ void backup_manager::truncate(const char *path, off_t length)
 void backup_manager::mkdir(const char *pathname)
 {
     if (m_is_dead) return;
-    pthread_mutex_lock(&m_session_mutex);
+    pthread_mutex_lock(&m_session_mutex);  // TODO: handle any errors
     if(m_session != NULL) {
         int r = m_session->capture_mkdir(pathname);
         if (r != 0) {
@@ -511,7 +517,7 @@ void backup_manager::mkdir(const char *pathname)
         }
     }
 
-    pthread_mutex_unlock(&m_session_mutex);
+    pthread_mutex_unlock(&m_session_mutex);  // TODO: handle any errors
 }
 
 

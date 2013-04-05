@@ -31,8 +31,8 @@ public:
     void disable_from_backup(void);
     void set_full_source_name(const char *name);
     const char * get_full_source_name(void);
-    void lock(void);
-    void unlock(void);
+    int lock(void) __attribute__((warn_unused_result));
+    int unlock(void) __attribute__((warn_unused_result));
     int open(void);
     int create(void);
     void write(ssize_t written, const void *buf);

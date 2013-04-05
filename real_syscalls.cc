@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
 
@@ -21,7 +22,10 @@ template <class T> static void dlsym_set(T *ptr, const char *name)
 //   programming it with macros, I do it in a type-safe way with templates. -Bradley
 {
     if (*ptr==NULL) {
-        pthread_mutex_lock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.    Try to continue.
+        {
+            int r = pthread_mutex_lock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.    Try to continue.
+            if (r) fprintf(stderr, "%s:%d mutex lock failed\n", __FILE__, __LINE__);
+        }
         if (*ptr==NULL) {
             // the pointer is still NULL, so do the set,  otherwise someone else changed it while I held the pointer.
             T ptr_local = (T)(dlsym(RTLD_NEXT, name));
@@ -29,7 +33,10 @@ template <class T> static void dlsym_set(T *ptr, const char *name)
             bool did_it __attribute__((__unused__)) = __sync_bool_compare_and_swap(ptr, NULL, ptr_local);
             // If the did_it is false, what can we do.  Try to continue.
         }
-        pthread_mutex_unlock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.    Try to continue.
+        {
+            int r = pthread_mutex_unlock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.    Try to continue.
+            if (r) fprintf(stderr, "%s:%d mutex lock failed\n", __FILE__, __LINE__);
+        }
     }
 }
 

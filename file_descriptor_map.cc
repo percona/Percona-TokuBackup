@@ -65,9 +65,9 @@ file_description* file_descriptor_map::get(int fd)
     if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
-    pthread_mutex_lock(&get_put_mutex);
+    pthread_mutex_lock(&get_put_mutex);   // TODO: handle any errors
     file_description *result = this->get_unlocked(fd);
-    pthread_mutex_unlock(&get_put_mutex);
+    pthread_mutex_unlock(&get_put_mutex);   // TODO: handle any errors
     return result;
 }
 
@@ -104,10 +104,10 @@ file_description* file_descriptor_map::put(int fd, volatile bool *is_dead)
     // <CER> Is this to make space for the backup fd?
     // <CER> Shouldn't we do this when we are adding a file descriptor?
     //description->fds.push_back(0); // fd?
-    pthread_mutex_lock(&get_put_mutex);
+    pthread_mutex_lock(&get_put_mutex);    // TODO: handle any errors
     this->grow_array(fd);
     m_map[fd] = description;
-    pthread_mutex_unlock(&get_put_mutex);
+    pthread_mutex_unlock(&get_put_mutex);    // TODO: handle any errors
     return description;
 }
 
@@ -128,13 +128,13 @@ int file_descriptor_map::erase(int fd) {
         printf("erase() called with fd = %d \n", fd);
     }
 
-    pthread_mutex_lock(&get_put_mutex);
+    pthread_mutex_lock(&get_put_mutex);    // TODO: handle any errors
     if ((size_t)fd  >= m_map.size()) {
-        pthread_mutex_unlock(&get_put_mutex);
+        pthread_mutex_unlock(&get_put_mutex);    // TODO: handle any errors
     } else {
         file_description *description = m_map[fd];
         m_map[fd] = NULL;
-        pthread_mutex_unlock(&get_put_mutex);
+        pthread_mutex_unlock(&get_put_mutex);    // TODO: handle any errors
 
         // Do this after releasing the lock
         if (description!=NULL) {
@@ -180,8 +180,8 @@ void file_descriptor_map::grow_array(int fd)
 }
 
 void lock_file_descriptor_map(void) {
-    pthread_mutex_lock(&get_put_mutex);
+    pthread_mutex_lock(&get_put_mutex);    // TODO: handle any errors
 }
 void unlock_file_descriptor_map(void) {
-    pthread_mutex_unlock(&get_put_mutex);
+    pthread_mutex_unlock(&get_put_mutex);   // TODO: handle any errors
 }

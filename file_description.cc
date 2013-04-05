@@ -93,16 +93,16 @@ const char * file_description::get_full_source_name(void)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void file_description::lock(void)
+int file_description::lock(void)
 {
-    pthread_mutex_lock(&m_mutex);
+    return pthread_mutex_lock(&m_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void file_description::unlock(void)
+int file_description::unlock(void)
 {
-    pthread_mutex_unlock(&m_mutex);
+    return pthread_mutex_unlock(&m_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
