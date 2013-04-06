@@ -22,7 +22,7 @@ int source_file::init(void)
 
 ////////////////////////////////////////////////////////
 //
-const char * const source_file::name(void)
+const char * source_file::name(void)
 {
     return m_full_path;
 }

@@ -12,7 +12,7 @@ class source_file {
 public:
     source_file(const char * const path);
     int init(void);
-    const char * const name(void);
+    const char * name(void);
     source_file *next(void);
     void set_next(source_file *next);
     void lock_range(void);
