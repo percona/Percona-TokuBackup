@@ -52,7 +52,7 @@ const int MANAGER_IN_PREPARE                = 0x08;
 const int MANAGER_IN_DISABLE                = 0x10;
 
 bool should_pause(int);
-void set_pause(int);
+void toggle_pause_point(int);
 
 } // End of namespace.
 

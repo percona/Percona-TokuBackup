@@ -125,11 +125,10 @@ bool should_pause(int flag)
     return result;
 }
 
-void set_pause(int flag)
+void toggle_pause_point(int flag)
 {
-    PAUSE_POINTS = PAUSE_POINTS & flag;
+    PAUSE_POINTS = PAUSE_POINTS ^ flag;
 }
 
-
-}
+} // End of namespace.
 

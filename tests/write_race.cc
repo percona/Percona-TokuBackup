@@ -24,9 +24,38 @@ const char ZERO = 'b';
 static void* write_ones(void *p __attribute__((__unused__))) {
     void *ret = NULL;
     char data[SIZE] = {ONE};    
-    int r = write(fd, data, SIZE);
+    int r = pwrite(fd, data, SIZE, 0);
     assert(r == SIZE);
     return ret;
+}
+
+static int verify(void)
+{
+    int result = 0;
+    char *source_scratch = get_src();
+    char *destination_scratch = get_dst();
+    char source_file[SIZE];
+    snprintf(source_file, SIZE, "%s/%s", source_scratch, "MyFile.txt");
+    char destination_file[SIZE];
+    snprintf(destination_file, SIZE, "%s/%s", destination_scratch, "MyFile.txt");
+    int src_fd = open(source_file, O_RDWR);
+    int dst_fd = open(destination_file, O_RDWR);
+
+    char src_buf[SIZE];
+    char dst_buf[SIZE];
+    int r = pread(src_fd, src_buf, SIZE, 0);
+    r = pread(dst_fd, dst_buf, SIZE, 0);
+
+    if (src_buf[0] != dst_buf[0]) {
+        printf("\nCharacters in Buffers don't match: %c vs %c\n", src_buf[0], dst_buf[0]);
+        result = -1;
+    }
+    
+    close(dst_fd);
+    close(src_fd);
+    free((void*)destination_scratch);
+    free((void*)source_scratch);
+    return result;
 }
 
 static int write_race(void) {
@@ -43,11 +72,12 @@ static int write_race(void) {
     assert(r == SIZE);
 
     // 2. Set Pause point to after read but before write
-    HotBackup::set_pause(HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);
+    HotBackup::toggle_pause_point(HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);
 
     // 3. Start backup.
     pthread_t backup_thread;
     start_backup_thread(&backup_thread);
+    sleep(2); // Give the copier a change to grab the lock.
 
     // 6. start new thread that writes to the first few bytes.
     pthread_t write_thread;
@@ -55,25 +85,24 @@ static int write_race(void) {
     assert(r == 0);
 
     // 7. Sleep for a little while to give the thread a chance to write and/or get blocked.
-    sleep(1);
+    sleep(2);
 
-    // 8. Turn off pause point.
-    HotBackup::set_pause(~HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);
+    // 8. Turn off pause point.  Allows copier to unlock file,  allowing writer to finish.
+    HotBackup::toggle_pause_point(HotBackup::COPIER_AFTER_WRITE);
+    HotBackup::toggle_pause_point(HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);
+
     r = pthread_join(write_thread, NULL);
     assert(r == 0);
+    HotBackup::toggle_pause_point(HotBackup::COPIER_AFTER_WRITE);
     finish_backup_thread(backup_thread);
 
     // 9. Check that backup copy and source copy match.
-    char buf[SIZE];
-    r = pread(fd, buf, SIZE, 0);
-    assert(r == SIZE);
-    if (buf[0] == ZERO) {
+
+    result = verify();
+    if (result != 0) {
         fail();
-        printf("\nCharacters in Buffers don't match: %c vs %c\n", buf[0], ONE);
-        result = -1;
     } else {
         pass();
-        result = 0;
     }
 
     // 10. cleanup:
