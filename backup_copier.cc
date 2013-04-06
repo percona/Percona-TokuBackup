@@ -1,4 +1,3 @@
-
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
@@ -8,6 +7,8 @@
 #include "real_syscalls.h"
 #include "backup_debug.h"
 #include "backup_manager.h"
+#include "file_hash_table.h"
+#include "source_file.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -27,11 +28,15 @@ template class std::vector<char *>;
 #define WARN(string, arg) HotBackup::CopyWarn(string, arg)
 #define TRACE(string, arg) HotBackup::CopyTrace(string, arg)
 #define ERROR(string, arg) HotBackup::CopyError(string, arg)
-#define PAUSE(int) while(HotBackup::should_pause(int)) { sched_yield(); }
 #else
 #define WARN(string, arg) 
 #define TRACE(string, arg) 
 #define ERROR(string, arg) 
+#endif
+
+#if PAUSE_POINTS_ON
+#define PAUSE(int) while(HotBackup::should_pause(int)) { sched_yield(); }
+#else
 #define PAUSE(int)
 #endif
 
@@ -60,8 +65,8 @@ static bool is_dot(struct dirent const *entry)
 //
 //     Constructor for this copier object.
 //
-backup_copier::backup_copier(backup_callbacks *calls)
-: m_source(0), m_dest(0), m_calls(calls)
+backup_copier::backup_copier(backup_callbacks *calls, file_hash_table * const table)
+  : m_source(0), m_dest(0), m_calls(calls), m_table(table)
 {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,6 +280,8 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, off_t
     int create_error = 0;
     int destfd = 0;
     int srcfd = call_real_open(source, O_RDONLY);
+    source_file * file = NULL;
+
     if (srcfd < 0) {
         // TODO: Handle case where file is deleted AFTER backup starts.
         goto out;
@@ -290,7 +297,28 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, off_t
         }
     }
 
-    copy_error = copy_file_data(srcfd, destfd, source, dest, source_file_size, total_bytes_backed_up, total_files_backed_up);
+    // Get a handle on the source file so we can lock ranges as we copy.
+    m_table->lock();
+    file = m_table->get(source);
+    if (file == NULL) {
+        TRACE("Creating new source file", source);
+        file = new source_file(source);
+        int r = file->init();
+        if (r != 0) {
+	  // TODO: handle rare pthread error.
+        }
+
+        m_table->put(file);
+    }
+
+    file->add_reference();
+    m_table->unlock();
+    
+    copy_error = copy_file_data(srcfd, destfd, source, dest, file, source_file_size, total_bytes_backed_up, total_files_backed_up);
+
+    m_table->lock();
+    m_table->try_to_remove(file);
+    m_table->unlock();
 
     r = call_real_close(destfd);
     if(r != 0) {
@@ -341,7 +369,7 @@ static double tdiff(struct timespec a, struct timespec b)
 //     This section actually copies all the bytes from the source
 // file to our newly created backup copy.
 //
-int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
+int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, source_file * const file, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
     int r = 0;
 
     // TODO: Replace these magic numbers.
@@ -358,11 +386,14 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
 
     while (1) {
         PAUSE(HotBackup::COPIER_BEFORE_READ);
+        file->lock_range();
         ssize_t n_read = call_real_read(srcfd, buf, buf_size);
         if (n_read == 0) {
+            file->unlock_range();
             break;
         } else if (n_read < 0) {
             r = -1;
+            file->unlock_range();
             goto out;
         }
 
@@ -374,6 +405,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
             r = m_calls->poll(0, poll_string);
             if (r!=0) {
                 m_calls->report_error(r, "User aborted backup");
+                file->unlock_range();
                 goto out;
             }
 
@@ -384,12 +416,15 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
                 r = errno;
                 snprintf(poll_string, poll_string_size, "error write to %s, errno=%d (%s) at %s:%d", dest_path, r, strerror(r), __FILE__, __LINE__);
                 m_calls->report_error(r, poll_string);
+                file->unlock_range();
                 goto out;
             }
             n_wrote_this_buf        += n_wrote_now;
             total_written_this_file += n_wrote_now;
             *total_bytes_backed_up  += n_wrote_now;
         }
+
+        file->unlock_range();
 
         PAUSE(HotBackup::COPIER_AFTER_WRITE);
         while (1) {

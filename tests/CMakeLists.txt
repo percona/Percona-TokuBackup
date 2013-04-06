@@ -28,6 +28,7 @@ set(glassboxtests
   backup_no_fractal_tree_threaded ## Needs the keep_capturing API
   backup_no_ft2                   ## Needs the keep_capturing API
   ftruncate                       ## Needs the keep_capturing API
+  file_hash_table_tests
   copy_files
   test6415_enospc_injection
   test6431_postcopy

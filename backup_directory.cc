@@ -65,8 +65,8 @@ static void print_time(const char *toku_string) {
 
 //////////////////////////////////////////////////////////////////////////////
 //
-backup_session::backup_session(const char* source, const char *dest, backup_callbacks *calls, int *errnum)
-: m_source_dir(NULL), m_dest_dir(NULL), m_copier(calls)
+backup_session::backup_session(const char* source, const char *dest, backup_callbacks *calls, file_hash_table * const file, int *errnum)
+    : m_source_dir(NULL), m_dest_dir(NULL), m_copier(calls, file)
 {
     // TODO: assert that the directory's are not the same.
     // TODO: assert that the destination directory is empty.

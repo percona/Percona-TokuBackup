@@ -10,6 +10,7 @@
 #include "backup.h"
 #include "backup_directory.h"
 #include "file_description.h"
+#include "file_hash_table.h"
 #include <sys/types.h>
 #include <vector>
 #include <pthread.h>
@@ -26,6 +27,7 @@ private:
     volatile bool m_backup_is_running; // true if the backup is running.  This can be accessed without any locks.
 
     file_descriptor_map m_map;
+    file_hash_table m_table;
     static pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
 
     backup_session *m_session;

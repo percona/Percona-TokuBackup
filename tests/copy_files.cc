@@ -11,6 +11,7 @@
 
 #include "backup_test_helpers.h"
 #include "backup_copier.h"
+#include "file_hash_table.h"
 
 const int TEXT_COUNT = 9;
 const char *text[TEXT_COUNT] = {"oh", "well", "hello", "there", "kitty", "cat", "how", "are", "you"};
@@ -128,7 +129,8 @@ static void copy_files(void) {
     setup_large_dir();
 
     backup_callbacks calls(&dummy_poll, NULL, &dummy_error, NULL, &dummy_throttle);
-    backup_copier copier(&calls);
+    file_hash_table table;
+    backup_copier copier(&calls, &table);
     copier.set_directories(src, dst);
     {
         int r = copier.do_copy();

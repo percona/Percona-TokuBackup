@@ -14,7 +14,9 @@ set(BACKUP_SOURCES
 	backup_manager.cc
 	file_description.cc
 	file_descriptor_map.cc
-	real_syscalls.cc)
+	file_hash_table.cc
+	real_syscalls.cc
+	source_file.cc)
 
 add_library(HotBackup          SHARED ${BACKUP_SOURCES})
 

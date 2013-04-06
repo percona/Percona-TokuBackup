@@ -80,7 +80,7 @@ void file_description::disable_from_backup(void)
 void file_description::set_full_source_name(const char *name)
 {
     // TODO: strdup this string, then free it later.
-    m_full_source_name = strdup(name);
+    m_full_source_name = realpath(name, NULL);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
