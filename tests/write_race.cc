@@ -44,7 +44,9 @@ static int verify(void)
     char src_buf[SIZE];
     char dst_buf[SIZE];
     int r = pread(src_fd, src_buf, SIZE, 0);
+    assert(r == SIZE);
     r = pread(dst_fd, dst_buf, SIZE, 0);
+    assert(r == SIZE);
 
     if (src_buf[0] != dst_buf[0]) {
         printf("\nCharacters in Buffers don't match: %c vs %c\n", src_buf[0], dst_buf[0]);
