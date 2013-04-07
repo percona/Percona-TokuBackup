@@ -24,6 +24,8 @@ char *malloc_snprintf(size_t size, const char *format, ...) __attribute__((forma
 int open_path(const char *file_path) __attribute__((warn_unused_result));
 // Effect: Create a backup path for a given file if it doesn't exist already.
 
+void backup_pause_disable(bool b);
+
 void backup_set_start_copying(bool b); // When the backup has started and is about to start copying, wait for this boolean to be true (true by default).
 bool backup_is_capturing(void);        // Return true if the backup has started capturing.
 bool backup_done_copying(void);          // Return true if the backup has finished copying.  This goes true sometime after is_capturing goes true. 

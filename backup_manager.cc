@@ -33,6 +33,11 @@
 #define ERROR(string, arg) 
 #endif
 
+#if PAUSE_POINTS_ON
+#define PAUSE(number) while(HotBackup::should_pause(number)) { sleep(2); } printf("Resuming from Pause Point.\n");
+#else
+#define PAUSE(number)
+#endif
 
 pthread_mutex_t backup_manager::m_mutex         = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t backup_manager::m_session_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -48,7 +53,8 @@ pthread_mutex_t backup_manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
 //     Constructor.
 //
 backup_manager::backup_manager(void)
-    : m_start_copying(true),
+    : m_pause_disable(false),
+      m_start_copying(true),
       m_keep_capturing(false),
       m_is_capturing(false),
       m_done_copying(false),
@@ -211,14 +217,19 @@ void backup_manager::disable_descriptions(void)
 {
     printf("disabling\n");
     lock_file_descriptor_map();
-    for (int i = 0; i < m_map.size(); ++i) {
+    const int size = m_map.size();
+    const int middle = size / 2;
+    for (int i = 0; i < size; ++i) {
+        if (middle == i) {
+            if (m_pause_disable) { sched_yield(); }
+        }
         file_description *file = m_map.get_unlocked(i);
         if (file == NULL) {
             continue;
         }
         
         file->disable_from_backup();
-        printf("sleeping\n"); usleep(1000);
+        //printf("sleeping\n"); usleep(1000);
     }
     unlock_file_descriptor_map();
 }
@@ -649,7 +660,14 @@ void backup_manager::set_error(int errnum, const char *format_string, ...) {
     
 }
 
+
 // Test routines.
+void backup_manager::pause_disable(bool pause)
+{
+    VALGRIND_HG_DISABLE_CHECKING(&m_pause_disable, sizeof(m_pause_disable));
+    m_pause_disable = pause;
+}
+
 void backup_manager::set_keep_capturing(bool keep_capturing) {
     VALGRIND_HG_DISABLE_CHECKING(&m_keep_capturing, sizeof(m_keep_capturing));
     m_keep_capturing = keep_capturing;

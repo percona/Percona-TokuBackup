@@ -18,6 +18,7 @@
 class backup_manager
 {
 private:
+    volatile bool m_pause_disable;
     volatile bool m_start_copying; // For test purposes, we can arrange to initialize the backup but not actually start copying.
     volatile bool m_keep_capturing; // For test purposes, we can arrange to keep capturing the backup until the client tells us to stop.
     volatile bool m_is_capturing;   // Backup manager sets to true when capturing is running, sets to false when capturing has stopped.   We look at m_start_copying after setting m_is_capturing=true.
@@ -72,6 +73,7 @@ public:
     //  caller.
 
     // Test interface.  We'd probably like to compile all this stuff away in production code.
+    void pause_disable(bool pause);
     void set_keep_capturing(bool keep_capturing);    // Tell the manager to keep capturing until told not to. This is thread safe.
     bool is_capturing(void);                         // Is the manager capturing?
     bool is_done_copying(void);                      // Is the manager done copying (true sometime after is_capturing)

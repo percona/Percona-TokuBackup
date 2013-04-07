@@ -30,6 +30,7 @@ set(glassboxtests
   ftruncate                       ## Needs the keep_capturing API
   file_hash_table_tests
   copy_files
+  disable_race
   test6415_enospc_injection
   test6431_postcopy
   test6469_many_enospc_injection
