@@ -24,20 +24,14 @@ const unsigned int ASCII_OFFSET = 48;
 const unsigned int N = 4;
 static int FD_0 = 0;
 static int FD_N = 0;
+static int fd_array[N] = {0};
 
 static void* write_ones(void *p) {
-    const int * const nth = (const int * const)p;
+    const int * const nth_ptr = (const int * const)p;
+    const int nth_fd = *nth_ptr;
     char data[SIZE] = {ONE};
-    int fd = 0;
-    if (*nth == 0) {
-        fd = FD_0;
-    } else {
-        fd = FD_N;
-    }
-
-    int r = pwrite(fd, data, SIZE, 0);
-    assert(r == SIZE);
-    close(fd);
+    int pwrite_r = pwrite(fd_array[nth_fd], data, SIZE, 0);
+    assert(pwrite_r == SIZE);
     return NULL;
 }
 
@@ -78,23 +72,21 @@ static int verify(void)
     return result;
 }
 
-static void create_n_files(const unsigned int n)
+static void create_n_files(void)
 {
     char file[SIZE];
     char *source_scratch = get_src();
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < N; ++i) {
         char c = (char) i + ASCII_OFFSET;
         snprintf(file, SIZE, "%s/%c%c%c%c", source_scratch, c, c, c, c);
         printf("%s\n", file);
-        int fd = open(file, O_CREAT | O_RDWR, 0777);
-        assert(fd >= 0);
+        fd_array[i] = open(file, O_CREAT | O_RDWR, 0777);
+        assert(fd_array[i] >= 0);
         char data[SIZE] = {ZERO};
-        int r = write(fd, data, SIZE);
+        int r = write(fd_array[i], data, SIZE);
         assert(r == SIZE);
-        close(fd);
     }
 
-    sleep(1);
     free((void *) source_scratch);
 }
 
@@ -102,7 +94,7 @@ static int disable_race(void) {
     int result = 0;
 
     // 1. Create N files with some data.
-    create_n_files(N);
+    create_n_files();
 
     // 2. Set Pause Point to mid point of disabling descriptions.
     HotBackup::toggle_pause_point(HotBackup::MANAGER_IN_DISABLE);
@@ -114,37 +106,19 @@ static int disable_race(void) {
     start_backup_thread(&backup_thread);
     sleep(1); // Give the copier a change to grab the lock.
 
-    // 4. Open the [0th] file.
-    pthread_t write_zero_thread;
-    int first = 0;
-    char file[SIZE];
-    char *source_scratch = get_src();
-    char c = 0;
-    c = (char) first + ASCII_OFFSET;
-    snprintf(file, SIZE, "%s/%c%c%c%c", source_scratch, c, c, c, c);
-    FD_0 = open(file, O_RDWR);
-    assert(FD_0 >= 0);
-
-    // 5. Open the Nth file.
-    pthread_t write_n_thread;
-    int second = N - 1;
-    c = (char) second + ASCII_OFFSET;
-    snprintf(file, SIZE, "%s/%c%c%c%c", source_scratch, c, c, c, c);
-    FD_N = open(file, O_RDWR);
-    assert(FD_N >= 0);
-
     // 6.  Allow disabling of descriptions to begin.
-    sleep(1);
     printf("Allowing capturing to finish.\n");
     backup_set_keep_capturing(false);
 
     // 7. Create two threads, writing to the 0th and Nth files respectively. 
+    pthread_t write_zero_thread;
+    int first = 0;
     int r = pthread_create(&write_zero_thread, NULL, write_ones, &first); 
     assert(r == 0);
+    pthread_t write_n_thread;
+    int second = N - 1;
     r = pthread_create(&write_n_thread, NULL, write_ones, &second);
     assert(r == 0);
-
-    free((void *) source_scratch);
 
     // 8. Disable Pause Point.
     sleep(1);
@@ -166,6 +140,12 @@ static int disable_race(void) {
         fail();
     } else {
         pass();
+    }
+
+    // Close all the open files.
+    for (int i = 0; i < N; ++i) {
+        int r = close(fd_array[i]);
+        assert(r == 0);
     }
 
     return result;
