@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <valgrind/helgrind.h>
 
 #include "real_syscalls.h"
 
@@ -26,6 +27,7 @@ template <class T> static void dlsym_set(T *ptr, const char *name)
             int r = pthread_mutex_lock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.    Try to continue.
             if (r) fprintf(stderr, "%s:%d mutex lock failed\n", __FILE__, __LINE__);
         }
+        VALGRIND_HG_DISABLE_CHECKING(ptr, sizeof(*ptr));
         if (*ptr==NULL) {
             // the pointer is still NULL, so do the set,  otherwise someone else changed it while I held the pointer.
             T ptr_local = (T)(dlsym(RTLD_NEXT, name));
