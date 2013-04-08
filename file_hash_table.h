@@ -22,7 +22,7 @@ public:
     int size(void) const;
     void lock(void);
     void unlock(void);
-    static const int BUCKET_MAX = 1 << 7;
+    static const int BUCKET_MAX = 1 << 14;
 private:
     source_file *m_table[file_hash_table::BUCKET_MAX];
     int m_count;
