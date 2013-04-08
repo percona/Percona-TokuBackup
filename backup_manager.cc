@@ -436,6 +436,10 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
         if (m_capture_enabled) {
             TRACE("write() captured with fd = ", fd);
             description->write(r, buf);
+        } else {
+            // Even though we can't capture the write, we need to
+            // update the offset.
+            description->add_bytes_to_offset(r);
         }
         TRACE("Releaing file range lock() with fd = ", fd);
         file->unlock_range();
