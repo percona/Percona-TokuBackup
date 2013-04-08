@@ -5,16 +5,25 @@ foreach(test
  backup_no_fractal_tree_threaded
  backup_no_ft2
  copy_files
- open_write_close
- multiple_backups
+ disable_race
+ file_hash_table_tests
  ftruncate
+ multiple_backups
+ open_write_close
  read_and_seek
  test6128
  test6317
  test6317b
  test6361
+ test6415_enospc_injection
+ test6431_postcopy
+ test6469_many_enospc_injection
+ test6477_close_injection
+ test6478_read_injection
+ test6483_mkdir_injection
  unlink_during_copy_test6515
  unlink_during_copy_test6515b
+ write_race
 )
     list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE
       helgrind/${test}
