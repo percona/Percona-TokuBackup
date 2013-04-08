@@ -65,21 +65,16 @@ int file_hash_table::hash(const char * const file) const
 ////////////////////////////////////////////////////////
 //
 void file_hash_table::insert(source_file * const file, int hash_index)
+        // It's OK to insert the same file repeatedly (in which case the table is not modified)
 {
     source_file *current = m_table[hash_index];
-    if (current == NULL) {
-        m_table[hash_index] = file;
-        m_count++;
-    } else {
-        while(current->next() != NULL) {
-            current = current->next();            
-        }
-
-        if (current != file) {
-            current->set_next(file);
-            m_count++;
-        }
+    while (current) {
+        if (current == file) return;
+        current = current->next();
     }
+    file->set_next(m_table[hash_index]);
+    m_table[hash_index] = file;
+    m_count++;
 }
 
 ////////////////////////////////////////////////////////

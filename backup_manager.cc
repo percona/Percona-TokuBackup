@@ -441,7 +441,7 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
             // update the offset.
             description->add_bytes_to_offset(r);
         }
-        TRACE("Releaing file range lock() with fd = ", fd);
+        TRACE("Releasing file range lock() with fd = ", fd);
         file->unlock_range();
         { int r = description->unlock(); assert(r==0); } // TODO: Handle any errors
         { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }

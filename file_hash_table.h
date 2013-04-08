@@ -16,7 +16,7 @@ public:
     source_file* get(const char *full_file_path) const;
     void put(source_file * const file);
     int hash(const char * const file) const;
-    void insert(source_file * const file, int hash_index);
+    void insert(source_file * const file, int hash_index); // you may insert the same file more than once.
     void remove(source_file * const file);
     void try_to_remove(source_file * const file);
     int size(void) const;

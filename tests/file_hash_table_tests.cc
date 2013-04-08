@@ -16,15 +16,11 @@
 const char *FIRST_NAME = "I/Am/Long/File/Path/HearMeRoar";
 const char *SECOND_NAME = "YetAnotherFileNameThatIsLong";
 
-static int test_hash_collisions(void)
-{
-    int result = 0;    
-    return result;
+static void test_hash_collisions(void) {
+    // Todo: There is not test here.
 }
 
-static int test_add(void)
-{
-    int result = 0;
+static void test_add(void) {
     source_file first_file(FIRST_NAME);
     source_file second_file(SECOND_NAME);
 
@@ -37,7 +33,7 @@ static int test_add(void)
     if (r != 0) {
         fail();
         printf("Returned file in hash does not match SECOND input file.");
-        result = -1;
+        abort();
     }
 
     temp = table.get(SECOND_NAME);
@@ -45,51 +41,57 @@ static int test_add(void)
     if (r != 0) {
         fail();
         printf("Returned file in hash does not match SECOND input file.");
-        result = -2;
+        abort();
     }
-    
-    return result;
 }
 
-static int test_duplicates(void)
-{
-    int result = 0;
+static void test_duplicates(void) {
     file_hash_table table;
     source_file first_file(FIRST_NAME);
     source_file second_file(SECOND_NAME);
 
     printf("hash table size = %d\n", table.size());
+
     table.put(&first_file);
+    assert(table.size() == 1);
     printf("hash table size = %d\n", table.size());
+
     table.put(&first_file);
+    assert(table.size() == 1);
     printf("hash table size = %d\n", table.size());
+
     table.put(&second_file);
+    assert(table.size() == 2);
     printf("hash table size = %d\n", table.size());
+
     table.put(&first_file);
+    assert(table.size() == 2);
     printf("hash table size = %d\n", table.size());
+
+    table.put(&second_file);
+    assert(table.size() == 2);
+    printf("hash table size = %d\n", table.size());
+
     source_file * temp = table.get(FIRST_NAME);
     if (temp == NULL) {
-        result = -1;
         fail();
         printf("Should NOT have gotten NULL  after duplicate entries added.\n");
-        return result;
+        abort();
     }
 
     if (strcmp(temp->name(), FIRST_NAME) != 0) {
-        result = -2;
         fail();
         printf("Should have returned first directory after duplicate entries added.\n");
-        return result;
+        abort();
     }
 
     table.remove(&first_file);
     printf("hash table size = %d\n", table.size());
     temp = table.get(FIRST_NAME);
     if (temp != NULL) {
-        result = -3;
         fail();
         printf("Should not have returned a file after removing it once: %s\n", temp->name());
-        return result;
+        abort();
     }
 
     table.remove(&first_file);
@@ -100,23 +102,41 @@ static int test_duplicates(void)
     printf("hash table size = %d\n", table.size());
     temp = table.get(SECOND_NAME);
     if (temp == NULL) {
-        result = -4;
         fail();
         printf("Should have gotten second file back, even after multiple remove() calls.\n");
-        return result;
+        abort();
     }
 
     table.remove(&second_file);
     printf("hash table size = %d\n", table.size());
     temp = table.get(SECOND_NAME);
     if (temp != NULL) {
-        result = -5;
         fail();
         printf("Should have gotten NULL back, but second file still in hash table.\n");
-        return result;
+        abort();
     }
+}
 
-    return result;
+static void seriously_test_duplicates(void) {
+    const int N = 2*file_hash_table::BUCKET_MAX;
+    char *fnames[N];
+    source_file *files[N];
+    file_hash_table table;
+    for (int i=0; i<N; i++) {
+        char str[100];
+        snprintf(str, sizeof(str), "foo%d", i);
+        fnames[i] = strdup(str);
+        files[i] = new source_file(fnames[i]);
+        table.put(files[i]);
+        assert(table.size()==i+1);
+    }
+    for (int i=0; i<N; i++) {
+        table.put(files[i]);
+        assert(table.size()==N);
+    }
+    for (int i=0; i<N; i++) {
+        delete files[i];
+    }
 }
 
 static int test_empty_hash_and_remove(void)
@@ -164,35 +184,12 @@ static int test_concurrent_access(void)
 }
 
 
-static int file_hash_table_tests(void)
-{
-    int result = 0;
-    result = test_hash_collisions();
-    result = test_add();
-    if (result != 0) {
-        return result;
-    }
-
-    result = test_duplicates();
-    if (result != 0) {
-        return result;
-    }
-
-    result = test_empty_hash_and_remove();
-    if (result != 0) {
-        return result;
-    }
-
-    result = test_concurrent_access();
-    if (result != 0) {
-        return result;
-    }
-
-    pass();
-    return result;
-}
-
 int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
-    int result = file_hash_table_tests();
-    return result;
+    test_hash_collisions();
+    test_add();
+    test_duplicates();
+    seriously_test_duplicates();
+    test_empty_hash_and_remove();
+    test_concurrent_access();
+    return 0;
 }
