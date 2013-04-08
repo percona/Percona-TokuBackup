@@ -13,6 +13,7 @@ class source_file;
 class file_hash_table {
 public:
     file_hash_table();
+    ~file_hash_table();
     source_file* get(const char *full_file_path) const;
     void put(source_file * const file);
     int hash(const char * const file) const;

@@ -22,6 +22,15 @@ file_hash_table::file_hash_table() : m_count(0)
     }
 }
 
+file_hash_table::~file_hash_table() {
+    for (int i=0; i < BUCKET_MAX; i++) {
+        while (source_file *head = m_table[i]) {
+            m_table[i] = head->next();
+            delete head;
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////
 //
 source_file* file_hash_table::get(const char * const full_file_path) const
