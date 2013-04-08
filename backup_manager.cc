@@ -515,7 +515,7 @@ void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
     file->lock_range();
     int r = 0;
     if (m_capture_enabled) {
-        description->pwrite(buf, nbyte, offset);
+        r = description->pwrite(buf, nbyte, offset);
     }
     file->unlock_range();
     { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }

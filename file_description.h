@@ -36,7 +36,7 @@ public:
     int open(void);
     int create(void);
     void write(ssize_t written, const void *buf);
-    int pwrite(const void *buf, size_t nbyte, off_t offset); // returns zero on success or an error number.  The number written must be equal to nbyte or it's an error.
+    int pwrite(const void *buf, size_t nbyte, off_t offset) __attribute__((warn_unused_result)); // returns zero on success or an error number.  The number written must be equal to nbyte or it's an error.
     void read(ssize_t nbyte);
     void add_bytes_to_offset(ssize_t nbyte);
     void lseek(off_t new_offset);        
