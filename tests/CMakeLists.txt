@@ -10,7 +10,7 @@ function(add_valgrind_tool_test tool test)
       NAME
         ${tool}/${test}
       COMMAND
-        valgrind --tool=${tool} --error-exitcode=1 $<TARGET_FILE:${test}> --testname ${test}.${tool}
+        valgrind --tool=${tool} --suppressions=${PROJECT_SOURCE_DIR}/../${tool}.suppressions --error-exitcode=1 $<TARGET_FILE:${test}> --testname ${test}.${tool}
       )
 endfunction(add_valgrind_tool_test)
 

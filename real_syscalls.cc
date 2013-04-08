@@ -22,12 +22,12 @@ template <class T> static void dlsym_set(T *ptr, const char *name)
 // Rationale:  There were a whole bunch of these through this code, and they all are the same except the type.  Rather than
 //   programming it with macros, I do it in a type-safe way with templates. -Bradley
 {
+    VALGRIND_HG_DISABLE_CHECKING(ptr, sizeof(*ptr));
     if (*ptr==NULL) {
         {
             int r = pthread_mutex_lock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.    Try to continue.
             if (r) fprintf(stderr, "%s:%d mutex lock failed\n", __FILE__, __LINE__);
         }
-        VALGRIND_HG_DISABLE_CHECKING(ptr, sizeof(*ptr));
         if (*ptr==NULL) {
             // the pointer is still NULL, so do the set,  otherwise someone else changed it while I held the pointer.
             T ptr_local = (T)(dlsym(RTLD_NEXT, name));
