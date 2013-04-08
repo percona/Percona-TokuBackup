@@ -34,6 +34,10 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
             assert(r==sizeof(buf));
         }
     }
+    for (int i=0; i<N; i++) {
+        int r = close(fds[i]);
+        assert(r==0);
+    }
     tokubackup_throttle_backup(1L<<19); // half a mebibyte per second, so that's 2 seconds.
     start_backup_thread(&thread);
     for (int i=0; i<N; i++) {
@@ -41,10 +45,6 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         assert(r==0);
     }
     finish_backup_thread(thread);
-    for (int i=0; i<N; i++) {
-        int r = close(fds[i]);
-        assert(r==0);
-    }
     {
         int status = systemf("diff -r %s %s", src, dst);
         assert(status!=-1);

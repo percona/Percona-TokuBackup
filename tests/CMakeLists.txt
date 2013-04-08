@@ -40,6 +40,7 @@ set(glassboxtests
   test6478_read_injection
   test6483_mkdir_injection
   unlink_during_copy_test6515
+  unlink_during_copy_test6515b
   write_race
   )
 

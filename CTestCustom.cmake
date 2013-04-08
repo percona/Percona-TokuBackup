@@ -14,6 +14,7 @@ foreach(test
  test6317b
  test6361
  unlink_during_copy_test6515
+ unlink_during_copy_test6515b
 )
     list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE
       helgrind/${test}
