@@ -49,11 +49,8 @@ template <class T> static void dlsym_set(T *ptr, const char *name)
 // original data.
 //
 // **************************************************************************
-
+static int (*real_open)(const char *file, int oflag, ...) = NULL;
 int call_real_open(const char *file, int oflag, ...) {
-    // Put this static decl inside so that someone else cannot use it by mistake.
-    static int (*real_open)(const char *file, int oflag, ...) = NULL; 
-
     dlsym_set(&real_open, "open");
 
     // See if we are creating or just opening the file.
@@ -68,12 +65,20 @@ int call_real_open(const char *file, int oflag, ...) {
     }
 }
 
+open_fun_t register_open(open_fun_t f) {
+    dlsym_set(&real_open, "open");
+    open_fun_t r = real_open;
+    real_open = f;
+    return r;
+}
+
 static close_fun_t real_close = NULL;
 
 int call_real_close(int fd) {
     dlsym_set(&real_close, "close");
     return real_close(fd);
 }
+
 close_fun_t register_close(close_fun_t f) {
     dlsym_set(&real_close, "close");
     close_fun_t r = real_close;
@@ -112,16 +117,30 @@ pwrite_fun_t register_pwrite(pwrite_fun_t f) {
     return r;
 }
 
+static off_t (*real_lseek)(int, off_t, int) = NULL;
 off_t call_real_lseek(int fd, off_t offset, int whence) {
-    static off_t (*real_lseek)(int, off_t, int) = NULL;
     dlsym_set(&real_lseek, "lseek");
     return real_lseek(fd, offset, whence);
 }
 
+lseek_fun_t register_lseek(lseek_fun_t f) {
+    dlsym_set(&real_lseek, "lseek");
+    lseek_fun_t r = real_lseek;
+    real_lseek = f;
+    return r;
+}
+
+static int (*real_ftruncate)(int fildes,  off_t length) = NULL;
 int call_real_ftruncate(int fildes, off_t length) {
-    static int (*real_ftruncate)(int fildes,  off_t length) = NULL;
     dlsym_set(&real_ftruncate, "ftruncate");
     return real_ftruncate(fildes, length);
+}
+
+ftruncate_fun_t register_ftruncate(ftruncate_fun_t f) {
+    dlsym_set(&real_ftruncate, "ftruncate");
+    ftruncate_fun_t r = real_ftruncate;
+    real_ftruncate = f;
+    return r;
 }
 
 int call_real_truncate(const char *path, off_t length) throw() {

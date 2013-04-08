@@ -23,6 +23,9 @@ int call_real_unlink(const char *path) throw() __attribute__((__nonnull__ (1)));
 int call_real_rename(const char* oldpath, const char* newpath);
 int call_real_mkdir(const char *pathname, mode_t mode) throw() __attribute__((__nonnull__ (1)));
 
+typedef int (*open_fun_t)(const char *, int, ...);
+open_fun_t register_open(open_fun_t new_open);
+
 typedef ssize_t (*pwrite_fun_t)(int, const void *, size_t, off_t);
 pwrite_fun_t register_pwrite(pwrite_fun_t new_pwrite); // Effect: The system will call new_pwrite in the future.  The function it would have called is returned (so that the new_pwrite function can use it, if it wants)
 
@@ -31,6 +34,12 @@ write_fun_t register_write(write_fun_t new_write);
 
 typedef ssize_t (*read_fun_t)(int, void *, size_t);
 read_fun_t register_read(read_fun_t new_read);
+
+typedef off_t (*lseek_fun_t)(int, off_t, int);
+lseek_fun_t register_lseek(lseek_fun_t new_lseek);
+
+typedef int (*ftruncate_fun_t)(int, off_t);
+ftruncate_fun_t register_ftruncate(ftruncate_fun_t new_ftruncate);
 
 typedef int (*mkdir_fun_t)(const char *, mode_t);
 mkdir_fun_t register_mkdir(mkdir_fun_t new_mkdir);
