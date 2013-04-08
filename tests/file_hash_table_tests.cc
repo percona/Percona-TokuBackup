@@ -136,6 +136,7 @@ static void seriously_test_duplicates(void) {
     }
     for (int i=0; i<N; i++) {
         delete files[i];
+        free(fnames[i]);
     }
 }
 
