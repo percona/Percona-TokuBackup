@@ -21,9 +21,7 @@ const int SIZE = 100;
 const char ONE = 'a';
 const char ZERO = 'b';
 const unsigned int ASCII_OFFSET = 48;
-const unsigned int N = 16;
-static int FD_0 = 0;
-static int FD_N = 0;
+const int N = 16;
 static int fd_array[N] = {0};
 
 static void* write_ones(void *p) {
