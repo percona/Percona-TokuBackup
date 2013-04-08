@@ -23,7 +23,7 @@ static char *dst;
 static char *realdst;
 
 static bool inject_this_time(const char *path) {
-    //printf("realdst=%s\npath   =%s\n", realdst, path);
+    //printf("realdst=%s\npath   =%s\ninjection_write_count=%ld\n", realdst, path, injection_write_count);
     {
         struct stat buf;
         if (stat(path, &buf)==0) return false; // don't inject a failure when the path is already there.
@@ -41,7 +41,7 @@ static bool inject_this_time(const char *path) {
 static mkdir_fun_t original_mkdir;
 
 static int my_mkdir(const char *path, mode_t mode) {
-    fprintf(stderr, "Doing mkdir(%s, %d)\n", path, mode); // ok to do a write, since we aren't further interposing writes in this test.
+    //fprintf(stderr, "Doing mkdir(%s, %d)\n", path, mode); // ok to do a write, since we aren't further interposing writes in this test.
     if (inject_this_time(path)) {
         fprintf(stderr, "Injecting error\n");
         errno = ENOSPC;
@@ -86,7 +86,7 @@ static void testit(int expect_error) {
                                   my_error_fun, NULL,
                                   expect_error);
     while(!backup_is_capturing()) sched_yield(); // wait for the backup to be capturing.
-    fprintf(stderr, "The backup is supposedly capturing\n");
+    //fprintf(stderr, "The backup is supposedly capturing\n");
     {
         char s[1000];
         snprintf(s, sizeof(s), "%s/dir0", src);
@@ -116,6 +116,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         injection_pattern.resize(0);
         injection_pattern.push_back(i);
         testit((i<3) ? ENOSPC : 0);
+        printf("Done #%d\n", i);
     }
 
     free(src);

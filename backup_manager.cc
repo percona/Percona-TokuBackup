@@ -144,10 +144,13 @@ disable_out:
 
     m_backup_is_running = false;
 
-    r = this->turn_off_capture();
-    if (r != 0) {
-        goto unlock_out;
+    {
+        int r2 = this->turn_off_capture();
+        if (r2 != 0 && r==0) {
+            r = r2; // keep going, but remember the error.   Try to disable the descriptoins even if turn_off_capture failed.
+        }
     }
+
     this->disable_descriptions();
 
     VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
@@ -173,7 +176,9 @@ unlock_out:
 
     if (m_an_error_happened) {
         calls->report_error(m_errnum, m_errstring);
-        r = m_errnum;
+        if (r==0) {
+            r = m_errnum; // if we already got an error then keep it.
+        }
     }
 
 error_out:
