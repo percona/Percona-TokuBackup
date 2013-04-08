@@ -66,6 +66,13 @@ static void testit(int expect_error) {
     setup_dirs();
     setup_destination();
 
+    if (!src) {
+        src = get_src();
+        dst = get_dst();
+        realdst = realpath(dst, NULL);
+        assert(realdst);
+    }
+
     disable_injections = false;
 
     backup_set_start_copying(false);
@@ -102,9 +109,6 @@ static void testit(int expect_error) {
 
 
 int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
-    src = get_src();
-    dst = get_dst();
-    realdst = realpath(dst, NULL);
     original_mkdir  = register_mkdir(my_mkdir);
 
     for (int i=0; i<7; i++) {

@@ -10,7 +10,7 @@
 
 ////////////////////////////////////////////////////////
 //
-source_file::source_file(const char * path) : m_full_path(path), m_next(NULL) 
+source_file::source_file(const char * path) : m_full_path(path), m_next(NULL), m_reference_count(0) 
 {
 };
 
