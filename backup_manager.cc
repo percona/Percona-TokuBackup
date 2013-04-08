@@ -115,7 +115,7 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
         goto unlock_out;
     }
     
-    r = this->prepare_directories_for_backup(m_session, calls);
+    r = this->prepare_directories_for_backup(m_session);
     if (r != 0) {
         goto disable_out;
     }
@@ -187,7 +187,7 @@ error_out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int backup_manager::prepare_directories_for_backup(backup_session *session, backup_callbacks *calls) {
+int backup_manager::prepare_directories_for_backup(backup_session *session) {
     int r = 0;
     // Loop through all the current file descriptions and prepare them
     // for backup.
@@ -208,16 +208,15 @@ int backup_manager::prepare_directories_for_backup(backup_session *session, back
         r = open_path(file_name);
         free(file_name);
         if (r != 0) {
-            // TODO: Could not open path, abort backup.
-            calls->report_error(r, "Trying to open path");
             session->abort();
+            this->set_error(r, "Failed to open path");
             goto out;
         }
 
         r = file->create();
         if (r != 0) {
-            // TODO: Could not create the file, abort backup.
             session->abort();
+            this->set_error(r, "Could not create backup file.");
             goto out;
         }
     }
@@ -298,8 +297,8 @@ void backup_manager::create(int fd, const char *file)
             description->prepare_for_backup(backup_file_name);
             int r = description->create();
             if(r != 0) {
-                // TODO: abort backup, creation of backup file failed.
                 m_session->abort();
+                this->set_error(r, "Could not create backup file");
             }
 
             free((void*)backup_file_name);
@@ -360,8 +359,8 @@ void backup_manager::open(int fd, const char *file, int oflag)
             description->prepare_for_backup(backup_file_name);
             int r = description->open();
             if(r != 0) {
-                // TODO: abort backup, open failed.
                 m_session->abort();
+                this->set_error(r, "Could not open backup file.");
             }
             
             free((void*)backup_file_name);
@@ -601,6 +600,7 @@ void backup_manager::ftruncate(int fd, off_t length)
     
     if(r != 0) {
         // TODO: Abort the backup, truncate failed on the file.
+        // TODO: Need to grab session lock to abort, should create locked version.
     }
 }
 

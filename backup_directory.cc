@@ -259,6 +259,12 @@ char* backup_session::translate_prefix(const char *file)
     return new_string;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+//
+void backup_session::abort(void)
+{
+    m_copier.abort_copy();
+}
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -297,7 +303,7 @@ char * backup_session::capture_open(const char *file)
     backup_file_name = this->translate_prefix(file);
     int r = open_path(backup_file_name);
     if (r != 0) {
-        // TODO: open path error, abort backup.
+        // TODO: Add error callback call here or in copier abort.
         this->abort();
         free((void*)backup_file_name);
         backup_file_name = NULL;

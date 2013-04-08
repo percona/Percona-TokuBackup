@@ -135,8 +135,7 @@ int file_description::open(void)
         }
 
         if(error != ENOENT && error != EISDIR) {
-            perror("ERROR: <CAPTURE> ");
-            r = -1;
+            r = error;
             goto out;
         }
 

@@ -66,7 +66,11 @@ static bool is_dot(struct dirent const *entry)
 //     Constructor for this copier object.
 //
 backup_copier::backup_copier(backup_callbacks *calls, file_hash_table * const table)
-  : m_source(0), m_dest(0), m_calls(calls), m_table(table)
+    : m_source(NULL), 
+      m_dest(NULL), 
+      m_must_abort(false),
+      m_calls(calls), 
+      m_table(table)
 {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +86,6 @@ void backup_copier::set_directories(const char *source, const char *dest)
 {
     m_source = source;
     m_dest = dest;
-    m_copy_error = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +97,7 @@ void backup_copier::set_directories(const char *source, const char *dest)
 //     Loops through all files and subdirectories of the current 
 // directory that has been selected for backup.
 //
-int backup_copier::do_copy() {
+int backup_copier::do_copy(void) {
     int r = 0;
 
     // Start with "."
@@ -103,6 +106,10 @@ int backup_copier::do_copy() {
     uint64_t total_bytes_backed_up = 0;
     uint64_t total_files_backed_up = 0;
     while (size_t n_known = m_todo.size()) {
+
+        if (m_must_abort) {
+            goto out;
+        }
         
         fname = m_todo.back();
         TRACE("Copying: ", fname);
@@ -385,6 +392,10 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
     if (r!=0) goto out;
 
     while (1) {
+        if (m_must_abort) {
+            goto out;
+        }
+
         PAUSE(HotBackup::COPIER_BEFORE_READ);
         file->lock_range();
         ssize_t n_read = call_real_read(srcfd, buf, buf_size);
@@ -428,6 +439,10 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
 
         PAUSE(HotBackup::COPIER_AFTER_WRITE);
         while (1) {
+            if (m_must_abort) {
+                goto out;
+            }
+
             // Sleep until we've used up enough time.  Be sure to keep polling once per second.
             struct timespec endtime;
             r = gettime_reporting_error(&endtime, m_calls);
@@ -453,6 +468,11 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
             } else {
                 usleep((long)(sleep_time*1e6));
             }
+
+            if (m_must_abort) {
+            goto out;
+        }
+
         }
     }
 
@@ -526,4 +546,11 @@ void backup_copier::cleanup(void) {
         free((void*)file);
         m_todo[i] = NULL;
     }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+void backup_copier::abort_copy(void) {
+    m_must_abort = true;
 }

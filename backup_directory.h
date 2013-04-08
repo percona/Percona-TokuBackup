@@ -37,16 +37,12 @@ public:
     int directories_set(backup_callbacks*);
     bool is_prefix(const char *file);
     char* translate_prefix(const char *file);
-    // TODO: Add error code and string to abort().
-    void abort() {};
+    void abort(void);
     
     // Capture interface.
     char * capture_open(const char *file);
     char * capture_create(const char *file);
-
     int capture_mkdir(const char *pathname) __attribute__((warn_unused_result)); // return 0 on success, error otherwise.
-protected:
-
 private:
     const char *m_source_dir;
     const char *m_dest_dir;
