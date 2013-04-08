@@ -42,7 +42,7 @@
 pthread_mutex_t backup_manager::m_mutex         = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t backup_manager::m_session_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t backup_manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
-
+pthread_rwlock_t backup_manager::m_capture_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -60,6 +60,7 @@ backup_manager::backup_manager(void)
       m_done_copying(false),
       m_is_dead(false),
       m_backup_is_running(false),
+      m_capture_enabled(false),
       m_session(NULL),
       m_throttle(ULONG_MAX),
       m_an_error_happened(false),
@@ -119,6 +120,11 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
         goto disable_out;
     }
 
+    r = this->turn_on_capture();
+    if (r != 0) {
+        goto disable_out;
+    }
+
     VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
     m_is_capturing = true;
     m_done_copying = false;
@@ -137,6 +143,11 @@ disable_out:
     while (m_keep_capturing) sched_yield();
 
     m_backup_is_running = false;
+
+    r = this->turn_off_capture();
+    if (r != 0) {
+        goto unlock_out;
+    }
     this->disable_descriptions();
 
     VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
@@ -221,7 +232,9 @@ void backup_manager::disable_descriptions(void)
     const int middle = size / 2;
     for (int i = 0; i < size; ++i) {
         if (middle == i) {
-            if (m_pause_disable) { sched_yield(); }
+            TRACE("Pausing on i = ", i); 
+            while (m_pause_disable) { sched_yield(); }
+            TRACE("Done Pausing on i = ", i);
         }
         file_description *file = m_map.get_unlocked(i);
         if (file == NULL) {
@@ -411,6 +424,7 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
     if (description == NULL) {
         r = call_real_write(fd, buf, nbyte);
     } else {
+        { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
         { int r = description->lock(); assert(r==0); } // TODO: Handle any errors
         r = call_real_write(fd, buf, nbyte);
         // TODO: Don't call our write if the first one fails.
@@ -419,10 +433,14 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
         m_table.unlock();
         TRACE("Grabbing file range lock() with fd = ", fd);
         file->lock_range();
-        description->write(r, buf);
+        if (m_capture_enabled) {
+            TRACE("write() captured with fd = ", fd);
+            description->write(r, buf);
+        }
         TRACE("Releaing file range lock() with fd = ", fd);
         file->unlock_range();
         { int r = description->unlock(); assert(r==0); } // TODO: Handle any errors
+        { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
     }
     
     return r;
@@ -484,10 +502,14 @@ void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
     m_table.lock();
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
+    { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
     file->lock_range();
-    int r = description->pwrite(buf, nbyte, offset);
+    int r = 0;
+    if (m_capture_enabled) {
+        description->pwrite(buf, nbyte, offset);
+    }
     file->unlock_range();
-
+    { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
     if(r != 0) {
         set_error(r, "failed write while backing up %s", description->get_full_source_name());
     }
@@ -560,9 +582,13 @@ void backup_manager::ftruncate(int fd, off_t length)
     m_table.lock();
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
+    { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
     file->lock_range();
-    r = description->truncate(length);
+    if (m_capture_enabled) {
+        r = description->truncate(length);
+    }
     file->unlock_range();
+    { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
     
     if(r != 0) {
         // TODO: Abort the backup, truncate failed on the file.
@@ -627,6 +653,44 @@ unsigned long backup_manager::get_throttle(void) {
     //unsigned long ret;
     //__atomic_load(&m_throttle, &ret, __ATOMIC_SEQ_CST);
     //return ret;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+int backup_manager::turn_on_capture(void) {
+    int r = 0;
+    r = pthread_rwlock_wrlock(&m_capture_rwlock);
+    if (r != 0) {
+        goto error_out;
+    }
+
+    m_capture_enabled = true;
+    r = pthread_rwlock_unlock(&m_capture_rwlock);
+    if (r != 0) {
+        goto error_out;
+    }
+    
+ error_out:
+    return r;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+int backup_manager::turn_off_capture(void) {
+    int r = 0;
+    r = pthread_rwlock_wrlock(&m_capture_rwlock);
+    if (r != 0) {
+        goto error_out;
+    }
+
+    m_capture_enabled = false;
+    r = pthread_rwlock_unlock(&m_capture_rwlock);
+    if (r != 0) {
+        goto error_out;
+    }
+    
+ error_out:
+    return r;
 }
 
 void backup_manager::set_error(int errnum, const char *format_string, ...) {

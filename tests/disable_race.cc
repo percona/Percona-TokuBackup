@@ -21,7 +21,7 @@ const int SIZE = 100;
 const char ONE = 'a';
 const char ZERO = 'b';
 const unsigned int ASCII_OFFSET = 48;
-const unsigned int N = 4;
+const unsigned int N = 16;
 static int FD_0 = 0;
 static int FD_N = 0;
 static int fd_array[N] = {0};
@@ -30,7 +30,7 @@ static void* write_ones(void *p) {
     const int * const nth_ptr = (const int * const)p;
     const int nth_fd = *nth_ptr;
     char data[SIZE] = {ONE};
-    int pwrite_r = pwrite(fd_array[nth_fd], data, SIZE, 0);
+    int pwrite_r = write(fd_array[nth_fd], data, SIZE);
     assert(pwrite_r == SIZE);
     return NULL;
 }
@@ -56,12 +56,15 @@ static int verify(void)
         r = pread(dst_fd, dst_buf, SIZE, 0);
         assert(r == SIZE);
 
-        if (src_buf[0] != dst_buf[0]) {
-            printf("\nCharacters in Buffers should NOT  match: %c vs %c\n",
-                   src_buf[0],
-                   dst_buf[0]);
-            result = -1;
+        if (i == N || i == 0) {
+            if (src_buf[0] == dst_buf[0]) {
+                printf("\nCharacters in Buffers should NOT  match: %c vs %c\n",
+                       src_buf[0],
+                       dst_buf[0]);
+                result = -1;
+            }
         }
+        printf("file=%s, src[0]=%c, dst[0]=%c\n", source_file, src_buf[0], dst_buf[0]);
 
         close(dst_fd);
         close(src_fd);
@@ -95,43 +98,42 @@ static int disable_race(void) {
 
     // 1. Create N files with some data.
     create_n_files();
+    lseek(fd_array[0], 0, SEEK_SET);
+    lseek(fd_array[N - 1], 0, SEEK_SET);
 
     // 2. Set Pause Point to mid point of disabling descriptions.
-    HotBackup::toggle_pause_point(HotBackup::MANAGER_IN_DISABLE);
     backup_pause_disable(true);
-    backup_set_keep_capturing(true);
+    //backup_set_keep_capturing(true);
 
     // 3. Start backup
     pthread_t backup_thread;
     start_backup_thread(&backup_thread);
-    sleep(1); // Give the copier a change to grab the lock.
-
-    // 6.  Allow disabling of descriptions to begin.
-    printf("Allowing capturing to finish.\n");
-    backup_set_keep_capturing(false);
+    printf("NOTE: Waiting for backup thread to finish copy phase...\n");
+    sleep(2);
 
     // 7. Create two threads, writing to the 0th and Nth files respectively. 
+    printf("NOTE: Creating write threads.\n");
+
     pthread_t write_zero_thread;
     int first = 0;
     int r = pthread_create(&write_zero_thread, NULL, write_ones, &first); 
     assert(r == 0);
+
     pthread_t write_n_thread;
     int second = N - 1;
     r = pthread_create(&write_n_thread, NULL, write_ones, &second);
     assert(r == 0);
+    printf("NOTE: Created write threads, waiting to hit critical section\n");
+    sleep(1);
 
     // 8. Disable Pause Point.
-    sleep(1);
-    printf("Allowing disabling to continue.\n");
-    HotBackup::toggle_pause_point(HotBackup::MANAGER_IN_DISABLE);
+    printf("NOTE: Allowing disabling to continue.\n");
     backup_pause_disable(false);
 
     r = pthread_join(write_n_thread, NULL);
     assert(r == 0);
     r = pthread_join(write_zero_thread, NULL);
     assert(r == 0);
-    sleep(4);
-    printf("waiting for backup thread to finish...\n");
     finish_backup_thread(backup_thread);
 
     // 9. Verify that neither write made it to the backup file.

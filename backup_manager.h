@@ -31,6 +31,9 @@ private:
     file_hash_table m_table;
     static pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
 
+    static pthread_rwlock_t m_capture_rwlock; // Used to serialize access of CAPTURE boolean flag.
+    bool m_capture_enabled;
+
     backup_session *m_session;
     // TODO: use reader/writer lock:
     static pthread_mutex_t m_session_mutex;
@@ -65,6 +68,9 @@ public:
     
     void set_throttle(unsigned long bytes_per_second); // This is thread-safe.
     unsigned long get_throttle(void);                 // This is thread-safe.
+
+    int turn_on_capture(void); // This is thread safe.
+    int turn_off_capture(void); // This is thread safe.
 
     void set_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4))); 
     // Effect: Set the error information and turn off the backup.  The backup manager isn't dead
