@@ -215,6 +215,7 @@ int backup_copier::copy_full_path(const char *source,
     r = stat(source, &sbuf);
     if (r!=0) {
         r = errno;
+        // TODO: #6515 Ignore errors about file not existing, because we have not opened the file with open(), which would prevent it from disappearing.
         char *string = malloc_snprintf(strlen(dest)+100, "error stat(\"%s\"), errno=%d (%s) at %s:%d", dest, r, strerror(r), __FILE__, __LINE__);
         m_calls->report_error(errno, string);
         free(string);
@@ -257,9 +258,9 @@ int backup_copier::copy_full_path(const char *source,
         }
 
         r = closedir(dir);
-        // TODO: return error from closedir...
+        // TODO: #6335 return error from closedir...
     } else {
-        // TODO: Do we need to add a case for hard links?
+        // TODO: #6538 Do we need to add a case for hard links?
         if (S_ISLNK(sbuf.st_mode)) {
             WARN("Link file found, but not copied:", file);
         }
@@ -290,7 +291,7 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, off_t
     source_file * file = NULL;
 
     if (srcfd < 0) {
-        // TODO: Handle case where file is deleted AFTER backup starts.
+        // TODO: #6515 Handle case where file is deleted AFTER backup starts.
         goto out;
     }
 
@@ -312,7 +313,7 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, off_t
         file = new source_file(source);
         int r = file->init();
         if (r != 0) {
-	  // TODO: handle rare pthread error.
+	  // TODO: #6531 handle rare pthread error.
         }
 
         m_table->put(file);
@@ -329,14 +330,14 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, off_t
 
     r = call_real_close(destfd);
     if(r != 0) {
-        // TODO: What happens when we can't close file descriptors as part of the copy process?
+        // TODO: #6335 What happens when we can't close file descriptors as part of the copy process?
     }
     
 close_source_fd:
 
     r = call_real_close(srcfd);
     if(r != 0) {
-        // TODO: What happens when we can't close file descriptors as part of the copy process?
+        // TODO: #6535 What happens when we can't close file descriptors as part of the copy process?
     }
 
 out:
@@ -379,7 +380,7 @@ static double tdiff(struct timespec a, struct timespec b)
 int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, source_file * const file, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
     int r = 0;
 
-    // TODO: Replace these magic numbers.
+    // TODO: #6539 Replace these magic numbers.
     const size_t buf_size = 1024 * 1024;
     char *buf = new char[buf_size]; // this cannot be on the stack.
     ssize_t n_wrote_now = 0;
