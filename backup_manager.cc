@@ -20,7 +20,7 @@
 #include <unistd.h>
 #include <valgrind/helgrind.h>
 
-// TODO: Get rid of this assert again.
+// TODO: #6530 Get rid of this assert again. 
 #include <assert.h>
 
 #if DEBUG_HOTBACKUP
@@ -108,9 +108,9 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
         goto error_out;
     }
     
-    pthread_mutex_lock(&m_session_mutex);  // TODO: handle any errors
+    pthread_mutex_lock(&m_session_mutex);  // TODO: #6531 handle any errors 
     m_session = new backup_session(source, dest, calls, &m_table, &r);
-    pthread_mutex_unlock(&m_session_mutex);   // TODO: handle any errors
+    pthread_mutex_unlock(&m_session_mutex);   // TODO: #6531 handle any errors
     if (r!=0) {
         goto unlock_out;
     }
@@ -158,10 +158,10 @@ disable_out:
 
 unlock_out:
 
-    pthread_mutex_lock(&m_session_mutex);   // TODO: handle any errors
+    pthread_mutex_lock(&m_session_mutex);   // TODO: #6531 handle any errors
     delete m_session;
     m_session = NULL;
-    pthread_mutex_unlock(&m_session_mutex);   // TODO: handle any errors
+    pthread_mutex_unlock(&m_session_mutex);   // TODO: #6531 handle any errors
 
     {
         int pthread_error = pthread_mutex_unlock(&m_mutex);
@@ -191,7 +191,7 @@ int backup_manager::prepare_directories_for_backup(backup_session *session) {
     int r = 0;
     // Loop through all the current file descriptions and prepare them
     // for backup.
-    lock_file_descriptor_map(); // TODO: This lock is much too coarse.  Need to refine it.  This lock deals with a race between file->create() and a close() call from the application.  We aren't using the m_refcount in file_description (which we should be) and we even if we did, the following loop would be racy since m_map.size could change while we are running, and file descriptors could come and go in the meanwhile.  So this really must be fixed properly to refine this lock.
+    lock_file_descriptor_map(); // TODO: #6532 This lock is much too coarse.  Need to refine it.  This lock deals with a race between file->create() and a close() call from the application.  We aren't using the m_refcount in file_description (which we should be) and we even if we did, the following loop would be racy since m_map.size could change while we are running, and file descriptors could come and go in the meanwhile.  So this really must be fixed properly to refine this lock.
     for (int i = 0; i < m_map.size(); ++i) {
         file_description *file = m_map.get_unlocked(i);
         if (file == NULL) {
@@ -289,7 +289,7 @@ void backup_manager::create(int fd, const char *file)
 
     m_table.unlock();
     
-    pthread_mutex_lock(&m_session_mutex); // TODO: handle any errors
+    pthread_mutex_lock(&m_session_mutex); // TODO: #6531 handle any errors
     
     if (m_session != NULL) {
         char *backup_file_name = m_session->capture_create(file);
@@ -305,7 +305,7 @@ void backup_manager::create(int fd, const char *file)
         }
     }
     
-    pthread_mutex_unlock(&m_session_mutex); // TODO: handle any errors
+    pthread_mutex_unlock(&m_session_mutex); // TODO: #6531  handle any errors
 out:
     return;
 }
@@ -351,7 +351,7 @@ void backup_manager::open(int fd, const char *file, int oflag)
 
     m_table.unlock();
     
-    pthread_mutex_lock(&m_session_mutex); // TODO: handle any errors
+    pthread_mutex_lock(&m_session_mutex); // TODO: #6531 handle any errors
 
     if(m_session != NULL) {
         char *backup_file_name = m_session->capture_open(file);
@@ -367,9 +367,9 @@ void backup_manager::open(int fd, const char *file, int oflag)
         }
     }
 
-    pthread_mutex_unlock(&m_session_mutex); // TODO: handle any errors
+    pthread_mutex_unlock(&m_session_mutex); // TODO: #6531 handle any errors
 
-    // TODO: Remove this dead code.
+    // TODO: #6533 Remove this dead code.
     oflag++;
  out:
     return;
@@ -391,7 +391,7 @@ void backup_manager::close(int fd)
     int r = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
     if (r!=0) {
         set_error(r, "failed close(%d) while backing up", fd);
-        // TODO: SHouldn't we abort the backup here?
+        // TODO: #6534 Shouldn't we abort the backup here?
     }
 
     file_description * description = m_map.get(fd);
@@ -424,7 +424,7 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
         r = call_real_write(fd, buf, nbyte);
     } else {
         { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
-        { int r = description->lock(); assert(r==0); } // TODO: Handle any errors
+        { int r = description->lock(); assert(r==0); } // TODO: #6531 Handle any errors
         m_table.lock();
         source_file * file = m_table.get(description->get_full_source_name());
         m_table.unlock();
@@ -440,11 +440,11 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
         file->lock_range(lock_start, lock_end);
 
         r = call_real_write(fd, buf, nbyte);
-        // TODO: Don't call our write if the first one fails.
+        // TODO: #6535 Don't call our write if the first one fails.
 
         description->increment_offset(r);
         // Now we can release the description lock, since the offset is calculated.
-        { int r = description->unlock(); assert(r==0); } // TODO: Handle any errors
+        { int r = description->unlock(); assert(r==0); } // TODO: #6531 Handle any errors
 
         // We still have the lock range, which we do with pwrite
 
@@ -481,7 +481,7 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
     if (description == NULL) {
         r = call_real_read(fd, buf, nbyte);
     } else {
-        { int r = description->lock(); assert(r==0); } // TODO: Handle any errors
+        { int r = description->lock(); assert(r==0); } // TODO: #6531 Handle any errors
         r = call_real_read(fd, buf, nbyte);
         printf("%s:%d r=%ld\n", __FILE__, __LINE__, r);
         if (r>0) {
@@ -489,7 +489,7 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
         }
         {
             int r = description->unlock();
-            assert(r==0); // TODO: Handle any errors
+            assert(r==0); // TODO: #6531 Handle any errors
         }
     }
     
@@ -564,10 +564,10 @@ off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
     if (description == NULL) {
         return call_real_lseek(fd, nbyte, whence);
     } else {
-        { int r = description->lock(); assert(r==0); } // TODO: Handle any errors 
+        { int r = description->lock(); assert(r==0); } // TODO: #6531 Handle any errors 
         off_t new_offset = call_real_lseek(fd, nbyte, whence);
         description->lseek(new_offset);
-        { int r = description->unlock(); assert(r==0); } // TODO: Handle any errors
+        { int r = description->unlock(); assert(r==0); } // TODO: #6531 Handle any errors
         return new_offset;
     }
 }
@@ -587,7 +587,7 @@ void backup_manager::rename(const char *oldpath, const char *newpath)
     TRACE("entering rename()...", "");
     TRACE("-> old path = ", oldpath);
     TRACE("-> new path = ", newpath);
-    // TODO:
+    // TODO: #6529
     oldpath++;
     newpath++;
 }
@@ -618,12 +618,13 @@ int backup_manager::ftruncate(int fd, off_t length)
     { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
     file->lock_range(length, LLONG_MAX);
     int user_result = call_real_ftruncate(fd, length);
-    int e;
+    int e = 0;
     if (user_result==0) {
         if (m_capture_enabled) {
             int r = description->truncate(length);
-            if (r!=0) {
-                set_error(r, "failed ftruncate(%d, %ld) while backing up", fd, length);
+            if (r != 0) {
+                e = errno;
+                set_error(e, "failed ftruncate(%d, %ld) while backing up", fd, length);
             }
         }
     } else {
@@ -650,7 +651,7 @@ void backup_manager::truncate(const char *path, off_t length)
 {
     if (m_is_dead) return;
     TRACE("entering truncate() with path = ", path);
-    // TODO:
+    // TODO: #6536
     // 1. Convert the path to the backup dir.
     // 2. Call real_ftruncate directly.
     if(path) {
@@ -669,7 +670,7 @@ void backup_manager::truncate(const char *path, off_t length)
 void backup_manager::mkdir(const char *pathname)
 {
     if (m_is_dead) return;
-    pthread_mutex_lock(&m_session_mutex);  // TODO: handle any errors
+    pthread_mutex_lock(&m_session_mutex);  // TODO: #6531 handle any errors
     if(m_session != NULL) {
         int r = m_session->capture_mkdir(pathname);
         if (r != 0) {
@@ -677,7 +678,7 @@ void backup_manager::mkdir(const char *pathname)
         }
     }
 
-    pthread_mutex_unlock(&m_session_mutex);  // TODO: handle any errors
+    pthread_mutex_unlock(&m_session_mutex);  // TODO: #6531 handle any errors
 }
 
 
