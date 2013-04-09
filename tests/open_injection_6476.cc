@@ -42,7 +42,7 @@ enum open_errors {
     CONTENTION            = EWOULDBLOCK
 };
 
-static int iteration = 0;
+static volatile int iteration = 0;
 
 static open_fun_t original_open;
 
@@ -54,7 +54,8 @@ static int test_create(const char *file, int oflag, mode_t mode)
 static int test_open(const char *file, int oflag)
 {
     int result = 0;
-    switch (iteration) {
+    int it = __sync_fetch_and_add(&iteration, 1);
+    switch (it) {
     case 2:
         errno = ENOSPC;
         result = -1;
@@ -64,8 +65,7 @@ static int test_open(const char *file, int oflag)
         break;
     }
 
-    printf("file: %s, current open iteration = %d\n", file, iteration); 
-    iteration++;
+    printf("file: %s, current open iteration = %d\n", file, it);
     return result;
 }
 
