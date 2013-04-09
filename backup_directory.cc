@@ -25,51 +25,13 @@ static void print_time(const char *toku_string) {
     fprintf(stderr, "%s %s\n", toku_string, buf);
 }
 
-
-//////////////////////////////////////////////////////////////////////////////
-//
-//backup_callbacks::backup_callbacks(backup_poll_fun_t poll_fun, 
-//                                   void *poll_extra, 
-//                                   backup_error_fun_t error_fun, 
-//                                   void *error_extra,
-//                                   backup_throttle_fun_t throttle_fun)
-//: m_poll_function(poll_fun), 
-//m_poll_extra(poll_extra), 
-//m_error_function(error_fun), 
-//m_error_extra(error_extra),
-//m_throttle_function(throttle_fun)
-//{}
-//
-////////////////////////////////////////////////////////////////////////////////
-////
-//int backup_callbacks::poll(float progress, const char *progress_string)
-//{
-//    int r = 0;
-//    r = m_poll_function(progress, progress_string, m_poll_extra);
-//    return r;
-//}
-//
-////////////////////////////////////////////////////////////////////////////////
-////
-//void backup_callbacks::report_error(int error_number, const char *error_str)
-//{
-//    m_error_function(error_number, error_str, m_error_extra);
-//}
-//
-////////////////////////////////////////////////////////////////////////////////
-////
-//unsigned long backup_callbacks::get_throttle(void)
-//{
-//    return m_throttle_function();
-//}
-
 //////////////////////////////////////////////////////////////////////////////
 //
 backup_session::backup_session(const char* source, const char *dest, backup_callbacks *calls, file_hash_table * const file, int *errnum)
     : m_source_dir(NULL), m_dest_dir(NULL), m_copier(calls, file)
 {
-    // TODO: assert that the directory's are not the same.
-    // TODO: assert that the destination directory is empty.
+    // TODO: #6541 assert that the directory's are not the same.
+    // TODO: #6542 assert that the destination directory is empty.
 
     // This code is ugly because we are using a constructor.  We need to do the error propagation now, while we have the source and dest paths,
     // instead of later in what used to be the set_directories() method.  BTW, the google style guide prohibits using constructors.
@@ -104,9 +66,7 @@ backup_session::~backup_session()
 
     if(m_dest_dir) {
         free((void*)m_dest_dir);
-    }
-    
-    // TODO: Cleanup copier?
+    }    
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -244,7 +204,7 @@ char* backup_session::translate_prefix(const char *file)
 {
     char *absfile = realpath(file, NULL);
 
-    // TODO: Should we have a copy of these lengths already?
+    // TODO: #6543 Should we have a copy of these lengths already?
     size_t len_op = strlen(m_source_dir);
     size_t len_np = strlen(m_dest_dir);
     size_t len_s = strlen(absfile);
@@ -303,7 +263,7 @@ char * backup_session::capture_open(const char *file)
     backup_file_name = this->translate_prefix(file);
     int r = open_path(backup_file_name);
     if (r != 0) {
-        // TODO: Add error callback call here or in copier abort.
+        // TODO: #6335 Add error reporting for this case..
         this->abort();
         free((void*)backup_file_name);
         backup_file_name = NULL;
