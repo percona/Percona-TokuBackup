@@ -5,14 +5,20 @@
 
 #include <unistd.h>
 #include <pthread.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "source_file.h"
 
 ////////////////////////////////////////////////////////
 //
-source_file::source_file(const char * path) : m_full_path(path), m_next(NULL), m_reference_count(0) 
+source_file::source_file(const char * const path) : m_full_path(strdup(path)), m_next(NULL), m_reference_count(0) 
 {
 };
+
+source_file::~source_file(void) {
+    free(m_full_path);
+}
 
 int source_file::init(void)
 {
@@ -43,28 +49,17 @@ void source_file::set_next(source_file *next)
 
 ////////////////////////////////////////////////////////
 //
-void source_file::lock_range(void)
+void source_file::lock_range(uint64_t lo __attribute__((unused)), uint64_t hi __attribute__((unused)))
+// For now the lo and hi are unused.  We'll just grab the m_mutex.
 {
     pthread_mutex_lock(&m_mutex);
 }
 
-////////////////////////////////////////////////////////
-//
-void source_file::wait_on_range(void)
-{
-    
-}
 
 ////////////////////////////////////////////////////////
 //
-void source_file::signal_range(void)
-{
-
-}
-
-////////////////////////////////////////////////////////
-//
-void source_file::unlock_range(void)
+void source_file::unlock_range(uint64_t lo __attribute__((unused)), uint64_t hi __attribute__((unused)))
+// For now the lo and hi are unused.  We'll just release the m_mutex.
 {
     pthread_mutex_unlock(&m_mutex);
 }

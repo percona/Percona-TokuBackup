@@ -401,11 +401,6 @@ void backup_manager::close(int fd)
             m_table.try_to_remove(source);
         }
     }
-
-    r = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
-    if (r != 0) {
-        // TODO: Handle failure to erase from fd map.
-    }
 }
 
 
@@ -430,24 +425,39 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
     } else {
         { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
         { int r = description->lock(); assert(r==0); } // TODO: Handle any errors
-        r = call_real_write(fd, buf, nbyte);
-        // TODO: Don't call our write if the first one fails.
         m_table.lock();
         source_file * file = m_table.get(description->get_full_source_name());
         m_table.unlock();
+
+        // We need the range lock before calling real lock so that the write into the source and backup are atomic wrt other writes.
         TRACE("Grabbing file range lock() with fd = ", fd);
-        file->lock_range();
+        const uint64_t lock_start = description->get_offset();
+        const uint64_t lock_end   = lock_start + nbyte;
+
+        // We want to release the description->lock ASAP, since it's limiting other writes.
+        // We cannot release it before the real write since the real write determines the new m_offset.
+
+        file->lock_range(lock_start, lock_end);
+
+        r = call_real_write(fd, buf, nbyte);
+        // TODO: Don't call our write if the first one fails.
+
+        description->increment_offset(r);
+        // Now we can release the description lock, since the offset is calculated.
+        { int r = description->unlock(); assert(r==0); } // TODO: Handle any errors
+
+        // We still have the lock range, which we do with pwrite
+
         if (m_capture_enabled) {
             TRACE("write() captured with fd = ", fd);
-            description->write(r, buf);
-        } else {
-            // Even though we can't capture the write, we need to
-            // update the offset.
-            description->add_bytes_to_offset(r);
-        }
+            int r = description->pwrite(buf, nbyte, lock_start);
+            if (r!=0) {
+                set_error(r, "failed write while backing up %s", description->get_full_source_name());
+            }
+        } 
         TRACE("Releasing file range lock() with fd = ", fd);
-        file->unlock_range();
-        { int r = description->unlock(); assert(r==0); } // TODO: Handle any errors
+        file->unlock_range(lock_start, lock_end);
+
         { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
     }
     
@@ -475,7 +485,7 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
         r = call_real_read(fd, buf, nbyte);
         printf("%s:%d r=%ld\n", __FILE__, __LINE__, r);
         if (r>0) {
-            description->read(r); //moves the offset
+            description->increment_offset(r); //moves the offset
         }
         {
             int r = description->unlock();
@@ -495,32 +505,45 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
 //     Same as regular write, but uses additional offset argument
 // to write to a particular position in the backup file.
 //
-void backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
+ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 // Do the write.  If the destination gets a short write, that's an error.
 {
-    if (m_is_dead || !m_backup_is_running) return;
+    if (m_is_dead || !m_backup_is_running) {
+  default_write:
+        return  call_real_pwrite(fd, buf, nbyte, offset);
+    }
+    
     TRACE("entering pwrite() with fd = ", fd);
 
     file_description *description = NULL;
     description = m_map.get(fd);
     if (description == NULL) {
-        return;
+        goto default_write;
     }
 
     m_table.lock();
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
     { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
-    file->lock_range();
-    int r = 0;
-    if (m_capture_enabled) {
-        r = description->pwrite(buf, nbyte, offset);
+    file->lock_range(offset, offset+nbyte);
+    ssize_t nbytes_written = call_real_pwrite(fd, buf, nbyte, offset);
+    int e = 0;
+    if (nbytes_written>0) {
+        if (m_capture_enabled) {
+            int r = description->pwrite(buf, nbyte, offset);
+            if (r!=0) {
+                set_error(r, "failed write while backing up %s", description->get_full_source_name());
+            }
+        }
+    } else if (nbytes_written<0) {
+        e = errno; // save the errno
     }
-    file->unlock_range();
+    file->unlock_range(offset, offset+nbyte);
     { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
-    if(r != 0) {
-        set_error(r, "failed write while backing up %s", description->get_full_source_name());
+    if (nbytes_written<0) {
+        errno = e; // restore errno
     }
+    return nbytes_written;
 }
 
 
@@ -577,31 +600,42 @@ void backup_manager::rename(const char *oldpath, const char *newpath)
 //
 //     TBD...
 //
-void backup_manager::ftruncate(int fd, off_t length)
+int backup_manager::ftruncate(int fd, off_t length)
 {
-    if (m_is_dead) return;
-    int r = 0;
+    if (m_is_dead) {
+  default_syscall:
+        return call_real_ftruncate(fd, length);
+    }
     TRACE("entering ftruncate with fd = ", fd);
     file_description *description = m_map.get(fd);
     if (description == NULL) {
-        return;
+        goto default_syscall;
     }
 
     m_table.lock();
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
     { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
-    file->lock_range();
-    if (m_capture_enabled) {
-        r = description->truncate(length);
+    file->lock_range(length, LLONG_MAX);
+    int user_result = call_real_ftruncate(fd, length);
+    int e;
+    if (user_result==0) {
+        if (m_capture_enabled) {
+            int r = description->truncate(length);
+            if (r!=0) {
+                set_error(r, "failed ftruncate(%d, %ld) while backing up", fd, length);
+            }
+        }
+    } else {
+        e = errno; // save errno
     }
-    file->unlock_range();
+    file->unlock_range(length, LLONG_MAX);
     { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
     
-    if(r != 0) {
-        // TODO: Abort the backup, truncate failed on the file.
-        // TODO: Need to grab session lock to abort, should create locked version.
+    if (user_result!=0) {
+        errno = e; // restore errno
     }
+    return user_result;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

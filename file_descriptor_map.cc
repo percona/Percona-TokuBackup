@@ -6,6 +6,7 @@
 #include "file_descriptor_map.h"
 #include "backup_debug.h"
 
+#include <assert.h>
 #include <cstdlib>
 #include <pthread.h>
 #include <stdio.h>
@@ -106,6 +107,7 @@ file_description* file_descriptor_map::put(int fd, volatile bool *is_dead)
     //description->fds.push_back(0); // fd?
     pthread_mutex_lock(&get_put_mutex);    // TODO: handle any errors
     this->grow_array(fd);
+    assert(m_map[fd]==NULL);
     m_map[fd] = description;
     pthread_mutex_unlock(&get_put_mutex);    // TODO: handle any errors
     return description;

@@ -6,7 +6,7 @@
 #include "file_description.h"
 #include "real_syscalls.h"
 #include "backup_debug.h"
-
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -79,7 +79,7 @@ void file_description::disable_from_backup(void)
 //
 void file_description::set_full_source_name(const char *name)
 {
-    // TODO: strdup this string, then free it later.
+    if (m_full_source_name) free(m_full_source_name); // I guess we'll free the old one.
     m_full_source_name = realpath(name, NULL);
 }
 
@@ -226,40 +226,12 @@ out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// write() -
-//
-// Description: 
-//
-//     ...
-//
-void file_description::write(ssize_t written, const void *buf)
-{
-    if (written > 0) {
-        off_t position = m_offset;
-        m_offset += written;
-    
-        if (!m_in_source_dir) {
-            /* nothing */
-        } else if (m_fd_in_dest_space == DEST_FD_INIT) {
-            // We can't write to the backup file if it hasn't been created yet.
-            /* nothing */
-        } else {
-            ssize_t second_write_size = call_real_pwrite(m_fd_in_dest_space, buf, written, position);
-            if(second_write_size != written) {
-                // TODO: Find some way to abort the backup, since our write failed.
-            }
-        }
-    }
-}
-
-void file_description::read(ssize_t nbyte) {    
+void file_description::increment_offset(ssize_t nbyte) {    
     m_offset += nbyte;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-//
-void file_description::add_bytes_to_offset(ssize_t nbyte) {    
-    m_offset += nbyte;
+off_t file_description::get_offset(void) {    
+    return m_offset;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -285,7 +257,6 @@ void file_description::lseek(off_t new_offset) {
 //
 int file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
 {
-    printf("%s:%d\n", __FILE__, __LINE__);
     int r = 0;
     if(!m_in_source_dir) {
         goto out;
@@ -297,7 +268,6 @@ int file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
     
     // Get the data written out, or do 
     while (nbyte>0) {
-        printf("writing at offset %ld\n", offset);
         ssize_t wr = call_real_pwrite(this->m_fd_in_dest_space, buf, nbyte, offset);
         if (wr==-1) {
             r = errno;

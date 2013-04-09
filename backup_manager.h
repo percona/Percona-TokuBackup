@@ -58,11 +58,11 @@ public:
     void open(int fd, const char *file, int oflag);
     void close(int fd);
     ssize_t write(int fd, const void *buf, size_t nbyte); // Actually performs the write on fd (so that a lock can be obtained).
-    void pwrite(int fd, const void *buf, size_t nbyte, off_t offset);
+    ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset); // Actually performs the write on fd (so that a lock can be obtained).
     ssize_t read(int fd, void *buf, size_t nbyte);        // Actually performs the read (so a lock can be obtained).
     off_t   lseek(int fd, size_t nbyte, int whence);      // Actually performs the seek (so a lock can be obtained).
     void rename(const char *oldpath, const char *newpath);
-    void ftruncate(int fd, off_t length);
+    int ftruncate(int fd, off_t length);                  // Actually performs the trunate (so a lock can be obtained).
     void truncate(const char *path, off_t length);
     void mkdir(const char *pathname);
     

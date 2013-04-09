@@ -397,14 +397,16 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
         }
 
         PAUSE(HotBackup::COPIER_BEFORE_READ);
-        file->lock_range();
+        const ssize_t lock_start = total_written_this_file;
+        const ssize_t lock_end   = total_written_this_file + buf_size;
+        file->lock_range(lock_start, lock_end);
         ssize_t n_read = call_real_read(srcfd, buf, buf_size);
         if (n_read == 0) {
-            file->unlock_range();
+            file->unlock_range(lock_start, lock_end);
             break;
         } else if (n_read < 0) {
             r = -1;
-            file->unlock_range();
+            file->unlock_range(lock_start, lock_end);
             goto out;
         }
 
@@ -416,7 +418,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
             r = m_calls->poll(0, poll_string);
             if (r!=0) {
                 m_calls->report_error(r, "User aborted backup");
-                file->unlock_range();
+                file->unlock_range(lock_start, lock_end);
                 goto out;
             }
 
@@ -427,7 +429,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
                 r = errno;
                 snprintf(poll_string, poll_string_size, "error write to %s, errno=%d (%s) at %s:%d", dest_path, r, strerror(r), __FILE__, __LINE__);
                 m_calls->report_error(r, poll_string);
-                file->unlock_range();
+                file->unlock_range(lock_start, lock_end);
                 goto out;
             }
             n_wrote_this_buf        += n_wrote_now;
@@ -435,7 +437,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
             *total_bytes_backed_up  += n_wrote_now;
         }
 
-        file->unlock_range();
+        file->unlock_range(lock_start, lock_end);
 
         PAUSE(HotBackup::COPIER_AFTER_WRITE);
         while (1) {

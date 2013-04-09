@@ -147,14 +147,8 @@ extern "C" ssize_t read(int fd, void *buf, size_t nbyte) {
 // in both the source and backup directories.
 //
 extern "C" ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset) {
-    ssize_t r = 0;
     TRACE("pwrite() intercepted, fd = ", fd);
-    r = call_real_pwrite(fd, buf, nbyte, offset);
-    if (r>0) {
-        // Don't try to write if there was an error in the application.
-        manager.pwrite(fd, buf, r, offset);
-    }
-    return r;
+    return manager.pwrite(fd, buf, nbyte, offset);
 }
 
 off_t lseek(int fd, off_t offset, int whence) {
@@ -171,11 +165,8 @@ off_t lseek(int fd, off_t offset, int whence) {
 //     Deletes a portion of the file based on the given file descriptor.
 //
 extern "C" int ftruncate(int fd, off_t length) {
-    int r = 0;
     TRACE("ftruncate() intercepted, fd = ", fd);
-    r = call_real_ftruncate(fd, length);
-    manager.ftruncate(fd, length);
-    return r;
+    return manager.ftruncate(fd, length);
 }
 
 
