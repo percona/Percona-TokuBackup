@@ -210,7 +210,7 @@ int file_description::close(void)
         goto out;
     }
 
-    // TODO: Check refcount, if it's zero we REALLY have to close
+    // TODO: #6544 Check refcount, if it's zero we REALLY have to close
     // the file.  Otherwise, if there are any references left, 
     // we can only decrement the refcount; other file descriptors
     // are still open in the main application.
