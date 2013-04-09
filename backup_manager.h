@@ -78,6 +78,7 @@ public:
     //  This function adds information stating what the errnum is (so don't call strerror from the
     //  caller.
 
+    // TODO: #6537 Factor the test interface out of the main class, cleanly.
     // Test interface.  We'd probably like to compile all this stuff away in production code.
     void pause_disable(bool pause);
     void set_keep_capturing(bool keep_capturing);    // Tell the manager to keep capturing until told not to. This is thread safe.
