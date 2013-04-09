@@ -40,6 +40,7 @@ set(glassboxtests
   test6478_read_injection
   test6483_mkdir_injection
   open_injection_6476
+  ftruncate_injection_6480
   write_race
   )
 
