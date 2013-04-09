@@ -21,12 +21,12 @@ static void test_hash_collisions(void) {
 }
 
 static void test_add(void) {
-    source_file first_file(FIRST_NAME);
-    source_file second_file(SECOND_NAME);
+    source_file *first_file  = new source_file(FIRST_NAME );
+    source_file *second_file = new source_file(SECOND_NAME);
 
     file_hash_table table;
-    table.put(&first_file);
-    table.put(&second_file);
+    table.put(first_file);
+    table.put(second_file);
     
     source_file *temp = table.get(FIRST_NAME);
     int r = strcmp(temp->name(), FIRST_NAME);
@@ -50,27 +50,20 @@ static void test_duplicates(void) {
     source_file first_file(FIRST_NAME);
     source_file second_file(SECOND_NAME);
 
-    printf("hash table size = %d\n", table.size());
+    table.put(&first_file);
+    assert(table.size() == 1);
 
     table.put(&first_file);
     assert(table.size() == 1);
-    printf("hash table size = %d\n", table.size());
-
-    table.put(&first_file);
-    assert(table.size() == 1);
-    printf("hash table size = %d\n", table.size());
 
     table.put(&second_file);
     assert(table.size() == 2);
-    printf("hash table size = %d\n", table.size());
 
     table.put(&first_file);
     assert(table.size() == 2);
-    printf("hash table size = %d\n", table.size());
 
     table.put(&second_file);
     assert(table.size() == 2);
-    printf("hash table size = %d\n", table.size());
 
     source_file * temp = table.get(FIRST_NAME);
     if (temp == NULL) {
@@ -85,8 +78,7 @@ static void test_duplicates(void) {
         abort();
     }
 
-    table.remove(&first_file);
-    printf("hash table size = %d\n", table.size());
+    table.remove(&first_file);    assert(table.size()==1);
     temp = table.get(FIRST_NAME);
     if (temp != NULL) {
         fail();
@@ -94,12 +86,9 @@ static void test_duplicates(void) {
         abort();
     }
 
-    table.remove(&first_file);
-    printf("hash table size = %d\n", table.size());
-    table.remove(&first_file);
-    printf("hash table size = %d\n", table.size());
-    table.remove(&first_file);
-    printf("hash table size = %d\n", table.size());
+    table.remove(&first_file);    assert(table.size()==1);
+    table.remove(&first_file);    assert(table.size()==1);
+    table.remove(&first_file);    assert(table.size()==1);
     temp = table.get(SECOND_NAME);
     if (temp == NULL) {
         fail();
@@ -107,8 +96,7 @@ static void test_duplicates(void) {
         abort();
     }
 
-    table.remove(&second_file);
-    printf("hash table size = %d\n", table.size());
+    table.remove(&second_file);    assert(table.size()==0);
     temp = table.get(SECOND_NAME);
     if (temp != NULL) {
         fail();
@@ -135,20 +123,16 @@ static void seriously_test_duplicates(void) {
         assert(table.size()==N);
     }
     for (int i=0; i<N; i++) {
-        delete files[i];
         free(fnames[i]);
     }
 }
 
-static int test_empty_hash_and_remove(void)
-{
-    int result = 0;
+static void test_empty_hash_and_remove(void) {
     file_hash_table table;
     source_file *temp = table.get(FIRST_NAME);
     if (temp != NULL) {
-        result = -1;
-        printf("Returned pointer that should have been null.");
-        return result;
+        fprintf(stderr, "Returned pointer that should have been null.");
+        abort();
     }
 
     source_file first_file(FIRST_NAME);
@@ -160,22 +144,18 @@ static int test_empty_hash_and_remove(void)
     table.remove(&second_file);
     temp = table.get(SECOND_NAME);
     if (temp != NULL) {
-        result = -2;
         fail();
-        printf("Returned pointer that should have been null.");
-        return result;
+        fprintf(stderr, "Returned pointer that should have been null.");
+        abort();
     }
 
     table.remove(&first_file);
     temp = table.get(FIRST_NAME);
     if (temp != NULL) {
-        result = -3;
         fail();
-        printf("Returned pointer that should have been null.");
-        return result;
+        fprintf(stderr, "Returned pointer that should have been null.");
+        abort();
     }
-
-    return result;
 }
 
 static int test_concurrent_access(void)

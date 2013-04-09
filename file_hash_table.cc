@@ -3,8 +3,8 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id: file_descriptor_map.h 54931 2013-03-29 19:51:23Z bkuszmaul $"
 
-#include "string.h"
-#include "pthread.h"
+#include <string.h>
+#include <pthread.h>
 
 #include "source_file.h"
 #include "file_hash_table.h"
