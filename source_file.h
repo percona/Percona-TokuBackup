@@ -27,7 +27,7 @@ public:
 private:
     char * const m_full_path; // the source_file owns this.
     source_file *m_next;
-    pthread_mutex_t m_mutex;
+    pthread_mutex_t m_range_mutex;
     unsigned int m_reference_count;
 };
 

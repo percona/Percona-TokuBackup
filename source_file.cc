@@ -22,7 +22,7 @@ source_file::~source_file(void) {
 
 int source_file::init(void)
 {
-    int r = pthread_mutex_init(&m_mutex, NULL);
+    int r = pthread_mutex_init(&m_range_mutex, NULL);
     return r;
 }
 
@@ -52,7 +52,7 @@ void source_file::set_next(source_file *next)
 void source_file::lock_range(uint64_t lo __attribute__((unused)), uint64_t hi __attribute__((unused)))
 // For now the lo and hi are unused.  We'll just grab the m_mutex.
 {
-    pthread_mutex_lock(&m_mutex);
+    pthread_mutex_lock(&m_range_mutex);
 }
 
 
@@ -61,7 +61,7 @@ void source_file::lock_range(uint64_t lo __attribute__((unused)), uint64_t hi __
 void source_file::unlock_range(uint64_t lo __attribute__((unused)), uint64_t hi __attribute__((unused)))
 // For now the lo and hi are unused.  We'll just release the m_mutex.
 {
-    pthread_mutex_unlock(&m_mutex);
+    pthread_mutex_unlock(&m_range_mutex);
 }
 
 ////////////////////////////////////////////////////////
