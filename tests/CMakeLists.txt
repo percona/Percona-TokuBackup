@@ -22,6 +22,7 @@ set(blackboxtests
   test6317
   test6317b
   test6361
+  throttle_6564
   unlink_during_copy_test6515
   unlink_during_copy_test6515b
   )

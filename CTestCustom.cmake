@@ -23,6 +23,7 @@ foreach(test
  test6477_close_injection
  test6478_read_injection
  test6483_mkdir_injection
+ throttle_6564
  unlink_during_copy_test6515
  unlink_during_copy_test6515b
  unlink_during_copy_test6515c
