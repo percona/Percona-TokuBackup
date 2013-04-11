@@ -8,6 +8,7 @@ foreach(test
  disable_race
  file_hash_table_tests
  ftruncate
+ ftruncate_injection_6480
  multiple_backups
  open_injection_6476
  open_write_close
@@ -24,6 +25,7 @@ foreach(test
  test6483_mkdir_injection
  unlink_during_copy_test6515
  unlink_during_copy_test6515b
+ unlink_during_copy_test6515c
  write_race
 )
     list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE

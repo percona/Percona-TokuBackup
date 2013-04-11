@@ -22,6 +22,8 @@ set(blackboxtests
   test6317
   test6317b
   test6361
+  unlink_during_copy_test6515
+  unlink_during_copy_test6515b
   )
 
 set(glassboxtests
@@ -29,8 +31,9 @@ set(glassboxtests
   backup_no_fractal_tree          ## Needs the keep_capturing API
   backup_no_fractal_tree_threaded ## Needs the keep_capturing API
   backup_no_ft2                   ## Needs the keep_capturing API
-  ftruncate                       ## Needs the keep_capturing API
   file_hash_table_tests
+  ftruncate                       ## Needs the keep_capturing API
+  ftruncate_injection_6480
   copy_files
   disable_race
   test6415_enospc_injection
@@ -40,7 +43,7 @@ set(glassboxtests
   test6478_read_injection
   test6483_mkdir_injection
   open_injection_6476
-  ftruncate_injection_6480
+  unlink_during_copy_test6515c
   write_race
   )
 

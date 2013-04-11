@@ -178,7 +178,7 @@ extern "C" int ftruncate(int fd, off_t length) {
 //
 //     Deletes a portion of the given file based on the given length.
 //
-extern "C" int truncate(const char *path, off_t length) throw() {
+extern "C" int truncate(const char *path, off_t length) {
     int r = 0;
     TRACE("truncate() intercepted, path = ", path);
     r = call_real_truncate(path, length);
