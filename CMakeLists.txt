@@ -22,7 +22,9 @@ set(BACKUP_SOURCES
 
 add_library(HotBackup          SHARED ${BACKUP_SOURCES})
 
-target_link_libraries(HotBackup          LINK_PUBLIC rt)
+IF(NOT APPLE)
+  target_link_libraries(HotBackup          LINK_PUBLIC rt)
+ENDIF()
 
 # If for some reason we go back to static libraries, we'll need these two:
 # set_target_properties(HotBackup          PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -55,7 +57,9 @@ IF(BACKUP_TESTS)
   add_subdirectory(tests)
   # And a Glassbox version of the library in which the visibility is defaul, not hidden
   add_library(HotBackupGlassbox      SHARED ${BACKUP_SOURCES})
-  target_link_libraries(HotBackupGlassbox LINK_PUBLIC rt)
+  IF(NOT APPLE)
+    target_link_libraries(HotBackupGlassbox LINK_PUBLIC rt)
+  ENDIF()
   install(TARGETS HotBackupGlassbox  DESTINATION lib)
 ENDIF()
 
