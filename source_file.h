@@ -19,15 +19,23 @@ public:
     void set_next(source_file *next);
     void lock_range(uint64_t lo, uint64_t  hi);  // Effect: Lock the range specified by lo (inclusive) .. hi (exclusive).   Use hi==LLONG_MAX to specify the whole file.
     void unlock_range(uint64_t lo, uint64_t hi);
+
+    // Name locking and associated rename call.
+    int name_write_lock(void);
+    int name_read_lock(void);
+    int name_unlock(void);
+    int rename(const char * new_name);
+
     // Note: These three methods are not inherintly thread safe.
     // They must be protected with a mutex.
     void add_reference(void);
     void remove_reference(void);
     unsigned int get_reference_count(void);
 private:
-    char * const m_full_path; // the source_file owns this.
+    char * m_full_path; // the source_file owns this.
     source_file *m_next;
     pthread_mutex_t m_range_mutex;
+    pthread_rwlock_t m_name_rwlock;
     unsigned int m_reference_count;
 };
 

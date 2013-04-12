@@ -23,6 +23,10 @@ source_file::~source_file(void) {
 int source_file::init(void)
 {
     int r = pthread_mutex_init(&m_range_mutex, NULL);
+    if (r == 0) {
+        r = pthread_rwlock_init(&m_name_rwlock, NULL);
+    }
+
     return r;
 }
 
@@ -62,6 +66,41 @@ void source_file::unlock_range(uint64_t lo __attribute__((unused)), uint64_t hi 
 // For now the lo and hi are unused.  We'll just release the m_mutex.
 {
     pthread_mutex_unlock(&m_range_mutex);
+}
+
+////////////////////////////////////////////////////////
+//
+int source_file::name_write_lock(void)
+{
+    return pthread_rwlock_wrlock(&m_name_rwlock);
+}
+
+////////////////////////////////////////////////////////
+//
+int source_file::name_read_lock(void)
+{
+    return pthread_rwlock_rdlock(&m_name_rwlock);
+}
+
+////////////////////////////////////////////////////////
+//
+int source_file::name_unlock(void)
+{
+    return pthread_rwlock_unlock(&m_name_rwlock);
+}
+
+////////////////////////////////////////////////////////
+//
+int source_file::rename(const char * new_name)
+{
+    int r = 0;
+    free(m_full_path);
+    m_full_path = realpath(new_name, NULL);
+    if (m_full_path == NULL) {
+        r = -1;
+    }
+
+    return r;
 }
 
 ////////////////////////////////////////////////////////
