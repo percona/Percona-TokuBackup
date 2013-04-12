@@ -108,6 +108,78 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
         goto error_out;
     }
     
+    // Complain if
+    //   1) the backup directory cannot be stat'd (perhaps because it doesn't exist), or
+    //   2) The backup directory is not a directory (perhaps because it's a regular file), or
+    //   3) the backup directory can not be opened (maybe permissions?), or
+    //   4) The backpu directory cannot be readdir'd (who knows what that could be), or
+    //   5) The backup directory is not empty (there's a file in there #6542), or
+    //   6) The dir cannot be closedir()'d (who knows...)n
+    {
+        struct stat sbuf;
+        r = stat(dest, &sbuf);
+        if (r!=0) {
+            r = errno;
+            char error_msg[4000];
+            snprintf(error_msg, sizeof(error_msg), "Problem stat()ing backup directory %s. errno=%d (%s)", dest, r, strerror(r));
+            calls->report_error(r, error_msg);
+            pthread_mutex_unlock(&m_mutex); // don't worry about errors here.
+            goto error_out;
+        }
+        if (!S_ISDIR(sbuf.st_mode)) {
+            char error_msg[4000];
+            snprintf(error_msg, sizeof(error_msg), "Backup destination %s is not a directory", dest);
+            r = EINVAL;
+            calls->report_error(EINVAL, error_msg);
+            pthread_mutex_unlock(&m_mutex); // don't worry about errors here.
+            goto error_out;
+        }
+        {
+            DIR *dir = opendir(dest);
+            if (dir == NULL) {
+                r = errno;
+                char error_msg[4000];
+                snprintf(error_msg, sizeof(error_msg), "Problem opening backup directory %s. errno=%d (%s)", dest, r, strerror(r));
+                calls->report_error(r, error_msg);
+                goto unlock_out;
+            }
+            errno = 0;
+      again:
+            struct dirent const *e = readdir(dir);
+            if (e!=NULL &&
+                (strcmp(e->d_name, ".")==0 ||
+                 strcmp(e->d_name, "..")==0)) {
+                goto again;
+            } else if (e!=NULL) {
+                // That's bad.  The directory should be empty.
+                r = EINVAL;
+                char error_msg[4000];
+                snprintf(error_msg, sizeof(error_msg), "Backup directory %s is not empty", dest);
+                calls->report_error(r, error_msg);
+                closedir(dir);
+                goto unlock_out;
+            } else if (errno!=0) {
+                r = errno;
+                char error_msg[4000];
+                snprintf(error_msg, sizeof(error_msg), "Problem readdir()ing backup directory %s. errno=%d (%s)", dest, r, strerror(r));
+                calls->report_error(r, error_msg);
+                closedir(dir);
+                goto unlock_out;
+            } else {
+                // e==NULL and errno==0 so that's good.  There are no files, except . and ..
+                r = closedir(dir);
+                if (r!=0) {
+                    r = errno;
+                    char error_msg[4000];
+                    snprintf(error_msg, sizeof(error_msg), "Problem closedir()ing backup directory %s. errno=%d (%s)", dest, r, strerror(r));
+                    calls->report_error(r, error_msg);
+                    // The dir is already as closed as I can get it.  Don't call closedir again.
+                    goto unlock_out;
+                }
+            }
+        }
+    }
+
     pthread_mutex_lock(&m_session_mutex);  // TODO: #6531 handle any errors 
     m_session = new backup_session(source, dest, calls, &m_table, &r);
     pthread_mutex_unlock(&m_session_mutex);   // TODO: #6531 handle any errors
@@ -156,7 +228,7 @@ disable_out:
     VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
     m_is_capturing = false;
 
-unlock_out:
+unlock_out: // preserves r if r!0
 
     pthread_mutex_lock(&m_session_mutex);   // TODO: #6531 handle any errors
     delete m_session;
@@ -168,7 +240,7 @@ unlock_out:
         if (pthread_error != 0) {
             m_is_dead = true; // disable backup permanently if the pthread mutexes are failing.
             calls->report_error(pthread_error, "pthread_mutex_unlock failed.  Backup system is probably broken");
-            if (r != 0) {
+            if (r == 0) {
                 r = pthread_error;
             }
         }
@@ -182,6 +254,7 @@ unlock_out:
     }
 
 error_out:
+    printf("returning %d\n", r);
     return r;
 }
 

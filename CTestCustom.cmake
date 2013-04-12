@@ -4,6 +4,8 @@ foreach(test
  backup_no_fractal_tree
  backup_no_fractal_tree_threaded
  backup_no_ft2
+ cannotopen_dest_dir
+ closedirfails_dest_dir
  copy_files
  disable_race
  empty_dest
@@ -13,11 +15,13 @@ foreach(test
  multiple_backups
  open_injection_6476
  open_write_close
+ no_dest_dir_6317b
+ null_dest_dir_6317
+ nondir_dest_dir_6317
+ readdirfails_dest_dir
  range_locks
  read_and_seek
  test6128
- test6317
- test6317b
  test6361
  test6415_enospc_injection
  test6431_postcopy

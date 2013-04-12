@@ -15,13 +15,17 @@ function(add_valgrind_tool_test tool test)
 endfunction(add_valgrind_tool_test)
 
 set(blackboxtests
+  cannotopen_dest_dir
+  closedirfails_dest_dir
   empty_dest
   multiple_backups
   open_write_close
   read_and_seek
   test6128
-  test6317
-  test6317b
+  no_dest_dir_6317b
+  null_dest_dir_6317
+  nondir_dest_dir_6317
+  readdirfails_dest_dir
   test6361
   throttle_6564
   unlink_during_copy_test6515
