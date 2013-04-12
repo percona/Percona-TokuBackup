@@ -193,7 +193,7 @@ extern "C" int truncate(const char *path, off_t length) {
 //
 // Description: 
 //
-extern "C" int unlink(const char *path) throw() {
+extern "C" int unlink(const char *path) {
     int r = 0;
     TRACE("unlink() intercepted, path = ", path);
     r = call_real_unlink(path);
@@ -223,7 +223,7 @@ extern "C" int rename(const char *oldpath, const char *newpath) {
 //
 // Description: 
 //
-int mkdir(const char *pathname, mode_t mode) throw() {
+int mkdir(const char *pathname, mode_t mode) {
     int r = 0;
     TRACE("mkidr() intercepted", pathname);
     r = call_real_mkdir(pathname, mode);
