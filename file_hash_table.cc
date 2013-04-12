@@ -22,6 +22,8 @@ file_hash_table::file_hash_table() : m_count(0)
     }
 }
 
+////////////////////////////////////////////////////////
+//
 file_hash_table::~file_hash_table() {
     for (int i=0; i < BUCKET_MAX; i++) {
         while (source_file *head = m_table[i]) {
@@ -29,6 +31,46 @@ file_hash_table::~file_hash_table() {
             delete head;
         }
     }
+}
+
+////////////////////////////////////////////////////////
+//
+source_file* file_hash_table::get_or_create_locked(const char * const file_name)
+{
+    source_file * file = NULL;
+    int unlock_r = 0;
+    int r = this->lock();
+    if (r != 0) {
+        goto final_out;
+    }
+
+    file = this->get(file_name);
+    if (file == NULL) {
+        file = new source_file(file_name);
+        r = file->init();
+        if (r != 0) {
+            delete file;
+            file = NULL;
+            goto unlock_out;
+        }
+        
+        this->put(file);
+    }
+    
+    file->add_reference();
+
+unlock_out:
+    unlock_r = this->unlock();
+    if (unlock_r != 0) {
+        if (r != 0) {
+            delete file;
+        }
+
+        file = NULL;
+    }
+
+final_out:
+    return file;
 }
 
 ////////////////////////////////////////////////////////
@@ -115,6 +157,21 @@ void file_hash_table::remove(source_file * const file)
 
 ////////////////////////////////////////////////////////
 //
+int file_hash_table::try_to_remove_locked(source_file * const file)
+{
+    int r = this->lock();
+    if (r != 0) {
+        goto error_out;
+    }
+    
+    this->try_to_remove(file);
+    r = this->unlock();
+error_out:
+    return r;
+}
+
+////////////////////////////////////////////////////////
+//
 void file_hash_table::try_to_remove(source_file * const file)
 {
     file->remove_reference();
@@ -126,6 +183,60 @@ void file_hash_table::try_to_remove(source_file * const file)
 
 ////////////////////////////////////////////////////////
 //
+// This must do a number of things:
+// 1. It must grab some kind of write lock, this will wait until all other capture manipulations are complete.
+// 2. Then it must remove it from the hash table.
+// 3. It must change its name (free old name, use new name);
+//
+int file_hash_table::rename_locked(const char *original_name, const char *new_name)
+{
+    source_file * target = NULL;
+    int r = this->lock();
+    if (r != 0) {
+        // Fatal pthread error.
+        goto final_out;
+    }
+
+    target = this->get(original_name);
+    if (target != NULL) {
+        r = this->rename(target, new_name);
+        if (r != 0) {
+            goto unlock_table_out;
+        }
+    }
+
+unlock_table_out:
+
+    r = this->unlock();
+
+final_out:    
+    return r;
+}
+
+////////////////////////////////////////////////////////
+//
+int file_hash_table::rename(source_file * target, const char *new_name)
+{
+    int r = target->name_write_lock();
+    if (r != 0) {
+        goto out;
+    }
+    
+    this->remove(target);
+    r = target->rename(new_name);
+    if (r != 0) {
+        goto out;
+    }
+    
+    this->put(target);
+    
+    r = target->name_unlock();
+out:
+    return r;
+}
+
+////////////////////////////////////////////////////////
+//
 int file_hash_table::size(void) const
 {
     return m_count;
@@ -133,14 +244,16 @@ int file_hash_table::size(void) const
 
 ////////////////////////////////////////////////////////
 //
-void file_hash_table::lock(void)
+int file_hash_table::lock(void)
 {
-    pthread_mutex_lock(&m_mutex);
+    return pthread_mutex_lock(&m_mutex);
 }
 
 ////////////////////////////////////////////////////////
 //
-void file_hash_table::unlock(void)
+int file_hash_table::unlock(void)
 {
-    pthread_mutex_unlock(&m_mutex);
+    return pthread_mutex_unlock(&m_mutex);
 }
+
+
