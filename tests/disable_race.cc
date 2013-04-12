@@ -107,7 +107,7 @@ static int disable_race(void) {
     pthread_t backup_thread;
     start_backup_thread(&backup_thread);
     printf("NOTE: Waiting for backup thread to finish copy phase...\n");
-    sleep(2);
+    sleep(4); // 2 seconds wasn't enough under helgrind with a high CPU load.  This really should have a pause point to make sure that the right thing happens.
 
     // 7. Create two threads, writing to the 0th and Nth files respectively. 
     printf("NOTE: Creating write threads.\n");

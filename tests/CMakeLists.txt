@@ -37,6 +37,7 @@ set(glassboxtests
   ftruncate_injection_6480
   copy_files
   disable_race
+  range_locks
   test6415_enospc_injection
   test6431_postcopy
   test6469_many_enospc_injection

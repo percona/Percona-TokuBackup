@@ -9,6 +9,10 @@
 #include "file_description.h"
 #include <stdint.h>
 
+struct range {
+    uint64_t lo, hi;
+};
+
 class source_file {
 public:
     source_file(const char * const path); // the source file owns the path
@@ -17,8 +21,17 @@ public:
     const char * name(void);
     source_file *next(void);
     void set_next(source_file *next);
-    void lock_range(uint64_t lo, uint64_t  hi);  // Effect: Lock the range specified by lo (inclusive) .. hi (exclusive).   Use hi==LLONG_MAX to specify the whole file.
-    void unlock_range(uint64_t lo, uint64_t hi);
+
+    int lock_range(uint64_t lo, uint64_t  hi) __attribute__((warn_unused_result));
+    // Effect: Lock the range specified by [lo,hi) (that is lo inclusive to hi exclusive).   Blocks until no locked range intersects [lo,hi).  Use hi==LLONG_MAX to specify the whole file.  Return 0 or an error number.
+
+    int unlock_range(uint64_t lo, uint64_t hi) __attribute__((warn_unused_result));
+    // Effect: Unlock the specified range.  Requires that the range is locked (if we notice a problem we'll return EINVAL).  Return 0 or an error number.
+
+    bool lock_range_would_block_unlocked(uint64_t lo, uint64_t hi);
+    // Effect: Return true if lock_range() would block because [lo,hi) intersects some locked range.
+    //  This function does not acquire any locks.  We expose it for testing purposes (it should not be used by production code).x
+
 
     // Name locking and associated rename call.
     int name_write_lock(void);
@@ -34,9 +47,12 @@ public:
 private:
     char * m_full_path; // the source_file owns this.
     source_file *m_next;
-    pthread_mutex_t m_range_mutex;
     pthread_rwlock_t m_name_rwlock;
     unsigned int m_reference_count;
+
+    pthread_mutex_t m_mutex;
+    pthread_cond_t  m_cond;
+    std::vector<struct range> m_locked_ranges;
 };
 
 #endif // End of header guardian.

@@ -437,10 +437,11 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
         // We want to release the description->lock ASAP, since it's limiting other writes.
         // We cannot release it before the real write since the real write determines the new m_offset.
 
-        file->lock_range(lock_start, lock_end);
+        r = file->lock_range(lock_start, lock_end);
+        assert(r==0); // TODO: if this fails, we should not call our write.
 
         r = call_real_write(fd, buf, nbyte);
-        // TODO: #6535 Don't call our write if the first one fails.
+        assert(r==nbyte); // TODO: #6535 Don't call our write if the first one fails.
 
         description->increment_offset(r);
         // Now we can release the description lock, since the offset is calculated.
@@ -456,7 +457,7 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
             }
         } 
         TRACE("Releasing file range lock() with fd = ", fd);
-        file->unlock_range(lock_start, lock_end);
+        { int r = file->unlock_range(lock_start, lock_end);   assert(r == 0); }
 
         { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
     }
@@ -525,7 +526,7 @@ ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offs
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
     { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
-    file->lock_range(offset, offset+nbyte);
+    { int r = file->lock_range(offset, offset+nbyte);   assert(r == 0); }
     ssize_t nbytes_written = call_real_pwrite(fd, buf, nbyte, offset);
     int e = 0;
     if (nbytes_written>0) {
@@ -538,7 +539,7 @@ ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offs
     } else if (nbytes_written<0) {
         e = errno; // save the errno
     }
-    file->unlock_range(offset, offset+nbyte);
+    { int r = file->unlock_range(offset, offset+nbyte); assert(r == 0); }
     { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
     if (nbytes_written<0) {
         errno = e; // restore errno
@@ -616,7 +617,7 @@ int backup_manager::ftruncate(int fd, off_t length)
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
     { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
-    file->lock_range(length, LLONG_MAX);
+    { int r = file->lock_range(length, LLONG_MAX);      assert(r == 0); }
     int user_result = call_real_ftruncate(fd, length);
     int e = 0;
     if (user_result==0) {
@@ -630,7 +631,7 @@ int backup_manager::ftruncate(int fd, off_t length)
     } else {
         e = errno; // save errno
     }
-    file->unlock_range(length, LLONG_MAX);
+    { int r = file->unlock_range(length, LLONG_MAX);    assert(r == 0); }
     { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
     
     if (user_result!=0) {

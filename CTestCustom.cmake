@@ -12,6 +12,7 @@ foreach(test
  multiple_backups
  open_injection_6476
  open_write_close
+ range_locks
  read_and_seek
  test6128
  test6317
