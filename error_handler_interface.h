@@ -7,6 +7,8 @@
 #define ERROR_HANDLER_INTERFACE_H
 
 class error_handler_interface {
+public:
+    virtual ~error_handler_interface() {};
     virtual void fatal_error(int errnum, const char *format, ...) = 0;
     virtual void backup_error(int errnum, const char *format, ...) = 0;
 };

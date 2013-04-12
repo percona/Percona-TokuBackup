@@ -22,6 +22,7 @@
 class backup_session_control
 {
 public:
+    virtual ~backup_session_control() {};
     virtual void abort_backup() {};
     virtual void throttle(int amount) {amount++;};
 };
