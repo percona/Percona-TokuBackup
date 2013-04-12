@@ -82,7 +82,7 @@ static bool ranges_intersect (uint64_t lo0, uint64_t hi0,
 
 bool source_file::lock_range_would_block_unlocked(uint64_t lo, uint64_t hi) {
     size_t size = m_locked_ranges.size();    
-    for (size_t i = 0; i<m_locked_ranges.size(); i++) {
+    for (size_t i = 0; i<size; i++) {
         if (ranges_intersect(m_locked_ranges[i].lo, m_locked_ranges[i].hi,
                              lo, hi)) {
             return true;
@@ -129,7 +129,7 @@ int source_file::unlock_range(uint64_t lo, uint64_t hi)
         }
     }
     size_t size = m_locked_ranges.size();
-    for (ssize_t i=0; i<size; i++) {
+    for (size_t i=0; i<size; i++) {
         if (m_locked_ranges[i].lo == lo &&
             m_locked_ranges[i].hi == hi) {
             m_locked_ranges[i] = m_locked_ranges[size-1];

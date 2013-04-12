@@ -15,6 +15,7 @@ function(add_valgrind_tool_test tool test)
 endfunction(add_valgrind_tool_test)
 
 set(blackboxtests
+  empty_dest
   multiple_backups
   open_write_close
   read_and_seek

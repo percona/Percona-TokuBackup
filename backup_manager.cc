@@ -441,7 +441,7 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
         assert(r==0); // TODO: if this fails, we should not call our write.
 
         r = call_real_write(fd, buf, nbyte);
-        assert(r==nbyte); // TODO: #6535 Don't call our write if the first one fails.
+        assert(r==(ssize_t)nbyte); // TODO: #6535 Don't call our write if the first one fails.
 
         description->increment_offset(r);
         // Now we can release the description lock, since the offset is calculated.

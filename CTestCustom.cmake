@@ -6,6 +6,7 @@ foreach(test
  backup_no_ft2
  copy_files
  disable_race
+ empty_dest
  file_hash_table_tests
  ftruncate
  ftruncate_injection_6480

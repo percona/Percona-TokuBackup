@@ -123,8 +123,8 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         for (int j=i; j<50; j++) {
             bool expect_block =
                     (i<j) && // i,j is not empty  and
-                    ((i<20) && (j>10) || // i,j intersects the first range or
-                     (i<40) && (j>30));  // i,j intersects the second range
+                    (((i<20) && (j>10)) || // i,j intersects the first range or
+                     ((i<40) && (j>30)));  // i,j intersects the second range
             assert(expect_block == sf.lock_range_would_block_unlocked(i,j));
         }
     }

@@ -63,7 +63,7 @@ extern volatile int client_done; // set this when it's OK for the poll to return
 
 void start_backup_thread_with_pollwait(pthread_t *thread);
 
-static double tdiff(const struct timespec start, const struct timespec end) {
+static inline double tdiff(const struct timespec start, const struct timespec end) {
     return end.tv_sec - start.tv_sec + (end.tv_nsec - start.tv_nsec)*1e-9;
 }
 
