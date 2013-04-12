@@ -11,11 +11,14 @@
 #include "backup_directory.h"
 #include "file_description.h"
 #include "file_hash_table.h"
+#include "manager_state.h"
+#include "error_handler_interface.h"
+
 #include <sys/types.h>
 #include <vector>
 #include <pthread.h>
 
-class backup_manager
+class backup_manager : public manager_state, public error_handler_interface
 {
 private:
     volatile bool m_pause_disable;
@@ -31,8 +34,8 @@ private:
     file_hash_table m_table;
     static pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
 
-    static pthread_rwlock_t m_capture_rwlock; // Used to serialize access of CAPTURE boolean flag.
-    bool m_capture_enabled;
+    //static pthread_rwlock_t m_capture_rwlock; // Used to serialize access of CAPTURE boolean flag.
+    //bool m_capture_enabled;
 
     backup_session *m_session;
     // TODO: use reader/writer lock:
@@ -69,10 +72,9 @@ public:
     void set_throttle(unsigned long bytes_per_second); // This is thread-safe.
     unsigned long get_throttle(void);                 // This is thread-safe.
 
-    int turn_on_capture(void); // This is thread safe.
-    int turn_off_capture(void); // This is thread safe.
-
-    void set_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4))); 
+    virtual void fatal_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4)));
+    virtual void backup_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4)));
+    void set_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4)));
     // Effect: Set the error information and turn off the backup.  The backup manager isn't dead
     //  so the user could try doing backup again.
     //  This function adds information stating what the errnum is (so don't call strerror from the

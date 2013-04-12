@@ -42,7 +42,6 @@
 pthread_mutex_t backup_manager::m_mutex         = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t backup_manager::m_session_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t backup_manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
-pthread_rwlock_t backup_manager::m_capture_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -58,9 +57,7 @@ backup_manager::backup_manager(void)
       m_keep_capturing(false),
       m_is_capturing(false),
       m_done_copying(false),
-      m_is_dead(false),
       m_backup_is_running(false),
-      m_capture_enabled(false),
       m_session(NULL),
       m_throttle(ULONG_MAX),
       m_an_error_happened(false),
@@ -68,7 +65,6 @@ backup_manager::backup_manager(void)
       m_errstring(NULL)
 {
     VALGRIND_HG_DISABLE_CHECKING(&m_backup_is_running, sizeof(m_backup_is_running));
-    VALGRIND_HG_DISABLE_CHECKING(&m_is_dead, sizeof(m_is_dead));
     VALGRIND_HG_DISABLE_CHECKING(&m_done_copying, sizeof(m_done_copying));
 }
 
@@ -86,7 +82,7 @@ backup_manager::~backup_manager(void) {
 //
 int backup_manager::do_backup(const char *source, const char *dest, backup_callbacks *calls) {
     int r = 0;
-    if (m_is_dead) {
+    if (this->is_dead()) {
         calls->report_error(-1, "Backup system is dead");
         r = -1;
         goto error_out;
@@ -192,7 +188,7 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
         goto disable_out;
     }
 
-    r = this->turn_on_capture();
+    r = this->enable_capture();
     if (r != 0) {
         goto disable_out;
     }
@@ -217,7 +213,7 @@ disable_out:
     m_backup_is_running = false;
 
     {
-        int r2 = this->turn_off_capture();
+        int r2 = this->disable_capture();
         if (r2 != 0 && r==0) {
             r = r2; // keep going, but remember the error.   Try to disable the descriptoins even if turn_off_capture failed.
         }
@@ -238,7 +234,7 @@ unlock_out: // preserves r if r!0
     {
         int pthread_error = pthread_mutex_unlock(&m_mutex);
         if (pthread_error != 0) {
-            m_is_dead = true; // disable backup permanently if the pthread mutexes are failing.
+            this->kill(); // disable backup permanently if the pthread mutexes are failing.
             calls->report_error(pthread_error, "pthread_mutex_unlock failed.  Backup system is probably broken");
             if (r == 0) {
                 r = pthread_error;
@@ -336,7 +332,6 @@ void backup_manager::disable_descriptions(void)
 //
 void backup_manager::create(int fd, const char *file) 
 {
-    if (m_is_dead) return; 
     TRACE("entering create() with fd = ", fd);
     m_map.put(fd, &m_is_dead);
     file_description *description = m_map.get(fd);
@@ -398,7 +393,6 @@ out:
 //
 void backup_manager::open(int fd, const char *file, int oflag)
 {
-    if (m_is_dead) return;
     TRACE("entering open() with fd = ", fd);
     m_map.put(fd, &m_is_dead);
     file_description *description = m_map.get(fd);
@@ -459,7 +453,6 @@ void backup_manager::open(int fd, const char *file, int oflag)
 //
 void backup_manager::close(int fd) 
 {
-    if (m_is_dead) return;
     TRACE("entering close() with fd = ", fd);
     int r = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
     if (r!=0) {
@@ -489,14 +482,13 @@ void backup_manager::close(int fd)
 //
 ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 {
-    if (m_is_dead) return call_real_write(fd, buf, nbyte);
     TRACE("entering write() with fd = ", fd);
     file_description *description = m_map.get(fd);
     ssize_t r = 0;
     if (description == NULL) {
         r = call_real_write(fd, buf, nbyte);
     } else {
-        { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
+        { int r = this->capture_read_lock(); assert(r == 0); }
         { int r = description->lock(); assert(r==0); } // TODO: #6531 Handle any errors
         m_table.lock();
         source_file * file = m_table.get(description->get_full_source_name());
@@ -522,7 +514,7 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 
         // We still have the lock range, which we do with pwrite
 
-        if (m_capture_enabled) {
+        if (this->capture_is_enabled()) {
             TRACE("write() captured with fd = ", fd);
             int r = description->pwrite(buf, nbyte, lock_start);
             if (r!=0) {
@@ -532,7 +524,7 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
         TRACE("Releasing file range lock() with fd = ", fd);
         { int r = file->unlock_range(lock_start, lock_end);   assert(r == 0); }
 
-        { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
+        { int r = this->capture_unlock(); assert(r == 0); }
     }
     
     return r;
@@ -548,9 +540,8 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 //     Do the read.
 //
 ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
-    if (m_is_dead) return call_real_read(fd, buf, nbyte);
-    ssize_t r = 0;
     TRACE("entering write() with fd = ", fd);
+    ssize_t r = 0;
     file_description *description = m_map.get(fd);
     if (description == NULL) {
         r = call_real_read(fd, buf, nbyte);
@@ -582,28 +573,22 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
 ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 // Do the write.  If the destination gets a short write, that's an error.
 {
-    if (m_is_dead || !m_backup_is_running) {
-  default_write:
-        return  call_real_pwrite(fd, buf, nbyte, offset);
-    }
-    
     TRACE("entering pwrite() with fd = ", fd);
-
     file_description *description = NULL;
     description = m_map.get(fd);
     if (description == NULL) {
-        goto default_write;
+        return 0;
     }
 
     m_table.lock();
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
-    { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
+    { int r = this->capture_read_lock(); assert(r == 0); }
     { int r = file->lock_range(offset, offset+nbyte);   assert(r == 0); }
     ssize_t nbytes_written = call_real_pwrite(fd, buf, nbyte, offset);
     int e = 0;
     if (nbytes_written>0) {
-        if (m_capture_enabled) {
+        if (this->capture_is_enabled()) {
             int r = description->pwrite(buf, nbyte, offset);
             if (r!=0) {
                 set_error(r, "failed write while backing up %s", description->get_full_source_name());
@@ -613,7 +598,7 @@ ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offs
         e = errno; // save the errno
     }
     { int r = file->unlock_range(offset, offset+nbyte); assert(r == 0); }
-    { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
+    { int r = this->capture_unlock(); assert(r == 0); }
     if (nbytes_written<0) {
         errno = e; // restore errno
     }
@@ -631,7 +616,6 @@ ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offs
 // upcoming intercepted writes to be backed up properly.
 //
 off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
-    if (m_is_dead) return call_real_lseek(fd, nbyte, whence);
     TRACE("entering seek() with fd = ", fd);
     file_description *description = NULL;
     description = m_map.get(fd);
@@ -657,7 +641,6 @@ off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
 //
 void backup_manager::rename(const char *oldpath, const char *newpath)
 {
-    if (m_is_dead) return;
     TRACE("entering rename()...", "");
     TRACE("-> old path = ", oldpath);
     TRACE("-> new path = ", newpath);
@@ -676,25 +659,23 @@ void backup_manager::rename(const char *oldpath, const char *newpath)
 //
 int backup_manager::ftruncate(int fd, off_t length)
 {
-    if (m_is_dead) {
-  default_syscall:
-        return call_real_ftruncate(fd, length);
-    }
     TRACE("entering ftruncate with fd = ", fd);
+    // TODO: Remove the logic for null descriptions, since we will
+    // always have a file_description and a source_file.
     file_description *description = m_map.get(fd);
     if (description == NULL) {
-        goto default_syscall;
+        return 0;
     }
 
     m_table.lock();
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
-    { int r = pthread_rwlock_rdlock(&m_capture_rwlock); assert(r == 0); }
+    { int r = this->capture_read_lock(); assert(r == 0); }
     { int r = file->lock_range(length, LLONG_MAX);      assert(r == 0); }
     int user_result = call_real_ftruncate(fd, length);
     int e = 0;
     if (user_result==0) {
-        if (m_capture_enabled) {
+        if (this->capture_is_enabled()) {
             int r = description->truncate(length);
             if (r != 0) {
                 e = errno;
@@ -705,7 +686,7 @@ int backup_manager::ftruncate(int fd, off_t length)
         e = errno; // save errno
     }
     { int r = file->unlock_range(length, LLONG_MAX);    assert(r == 0); }
-    { int r = pthread_rwlock_unlock(&m_capture_rwlock); assert(r == 0); }
+    { int r = this->capture_unlock(); assert(r == 0); }
     
     if (user_result!=0) {
         errno = e; // restore errno
@@ -723,7 +704,6 @@ int backup_manager::ftruncate(int fd, off_t length)
 //
 void backup_manager::truncate(const char *path, off_t length)
 {
-    if (m_is_dead) return;
     TRACE("entering truncate() with path = ", path);
     // TODO: #6536
     // 1. Convert the path to the backup dir.
@@ -743,7 +723,6 @@ void backup_manager::truncate(const char *path, off_t length)
 //
 void backup_manager::mkdir(const char *pathname)
 {
-    if (m_is_dead) return;
     pthread_mutex_lock(&m_session_mutex);  // TODO: #6531 handle any errors
     if(m_session != NULL) {
         int r = m_session->capture_mkdir(pathname);
@@ -761,56 +740,39 @@ void backup_manager::mkdir(const char *pathname)
 void backup_manager::set_throttle(unsigned long bytes_per_second) {
     VALGRIND_HG_DISABLE_CHECKING(&m_throttle, sizeof(m_throttle));
     m_throttle = bytes_per_second;
-    //__atomic_store(&m_throttle, &bytes_per_second, __ATOMIC_SEQ_CST); // sequential consistency is probably too much, but this isn't called often
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 unsigned long backup_manager::get_throttle(void) {
     return m_throttle;
-    //unsigned long ret;
-    //__atomic_load(&m_throttle, &ret, __ATOMIC_SEQ_CST);
-    //return ret;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int backup_manager::turn_on_capture(void) {
-    int r = 0;
-    r = pthread_rwlock_wrlock(&m_capture_rwlock);
-    if (r != 0) {
-        goto error_out;
-    }
-
-    m_capture_enabled = true;
-    r = pthread_rwlock_unlock(&m_capture_rwlock);
-    if (r != 0) {
-        goto error_out;
-    }
+void backup_manager::fatal_error(int errnum, const char *format_string, ...)
+{
+    va_list ap;
+    va_start(ap, format_string);
     
- error_out:
-    return r;
+    this->kill();
+    this->disable_capture();
+    this->set_error(errnum, format_string, ap);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int backup_manager::turn_off_capture(void) {
-    int r = 0;
-    r = pthread_rwlock_wrlock(&m_capture_rwlock);
-    if (r != 0) {
-        goto error_out;
-    }
-
-    m_capture_enabled = false;
-    r = pthread_rwlock_unlock(&m_capture_rwlock);
-    if (r != 0) {
-        goto error_out;
-    }
+void backup_manager::backup_error(int errnum, const char *format_string, ...)
+{
+    va_list ap;
+    va_start(ap, format_string);
     
- error_out:
-    return r;
+    this->disable_capture();
+    this->set_error(errnum, format_string, ap);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//
 void backup_manager::set_error(int errnum, const char *format_string, ...) {
     va_list ap;
     va_start(ap, format_string);
@@ -819,7 +781,7 @@ void backup_manager::set_error(int errnum, const char *format_string, ...) {
     {
         int r = pthread_mutex_lock(&m_error_mutex);
         if (r!=0) {
-            m_is_dead = true;  // go ahead and set the error, however
+            this->kill();  // go ahead and set the error, however
         }
     }
     if (!m_an_error_happened) {
@@ -835,7 +797,7 @@ void backup_manager::set_error(int errnum, const char *format_string, ...) {
     {
         int r = pthread_mutex_unlock(&m_error_mutex);
         if (r!=0) {
-            m_is_dead = true;
+            this->kill();
         }
     }
     va_end(ap);

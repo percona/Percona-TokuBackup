@@ -7,8 +7,6 @@
 #include <fcntl.h> // open()
 #include <unistd.h> // close(), write(), read(), unlink(), truncate(), etc.
 #include <sys/stat.h> // mkdir()
-
-//#include <sys/types.h>
 #include <errno.h>
 #include <dlfcn.h>
 #include <stdarg.h>
@@ -55,7 +53,7 @@ extern "C" int open(const char* file, int oflag, ...) {
         mode_t mode = va_arg(ap, mode_t);
         va_end(ap);
         fd = call_real_open(file, oflag, mode);
-        if (fd >= 0) { 
+        if (fd >= 0 && manager.is_alive()) { 
             manager.create(fd, file);
         }
     } else {
@@ -68,7 +66,7 @@ extern "C" int open(const char* file, int oflag, ...) {
             }
 
             // TODO: What happens if we can't tell that the file is a FIFO?  Should we just the backup?  Skip this file?
-            if (!S_ISFIFO(stats.st_mode)) {
+            if (!S_ISFIFO(stats.st_mode) && manager.is_alive()) {
                 manager.open(fd, file, oflag);
             }
         }
@@ -92,7 +90,9 @@ extern "C" int close(int fd) {
     int r = 0;
     TRACE("close() intercepted, fd = ", fd);
     r = call_real_close(fd);
-    manager.close(fd);
+    if (manager.is_alive()) {
+        manager.close(fd);
+    }
     return r;
 }
 
@@ -109,9 +109,15 @@ extern "C" int close(int fd) {
 extern "C" ssize_t write(int fd, const void *buf, size_t nbyte) {
     TRACE("write() intercepted, fd = ", fd);
 
-    // Moved the write down into file_description->write, where a lock can be obtained
+    ssize_t r = 0;
+    if (manager.is_alive()) {
+        // Moved the write down into manager where a lock can be obtained.
+        r = manager.write(fd, buf, nbyte);
+    } else {
+        r = call_real_write(fd, buf, nbyte);
+    }
 
-    return manager.write(fd, buf, nbyte);
+    return r;
 }
 
 
@@ -131,9 +137,15 @@ extern "C" ssize_t write(int fd, const void *buf, size_t nbyte) {
 //
 extern "C" ssize_t read(int fd, void *buf, size_t nbyte) {
     TRACE("read() intercepted, fd = ", fd);
-    // Moved the read down into file_description->read, where a lock can be obtained.
-    
-    return manager.read(fd, buf, nbyte);
+    ssize_t r = 0;
+    if (manager.is_alive()) {
+        // Moved the read down into manager, where a lock can be obtained.
+        r = manager.read(fd, buf, nbyte);        
+    } else {
+        r = call_real_read(fd, buf, nbyte);
+    }
+
+    return r;
 }
 
 
@@ -148,12 +160,28 @@ extern "C" ssize_t read(int fd, void *buf, size_t nbyte) {
 //
 extern "C" ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset) {
     TRACE("pwrite() intercepted, fd = ", fd);
-    return manager.pwrite(fd, buf, nbyte, offset);
+    ssize_t r = 0;
+    if (manager.is_alive()) {
+        r = manager.pwrite(fd, buf, nbyte, offset);
+    } else {
+        r = call_real_pwrite(fd, buf, nbyte, offset);
+    }
+    
+    return r;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//
 off_t lseek(int fd, off_t offset, int whence) {
     TRACE("lseek() intercepted fd =", fd);
-    return manager.lseek(fd, offset, whence);
+    off_t r = 0;
+    if (manager.is_alive()) {
+        r = manager.lseek(fd, offset, whence);
+    } else {
+        r = call_real_lseek(fd, offset, whence);
+    }
+
+    return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -166,7 +194,14 @@ off_t lseek(int fd, off_t offset, int whence) {
 //
 extern "C" int ftruncate(int fd, off_t length) {
     TRACE("ftruncate() intercepted, fd = ", fd);
-    return manager.ftruncate(fd, length);
+    int r = 0;
+    if (manager.is_alive()) {
+        r = manager.ftruncate(fd, length);
+    } else {
+        r = call_real_ftruncate(fd, length);
+    }
+
+    return r;
 }
 
 
@@ -182,7 +217,10 @@ extern "C" int truncate(const char *path, off_t length) {
     int r = 0;
     TRACE("truncate() intercepted, path = ", path);
     r = call_real_truncate(path, length);
-    manager.truncate(path, length);
+    if (manager.is_alive()) {
+        manager.truncate(path, length);
+    }
+    
     return r;
 }
 
@@ -213,7 +251,10 @@ extern "C" int rename(const char *oldpath, const char *newpath) {
     TRACE("-> oldpath = ", oldpath);
     TRACE("-> newpath = ", newpath);
     r = call_real_rename(oldpath, newpath);
-    manager.rename(oldpath, newpath);
+    if (manager.is_alive()) {
+        manager.rename(oldpath, newpath);
+    }
+
     return r;
 }
 
@@ -227,7 +268,7 @@ int mkdir(const char *pathname, mode_t mode) {
     int r = 0;
     TRACE("mkidr() intercepted", pathname);
     r = call_real_mkdir(pathname, mode);
-    if (r==0) {
+    if (r == 0 && manager.is_alive()) {
         // Don't try to write if there was an error in the application.
         manager.mkdir(pathname);
     }

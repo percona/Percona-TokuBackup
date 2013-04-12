@@ -21,6 +21,7 @@ set(BACKUP_SOURCES
 	file_description.cc
 	file_descriptor_map.cc
 	file_hash_table.cc
+	manager_state.cc
 	real_syscalls.cc
 	source_file.cc)
 
