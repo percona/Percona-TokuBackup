@@ -215,7 +215,13 @@ int backup_copier::copy_full_path(const char *source,
     r = stat(source, &sbuf);
     if (r!=0) {
         r = errno;
-        // TODO: #6515 Ignore errors about file not existing, because we have not opened the file with open(), which would prevent it from disappearing.
+        // TODO: #6515 Ignore errors about file not existing, 
+        // because we have not yet opened the file with open(), 
+        // which would prevent it from disappearing.
+        if (r == ENOENT) {
+            goto out;
+        }
+
         char *string = malloc_snprintf(strlen(dest)+100, "error stat(\"%s\"), errno=%d (%s) at %s:%d", dest, r, strerror(r), __FILE__, __LINE__);
         m_calls->report_error(errno, string);
         free(string);
@@ -230,6 +236,16 @@ int backup_copier::copy_full_path(const char *source,
             goto out;
         }
     } else if (S_ISDIR(sbuf.st_mode)) {
+        // Open the directory to be copied (source directory, full path).
+        DIR *dir = opendir(source);
+        if(dir == NULL) {
+            r = errno;
+            // If the directory was deleted from underneath us, just skip it.
+            if (r != ENOENT) { 
+                goto out;
+            }
+        }
+
         // Make the directory in the backup destination.
         r = call_real_mkdir(dest, 0777);
         if (r < 0) {
@@ -243,13 +259,6 @@ int backup_copier::copy_full_path(const char *source,
             }
             
             ERROR("Cannot create directory that already exists = ", dest);
-        }
-
-        // Open the directory to be copied (source directory, full path).
-        DIR *dir = opendir(source);
-        if(dir == NULL) {
-            r = -1;
-            goto out;
         }
 
         r = this->add_dir_entries_to_todo(dir, file);
@@ -286,13 +295,18 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, off_t
     int r = 0;
     int copy_error = 0;
     int create_error = 0;
+    source_file * file = NULL;
     int destfd = 0;
     int srcfd = call_real_open(source, O_RDONLY);
-    source_file * file = NULL;
-
     if (srcfd < 0) {
-        // TODO: #6515 Handle case where file is deleted AFTER backup starts.
-        goto out;
+        int e = errno;
+        // Ignore errors about the source file not existing, 
+        // because we someone must have deleted the source name
+        // since we discovered it and stat'd it.
+        if (e != ENOENT) {
+            copy_error = -1;
+            goto out;
+        }
     }
 
     destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
@@ -415,7 +429,7 @@ int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path
             goto out;
         }
 
-        PAUSE(HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);        
+        PAUSE(HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);
         ssize_t n_wrote_this_buf = 0;
         while (n_wrote_this_buf < n_read) {
             snprintf(poll_string, poll_string_size, "Backup progress %ld bytes, %ld files.  Copying file: %ld/%ld bytes done of %s to %s.",
