@@ -4,6 +4,9 @@
 #ifndef BACKUP_CALLBACKS_H
 #define BACKUP_CALLBACKS_H
 
+#ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
+#ident "$Id$"
+
 #include "backup_internal.h"
 
 typedef unsigned long (*backup_throttle_fun_t)(void);

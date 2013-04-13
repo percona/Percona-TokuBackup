@@ -5,7 +5,7 @@
 #define BACKUP_INTERNAL_H
 
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
-#ident "$Id: backup.h 54696 2013-03-25 20:59:02Z bkuszmaul $"
+#ident "$Id$"
 
 #include "backup.h"
 #include "sys/types.h"

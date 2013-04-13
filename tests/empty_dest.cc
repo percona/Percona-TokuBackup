@@ -1,3 +1,6 @@
+#ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
+#ident "$Id$"
+
 // Test to make sure that if the destination isn't empty, then the backup fails.  For
 
 #include <errno.h>

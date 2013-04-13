@@ -1,3 +1,6 @@
+#ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
+#ident "$Id$"
+
 /* Inject enospc. */
 
 #include <fcntl.h>
