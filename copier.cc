@@ -262,12 +262,16 @@ int copier::copy_full_path(const char *source,
         }
 
         r = this->add_dir_entries_to_todo(dir, file);
-        if(r != 0) {
+        if (r != 0) {
             goto out;
         }
 
         r = closedir(dir);
-        // TODO: #6335 return error from closedir...
+        if (r!=0) {
+            r = errno;
+            the_manager.backup_error(r, "Cannot close dir %s during backup at %s:%d\n", source, __FILE__, __LINE__);
+            goto out;
+        }
     } else {
         // TODO: #6538 Do we need to add a case for hard links?
         if (S_ISLNK(sbuf.st_mode)) {
@@ -405,7 +409,6 @@ static double tdiff(struct timespec a, struct timespec b)
 int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, source_file * const file, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
     int r = 0;
 
-    // TODO: #6539 Replace these magic numbers.
     const size_t buf_size = 1024 * 1024;
     char *buf = new char[buf_size]; // this cannot be on the stack.
     ssize_t n_wrote_now = 0;
