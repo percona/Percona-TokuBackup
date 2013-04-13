@@ -25,8 +25,8 @@ public:
     int rename_locked(const char *original_name, const char *new_name);
     int rename(source_file * const target, const char *new_name);
     int size(void) const;
-    int lock(void);
-    int unlock(void);
+    int lock(void) __attribute__((warn_unused_result));   // Return 0 on success or an error number.  Reports the error to the backup manager.
+    int unlock(void) __attribute__((warn_unused_result)); // Return 0 on success or an error number.  Reports the error to the backup manager.
     static const int BUCKET_MAX = 1 << 14;
 private:
     source_file *m_table[file_hash_table::BUCKET_MAX];

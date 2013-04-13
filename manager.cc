@@ -126,7 +126,7 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
             char error_msg[4000];
             snprintf(error_msg, sizeof(error_msg), "Problem stat()ing backup directory %s. errno=%d (%s)", dest, r, strerror(r));
             calls->report_error(r, error_msg);
-            pthread_mutex_unlock(&m_mutex); // don't worry about errors here.
+            ignore(pthread_mutex_unlock(&m_mutex)); // don't worry about errors here.
             goto error_out;
         }
         if (!S_ISDIR(sbuf.st_mode)) {
@@ -134,7 +134,7 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
             snprintf(error_msg, sizeof(error_msg), "Backup destination %s is not a directory", dest);
             r = EINVAL;
             calls->report_error(EINVAL, error_msg);
-            pthread_mutex_unlock(&m_mutex); // don't worry about errors here.
+            ignore(pthread_mutex_unlock(&m_mutex)); // don't worry about errors here.
             goto error_out;
         }
         {
@@ -336,57 +336,80 @@ int manager::create(int fd, const char *file)
 {
     TRACE("entering create() with fd = ", fd);
     description *description;
-    int r = m_map.put(fd, &description);
-    if (r != 0) {
-        // The error has been reported, so just return
-        goto out;
+    {
+        int r = m_map.put(fd, &description);
+        if (r != 0) return r; // The error has been reported.
     }
 
     description->set_full_source_name(file);
 
     // Add description to hash table.
-    m_table.lock();
+    {
+        int r = m_table.lock();
+        if (r!=0) return r;
+    }
     {
         source_file *source = m_table.get(description->get_full_source_name());
         if (source == NULL) {
             TRACE("Creating new source file in hash map ", fd);
             source = new source_file(description->get_full_source_name());
             source->add_reference();
-            r = source->init();
+            int r = source->init();
             if (r != 0) {
                 // The error has been reported.
                 source->remove_reference();
                 delete source;
-                m_table.unlock();
-                goto out;
+                ignore(m_table.unlock());
+                return r;
             }
 
             m_table.put(source);
         }
     }
 
-    m_table.unlock();
+    {
+        int r = m_table.unlock();
+        if (r!=0) return r;
+    }
     
-    pthread_rwlock_rdlock(&m_session_rwlock); // TODO: #6531 handle any errors
+    {
+        int r = pthread_rwlock_rdlock(&m_session_rwlock);
+        if (r!=0) {
+            the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+            return r;
+        }
+    }
+            
     
     if (m_session != NULL) {
         char *backup_file_name;
-        r = m_session->capture_create(file, &backup_file_name);
-        if (r==0 && backup_file_name != NULL) {
-            description->prepare_for_backup(backup_file_name);
-            int rr = description->create();
-            if (rr != 0) {
-                m_session->abort();
-                backup_error(rr, "Could not create backup file");
+        {
+            int r = m_session->capture_create(file, &backup_file_name);
+            if (r!=0) {
+                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                return r;
             }
-
+        }
+        if (backup_file_name != NULL) {
+            description->prepare_for_backup(backup_file_name);
+            int r = description->create(); // TODO. create is messy since it doens't report the error, and what constitues anerror may depend on context.  Clean this up.
+            if (r != 0) {
+                backup_error(r, "Could not create backup file %s", backup_file_name);
+                free(backup_file_name);
+                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                return r;
+            }
             free((void*)backup_file_name);
         }
     }
-    
-    pthread_rwlock_unlock(&m_session_rwlock); // TODO: #6531  handle any errors
-out:
-    return r;
+    {
+        int r = pthread_rwlock_unlock(&m_session_rwlock);
+        if (r!=0) {
+            the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
+            return r;
+        }
+    }
+    return 0;
 }
 
 
@@ -402,63 +425,80 @@ out:
 // it may be updated if and when the user updates the original/source
 // copy of the file.
 //
-int manager::open(int fd, const char *file, int oflag)
+int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
 {
     TRACE("entering open() with fd = ", fd);
     description *description;
-    int r = m_map.put(fd, &description);
-    if (r!=0) {
-        goto out; // the error has been reported
+    {
+        int r = m_map.put(fd, &description);
+        if (r!=0) return r; // Unlike some of the other functions, we don't do the orignal open here.
     }
 
     description->set_full_source_name(file);
 
     // Add description to hash table.
-    m_table.lock();
+    {
+        int r = m_table.lock();
+        if (r!=0) return r;
+    }
     {
         source_file *source = m_table.get(description->get_full_source_name());
         if (source == NULL) {
             TRACE("Creating new source file in hash map ", fd);
             source = new source_file(description->get_full_source_name());
             source->add_reference();
-            r = source->init();
+            int r = source->init();
             if (r != 0) {
                 // The error has been reported.
                 source->remove_reference();
                 delete source;
-                m_table.unlock();
-                goto out;
+                ignore(m_table.unlock());
+                return r;
             }
-
             m_table.put(source);
         }
     }
-
-    m_table.unlock();
-    
-    pthread_rwlock_rdlock(&m_session_rwlock); // TODO: #6531 handle any errors
-
-    if(m_session != NULL) {
-        char *backup_file_name;
-        r = m_session->capture_open(file, &backup_file_name);
-        if(r==0 && backup_file_name != NULL) {
-            description->prepare_for_backup(backup_file_name);
-            r = description->open();
-            if(r != 0) {
-                m_session->abort();
-                backup_error(r, "Could not open backup file.");
-            }
-            
-            free((void*)backup_file_name);
+    {
+        int r = m_table.unlock();
+        if (r!=0) return r;
+    }
+    {
+        int r = pthread_rwlock_rdlock(&m_session_rwlock);
+        if (r!=0) {
+            the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+            return r;
         }
     }
 
-    pthread_rwlock_unlock(&m_session_rwlock); // TODO: #6531 handle any errors
-
-    // TODO: #6533 Remove this dead code.
-    oflag++;
- out:
-    return r;
+    if(m_session != NULL) {
+        char *backup_file_name;
+        {
+            int r = m_session->capture_open(file, &backup_file_name);
+            if (r!=0) {
+                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                return r;
+            }
+        }
+        if(backup_file_name != NULL) {
+            description->prepare_for_backup(backup_file_name);
+            int r = description->open(); // TODO: open is messy.  It ought to report the error, but I'm not sure if it can, since what constitutes an error may depend on the context.  Clean this up.
+            if (r != 0) {
+                backup_error(r, "Could not open backup file %s", backup_file_name);
+                free(backup_file_name);
+                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                return r;
+            }
+            free(backup_file_name);
+        }
+    }
+    {
+        int r = pthread_rwlock_unlock(&m_session_rwlock);
+        if (r!=0) {
+            the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
+            return r;
+        }
+    }
+    return 0;
 }
 
 
@@ -509,23 +549,29 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
     bool have_range_lock = false;
     uint64_t lock_start=0, lock_end=0;
     if (ok && description) {
-        m_table.lock();
-        file = m_table.get(description->get_full_source_name());
-        m_table.unlock();
-
-        // We need the range lock before calling real lock so that the write into the source and backup are atomic wrt other writes.
-        TRACE("Grabbing file range lock() with fd = ", fd);
-        lock_start = description->get_offset();
-        lock_end   = lock_start + nbyte;
-
-        // We want to release the description->lock ASAP, since it's limiting other writes.
-        // We cannot release it before the real write since the real write determines the new m_offset.
-
         {
-            int r = file->lock_range(lock_start, lock_end);
+            int r = m_table.lock();
             if (r!=0) ok = false;
         }
-        have_range_lock = true;
+        if (ok) {
+            file = m_table.get(description->get_full_source_name());
+            int r = m_table.unlock();
+            if (r!=0) ok = false;
+        }
+        if (ok) {
+          // We need the range lock before calling real lock so that the write into the source and backup are atomic wrt other writes.
+          TRACE("Grabbing file range lock() with fd = ", fd);
+          lock_start = description->get_offset();
+          lock_end   = lock_start + nbyte;
+
+          // We want to release the description->lock ASAP, since it's limiting other writes.
+          // We cannot release it before the real write since the real write determines the new m_offset.
+          {
+              int r = file->lock_range(lock_start, lock_end);
+              if (r!=0) ok = false;
+              else      have_range_lock = true;
+          }
+       }
     }
     ssize_t n_wrote = call_real_write(fd, buf, nbyte);
     if (n_wrote>0 && description) { // Don't need OK, just need description
@@ -617,34 +663,29 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
         }
     }
 
-    m_table.lock();
+    {
+        int r = m_table.lock();
+        if (r!=0) return call_real_pwrite(fd, buf, nbyte, offset);
+    }
     source_file * file = m_table.get(description->get_full_source_name());
-    m_table.unlock();
+    {
+        int r = m_table.unlock();
+        if (r!=0) return call_real_pwrite(fd, buf, nbyte, offset);
+    }
     {
         int r = file->lock_range(offset, offset+nbyte);
-        if (r!=0) {
-            // We've reported the error.
-            return call_real_pwrite(fd, buf, nbyte, offset);
-        }
+        if (r!=0) return call_real_pwrite(fd, buf, nbyte, offset);
     }
     ssize_t nbytes_written = call_real_pwrite(fd, buf, nbyte, offset);
     int e = 0;
     if (nbytes_written>0) {
         if (this->capture_is_enabled()) {
-            int r = description->pwrite(buf, nbyte, offset);
-            if (r!=0) {
-                backup_error(r, "failed write while backing up %s", description->get_full_source_name());
-            }
+            ignore(description->pwrite(buf, nbyte, offset)); // nothing more to do.  It's been reported.
         }
     } else if (nbytes_written<0) {
         e = errno; // save the errno
     }
-    {
-        int r = file->unlock_range(offset, offset+nbyte);
-        if (r!=0) {
-            backup_error(r, "failed unlock at %s:%d", __FILE__, __LINE__);
-        }
-    }
+    ignore(file->unlock_range(offset, offset+nbyte)); // nothing more to do.  It's been reported.
     if (nbytes_written<0) {
         errno = e; // restore errno
     }
@@ -714,40 +755,36 @@ int manager::ftruncate(int fd, off_t length)
     // TODO: Remove the logic for null descriptions, since we will
     // always have a description and a source_file.
     description *description;
-    int r = m_map.get(fd, &description);
-    if (r!=0 || description == NULL) {
-        return call_real_ftruncate(fd, length);
-    }
-
-    m_table.lock();
-    source_file * file = m_table.get(description->get_full_source_name());
-    m_table.unlock();
     {
-        int rrr = file->lock_range(length, LLONG_MAX);
-        if (rrr!=0) {
+        int r = m_map.get(fd, &description);
+        if (r!=0 || description == NULL) {
             return call_real_ftruncate(fd, length);
         }
+    }
+
+    {
+        int r = m_table.lock();
+        if (r!=0) return call_real_ftruncate(fd, length);
+    }
+    source_file * file = m_table.get(description->get_full_source_name());
+    {
+        int r = m_table.unlock();
+        if (r!=0) return call_real_ftruncate(fd, length);
+    }
+    {
+        int r = file->lock_range(length, LLONG_MAX);
+        if (r!=0) return call_real_ftruncate(fd, length);
     }
     int user_result = call_real_ftruncate(fd, length);
     int e = 0;
     if (user_result==0) {
         if (this->capture_is_enabled()) {
-            r = description->truncate(length);
-            if (r != 0) {
-                e = errno;
-                backup_error(e, "failed ftruncate(%d, %ld) while backing up", fd, length);
-            }
+            ignore(description->truncate(length)); // it's been reported, so there's nothing we can do about that error except to try to unlock the range.
         }
     } else {
         e = errno; // save errno
     }
-    {
-        int rr = file->unlock_range(length, LLONG_MAX);
-        if (rr!=0) {
-            backup_error(rr, "failed unlock at %s:%d", __FILE__, __LINE__);
-        }
-    }
-    
+    ignore(file->unlock_range(length, LLONG_MAX)); // it's been reported, so there's not much more to do
     if (user_result!=0) {
         errno = e; // restore errno
     }

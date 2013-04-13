@@ -314,9 +314,9 @@ int description::truncate(off_t length)
     }
 
     r = call_real_ftruncate(this->m_fd_in_dest_space, length);
-    if (r < 0) {
-        perror("Toku Hot Backup: truncating backup file failed:");
-        r = -1;
+    if (r != 0) {
+        r = errno;
+        the_manager.backup_error(r, "Truncating backup file failed at %s:%d", __FILE__, __LINE__);
     }
 
 out:    

@@ -296,81 +296,96 @@ out:
 //
 int copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up)
 {
-    int r = 0;
     source_file * file = NULL;
     int destfd = 0;
     int srcfd = call_real_open(source, O_RDONLY);
     if (srcfd < 0) {
-        r = errno;
+        int r = errno;
         // Ignore errors about the source file not existing, 
         // because we someone must have deleted the source name
         // since we discovered it and stat'd it.
         if (r != ENOENT) {
             the_manager.backup_error(r, "Couldn't open source file %s at %s:%d", source, __FILE__, __LINE__);
-            goto out;
+            return r;
         }
     }
 
     destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
     if (destfd < 0) {
-        r = errno;
+        int r = errno;
         if(r != EEXIST) {
             the_manager.backup_error(r, "Couldn't open dest file %s at %s:%d", dest, __FILE__, __LINE__);
-            call_real_close(srcfd); // ignore any errors here.
-            goto out;
+            ignore(call_real_close(srcfd)); // ignore any errors here.
+            return r;
         }
     }
 
     // Get a handle on the source file so we can lock ranges as we copy.
-    m_table->lock();
+    {
+        int r = m_table->lock();
+        if (r!=0) return r;
+    }
     file = m_table->get(source);
     if (file == NULL) {
         TRACE("Creating new source file", source);
         file = new source_file(source);
-        r = file->init();
+        int r = file->init();
         if (r != 0) {
-            // already reported the error.
-            m_table->unlock();       // ignore any errors from this.
-            call_real_close(destfd); // ignore any errors from this.
-            call_real_close(srcfd);  // ignore any errors from this.
-            goto out;
+            // Already reported the error, so ignore these errors.
+            ignore(m_table->unlock());
+            ignore(call_real_close(destfd));
+            ignore(call_real_close(srcfd));
+            return r;
         }
         m_table->put(file);
     }
 
     file->add_reference();
-    m_table->unlock();
+    {
+        int r = m_table->unlock();
+        if (r!=0) return r;
+    }
     
-    r = copy_file_data(srcfd, destfd, source, dest, file, source_file_size, total_bytes_backed_up, total_files_backed_up);
-
-    if (r!=0) {
-        // already reported the error.
-        call_real_close(destfd); // ignore any errors from this.
-        call_real_close(srcfd);  // ignore any errors from this.
-        goto out;
+    {
+        int r = copy_file_data(srcfd, destfd, source, dest, file, source_file_size, total_bytes_backed_up, total_files_backed_up);
+        if (r!=0) {
+            // Already reported the error, so ignore these errors.
+            ignore(call_real_close(destfd));
+            ignore(call_real_close(srcfd));
+            return r;
+        }
     }
 
-    m_table->lock();
+    {
+        int r = m_table->lock();
+        if (r!=0) return r;
+    }
     m_table->try_to_remove(file);
-    m_table->unlock();
+    {
+        int r = m_table->unlock();
+        if (r!=0) return r;
+    }
 
-    r = call_real_close(destfd);
-    if (r != 0) {
-        r = errno;
-        the_manager.backup_error(r, "Could not close %s at %s:%d", dest, __FILE__, __LINE__);
-        call_real_close(srcfd); // ignore any errors from this.
-        goto out;
+    {
+        int r = call_real_close(destfd);
+        if (r != 0) {
+            r = errno;
+            the_manager.backup_error(r, "Could not close %s at %s:%d", dest, __FILE__, __LINE__);
+            ignore(call_real_close(srcfd));
+            return r;
+        }
     }
     
-    r = call_real_close(srcfd);
-    if (r != 0) {
-        r = errno;
-        the_manager.backup_error(r, "Could not close %s at %s:%d", source, __FILE__, __LINE__);
-        goto out;
+    {
+        int r = call_real_close(srcfd);
+        if (r != 0) {
+            r = errno;
+            the_manager.backup_error(r, "Could not close %s at %s:%d", source, __FILE__, __LINE__);
+            return r;
+        }
     }
 
-out:
-    return r;
+    return 0;
 }
 
 

@@ -8,6 +8,7 @@
 
 #include "source_file.h"
 #include "file_hash_table.h"
+#include "manager.h"
 
 ////////////////////////////////////////////////////////
 //
@@ -243,17 +244,25 @@ int file_hash_table::size(void) const
 }
 
 ////////////////////////////////////////////////////////
-//
+// Description: See file_hash_table.h.
 int file_hash_table::lock(void)
 {
-    return pthread_mutex_lock(&m_mutex);
+    int r = pthread_mutex_lock(&m_mutex);
+    if (r!=0) {
+        the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+    }
+    return r;
 }
 
 ////////////////////////////////////////////////////////
-//
+// Description: See file_hash_table.h.
 int file_hash_table::unlock(void)
 {
-    return pthread_mutex_unlock(&m_mutex);
+    int r = pthread_mutex_unlock(&m_mutex);
+    if (r!=0) {
+        the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
+    }
+    return r;
 }
 
 

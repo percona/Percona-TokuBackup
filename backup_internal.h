@@ -34,4 +34,6 @@ void backup_set_keep_capturing(bool b);
 //  then the capturing will keep running until someone calls backup_set_capturing(false).
 //  This can be called by any thread.
 
+static inline void ignore(int a __attribute__((unused))) {}
+
 #endif // end of header guardian.
