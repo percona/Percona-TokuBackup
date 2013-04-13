@@ -31,7 +31,6 @@ backup_session::backup_session(const char* source, const char *dest, backup_call
     : m_source_dir(NULL), m_dest_dir(NULL), m_copier(calls, file)
 {
     // TODO: #6541 assert that the directory's are not the same.
-    // TODO: #6542 assert that the destination directory is empty.
 
     // This code is ugly because we are using a constructor.  We need to do the error propagation now, while we have the source and dest paths,
     // instead of later in what used to be the set_directories() method.  BTW, the google style guide prohibits using constructors.
@@ -107,6 +106,7 @@ static int does_file_exist(const char*);
 // Description:
 //
 //     Creates backup path for given file if it doesn't exist already.
+//     Any errors are reported, and an error number is returned.
 //
 int open_path(const char *file_path) {
     int r = 0;
@@ -253,30 +253,30 @@ static int does_file_exist(const char *file) {
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-char * backup_session::capture_open(const char *file)
+int backup_session::capture_open(const char *file, char **result)
 {
-    char *backup_file_name = NULL;
     if(!this->is_prefix(file)) {
-        return NULL;
+        *result = NULL;
+        return 0;
     }
     
-    backup_file_name = this->translate_prefix(file);
+    char *backup_file_name = this->translate_prefix(file);
     int r = open_path(backup_file_name);
     if (r != 0) {
-        // TODO: #6335 Add error reporting for this case..
-        this->abort();
-        free((void*)backup_file_name);
-        backup_file_name = NULL;
+        // The error has been reported.  Propagate it.
+        free(backup_file_name);
+        return r;
     }
     
-    return backup_file_name;
+    *result = backup_file_name;
+    return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-char * backup_session::capture_create(const char *file)
+int backup_session::capture_create(const char *file, char **result)
 {
-    return this->capture_open(file);
+    return this->capture_open(file, result);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

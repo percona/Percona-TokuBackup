@@ -368,8 +368,9 @@ int manager::create(int fd, const char *file)
     pthread_rwlock_rdlock(&m_session_rwlock); // TODO: #6531 handle any errors
     
     if (m_session != NULL) {
-        char *backup_file_name = m_session->capture_create(file);
-        if (backup_file_name != NULL) {
+        char *backup_file_name;
+        r = m_session->capture_create(file, &backup_file_name);
+        if (r==0 && backup_file_name != NULL) {
             description->prepare_for_backup(backup_file_name);
             int r = description->create();
             if(r != 0) {
@@ -436,8 +437,9 @@ int manager::open(int fd, const char *file, int oflag)
     pthread_rwlock_rdlock(&m_session_rwlock); // TODO: #6531 handle any errors
 
     if(m_session != NULL) {
-        char *backup_file_name = m_session->capture_open(file);
-        if(backup_file_name != NULL) {
+        char *backup_file_name;
+        r = m_session->capture_open(file, &backup_file_name);
+        if(r==0 && backup_file_name != NULL) {
             description->prepare_for_backup(backup_file_name);
             int r = description->open();
             if(r != 0) {

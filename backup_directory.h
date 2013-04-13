@@ -41,8 +41,8 @@ public:
     void abort(void);
     
     // Capture interface.
-    char * capture_open(const char *file);
-    char * capture_create(const char *file);
+    int capture_open(const char *file, char **result) __attribute__((warn_unused_result)); // if any errors occur, report them, and return the error code.  Otherwise return 0 and store the malloc'd name of the dest file  in *result.  If the file isn't in the destspace return 0 and set *result=NULL.
+    int capture_create(const char *file, char **result) __attribute__((warn_unused_result)); // This is just an alias for capture_open.
     int capture_mkdir(const char *pathname) __attribute__((warn_unused_result)); // return 0 on success, error otherwise.
 private:
     const char *m_source_dir;
