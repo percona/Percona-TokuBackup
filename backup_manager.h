@@ -38,8 +38,7 @@ private:
     //bool m_capture_enabled;
 
     backup_session *m_session;
-    // TODO: use reader/writer lock:
-    static pthread_mutex_t m_session_mutex;
+    static pthread_rwlock_t m_session_rwlock;
 
     volatile unsigned long m_throttle;
 
@@ -90,6 +89,7 @@ public:
     // end of test interface
 
 private:
+    
     int prepare_directories_for_backup(backup_session *session);
     void disable_descriptions(void);
 };

@@ -40,7 +40,7 @@
 #endif
 
 pthread_mutex_t backup_manager::m_mutex         = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t backup_manager::m_session_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_rwlock_t backup_manager::m_session_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 pthread_mutex_t backup_manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -176,9 +176,9 @@ int backup_manager::do_backup(const char *source, const char *dest, backup_callb
         }
     }
 
-    pthread_mutex_lock(&m_session_mutex);  // TODO: #6531 handle any errors 
+    pthread_rwlock_wrlock(&m_session_rwlock);  // TODO: #6531 handle any errors 
     m_session = new backup_session(source, dest, calls, &m_table, &r);
-    pthread_mutex_unlock(&m_session_mutex);   // TODO: #6531 handle any errors
+    pthread_rwlock_unlock(&m_session_rwlock);   // TODO: #6531 handle any errors
     if (r!=0) {
         goto unlock_out;
     }
@@ -226,10 +226,10 @@ disable_out:
 
 unlock_out: // preserves r if r!0
 
-    pthread_mutex_lock(&m_session_mutex);   // TODO: #6531 handle any errors
+    pthread_rwlock_wrlock(&m_session_rwlock);   // TODO: #6531 handle any errors
     delete m_session;
     m_session = NULL;
-    pthread_mutex_unlock(&m_session_mutex);   // TODO: #6531 handle any errors
+    pthread_rwlock_unlock(&m_session_rwlock);   // TODO: #6531 handle any errors
 
     {
         int pthread_error = pthread_mutex_unlock(&m_mutex);
@@ -360,7 +360,7 @@ void backup_manager::create(int fd, const char *file)
 
     m_table.unlock();
     
-    pthread_mutex_lock(&m_session_mutex); // TODO: #6531 handle any errors
+    pthread_rwlock_rdlock(&m_session_rwlock); // TODO: #6531 handle any errors
     
     if (m_session != NULL) {
         char *backup_file_name = m_session->capture_create(file);
@@ -376,7 +376,7 @@ void backup_manager::create(int fd, const char *file)
         }
     }
     
-    pthread_mutex_unlock(&m_session_mutex); // TODO: #6531  handle any errors
+    pthread_rwlock_unlock(&m_session_rwlock); // TODO: #6531  handle any errors
 out:
     return;
 }
@@ -424,7 +424,7 @@ void backup_manager::open(int fd, const char *file, int oflag)
 
     m_table.unlock();
     
-    pthread_mutex_lock(&m_session_mutex); // TODO: #6531 handle any errors
+    pthread_rwlock_rdlock(&m_session_rwlock); // TODO: #6531 handle any errors
 
     if(m_session != NULL) {
         char *backup_file_name = m_session->capture_open(file);
@@ -440,7 +440,7 @@ void backup_manager::open(int fd, const char *file, int oflag)
         }
     }
 
-    pthread_mutex_unlock(&m_session_mutex); // TODO: #6531 handle any errors
+    pthread_rwlock_unlock(&m_session_rwlock); // TODO: #6531 handle any errors
 
     // TODO: #6533 Remove this dead code.
     oflag++;
@@ -729,7 +729,7 @@ void backup_manager::truncate(const char *path, off_t length)
 //
 void backup_manager::mkdir(const char *pathname)
 {
-    pthread_mutex_lock(&m_session_mutex);  // TODO: #6531 handle any errors
+    pthread_rwlock_rdlock(&m_session_rwlock);  // TODO: #6531 handle any errors
     if(m_session != NULL) {
         int r = m_session->capture_mkdir(pathname);
         if (r != 0) {
@@ -737,7 +737,7 @@ void backup_manager::mkdir(const char *pathname)
         }
     }
 
-    pthread_mutex_unlock(&m_session_mutex);  // TODO: #6531 handle any errors
+    pthread_rwlock_unlock(&m_session_rwlock);  // TODO: #6531 handle any errors
 }
 
 

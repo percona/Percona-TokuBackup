@@ -215,7 +215,7 @@ int backup_copier::copy_full_path(const char *source,
     r = stat(source, &sbuf);
     if (r!=0) {
         r = errno;
-        // TODO: #6515 Ignore errors about file not existing, 
+        // Ignore errors about file not existing, 
         // because we have not yet opened the file with open(), 
         // which would prevent it from disappearing.
         if (r == ENOENT) {
