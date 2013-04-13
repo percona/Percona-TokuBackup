@@ -3,7 +3,6 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include <assert.h>
 #include <dlfcn.h>
 #include <dirent.h>
 #include <errno.h>
@@ -35,7 +34,7 @@ int closedir(DIR *dirp) {
     // use this version of closedir which, as expected by the test, won't work.  
     int (*real_closedir)(DIR*) = (int(*)(DIR*))dlsym(RTLD_NEXT, "closedir");
     int r = real_closedir(dirp);
-    assert(r==0);
+    check(r==0);
     errno = EINVAL;
     return -1;
 }

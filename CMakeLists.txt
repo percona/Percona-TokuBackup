@@ -45,6 +45,8 @@ function(add_space_separated_property type obj propname val)
   endif ()
 endfunction(add_space_separated_property)
 
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto -s")
+
 ## add a version script and set -fvisibility=hidden for the shared library.
 configure_file(export.map . COPYONLY)
 if (NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
@@ -52,6 +54,9 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
   # And don't need this for glassbox version, since we want everything visible, so we use visibility=default instead of the usual visibility=hidden.
   add_space_separated_property(TARGET HotBackup COMPILE_FLAGS "-fvisibility=default -fvisibility-inlines-hidden")
   add_space_separated_property(TARGET HotBackup LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/export.map")
+
+  #add_space_separated_property(TARGET HotBackup COMPILE_FLAGS "-fvisibility=default -fvisibility-inlines-hidden -flto")
+  #add_space_separated_property(TARGET HotBackup LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/export.map -flto -s")
 endif ()
 add_space_separated_property(TARGET HotBackup LINK_FLAGS "${OPTFLAGS}")
 

@@ -1,6 +1,5 @@
 // Test to make sure that if the destination isn't empty, then the backup fails.  For
 
-#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,9 +32,9 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
 
     {
         int r = systemf("echo hello > %s/a_file_is_there_but_shouldnt_be", dst);
-        assert(r!=-1);
-        assert(WIFEXITED(r));
-        assert(WEXITSTATUS(r)==0);
+        check(r!=-1);
+        check(WIFEXITED(r));
+        check(WEXITSTATUS(r)==0);
     }
 
     pthread_t thread;

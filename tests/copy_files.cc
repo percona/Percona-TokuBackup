@@ -3,7 +3,6 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -134,7 +133,7 @@ static void copy_files(void) {
     the_copier.set_directories(src, dst);
     {
         int r = the_copier.do_copy();
-        assert(r==0);
+        check(r==0);
     }
 
     int r = verify_large_dir();

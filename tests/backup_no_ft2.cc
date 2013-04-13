@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,11 +13,11 @@ char *src, *dst;
 static int fds[4];
 static void open_n(int n) {
     fds[n] = openf(O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO, "%s/file%d", src, n);
-    assert(fds[n]>=0);
+    check(fds[n]>=0);
 }
 static void close_n(int n) {
     int r = close(fds[n]);
-    assert(r==0);
+    check(r==0);
     fds[n] = 0;
 }
 static void write_n(int n) {
@@ -26,7 +25,7 @@ static void write_n(int n) {
     snprintf(data, sizeof(data), "%d", n);
     const size_t len = strlen(data);
     const ssize_t r = write(fds[n], data, len);
-    assert(r == (ssize_t)len);
+    check(r == (ssize_t)len);
 }
 
 int test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
@@ -64,9 +63,9 @@ int test_main (int argc __attribute__((__unused__)), const char *argv[] __attrib
 
     {
         int status = systemf("diff -r %s %s", src, dst);
-        assert(status!=-1);
-        assert(WIFEXITED(status));
-        assert(WEXITSTATUS(status)==0);
+        check(status!=-1);
+        check(WIFEXITED(status));
+        check(WEXITSTATUS(status)==0);
     }
     free(src);
     free(dst);

@@ -3,7 +3,6 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id: copy_files.cc 55013 2013-04-03 01:41:38Z bkuszmaul $"
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,19 +50,19 @@ static void test_duplicates(void) {
     source_file second_file(SECOND_NAME);
 
     table.put(&first_file);
-    assert(table.size() == 1);
+    check(table.size() == 1);
 
     table.put(&first_file);
-    assert(table.size() == 1);
+    check(table.size() == 1);
 
     table.put(&second_file);
-    assert(table.size() == 2);
+    check(table.size() == 2);
 
     table.put(&first_file);
-    assert(table.size() == 2);
+    check(table.size() == 2);
 
     table.put(&second_file);
-    assert(table.size() == 2);
+    check(table.size() == 2);
 
     source_file * temp = table.get(FIRST_NAME);
     if (temp == NULL) {
@@ -78,7 +77,7 @@ static void test_duplicates(void) {
         abort();
     }
 
-    table.remove(&first_file);    assert(table.size()==1);
+    table.remove(&first_file);    check(table.size()==1);
     temp = table.get(FIRST_NAME);
     if (temp != NULL) {
         fail();
@@ -86,9 +85,9 @@ static void test_duplicates(void) {
         abort();
     }
 
-    table.remove(&first_file);    assert(table.size()==1);
-    table.remove(&first_file);    assert(table.size()==1);
-    table.remove(&first_file);    assert(table.size()==1);
+    table.remove(&first_file);    check(table.size()==1);
+    table.remove(&first_file);    check(table.size()==1);
+    table.remove(&first_file);    check(table.size()==1);
     temp = table.get(SECOND_NAME);
     if (temp == NULL) {
         fail();
@@ -96,7 +95,7 @@ static void test_duplicates(void) {
         abort();
     }
 
-    table.remove(&second_file);    assert(table.size()==0);
+    table.remove(&second_file);    check(table.size()==0);
     temp = table.get(SECOND_NAME);
     if (temp != NULL) {
         fail();
@@ -116,11 +115,11 @@ static void seriously_test_duplicates(void) {
         fnames[i] = strdup(str);
         files[i] = new source_file(fnames[i]);
         table.put(files[i]);
-        assert(table.size()==i+1);
+        check(table.size()==i+1);
     }
     for (int i=0; i<N; i++) {
         table.put(files[i]);
-        assert(table.size()==N);
+        check(table.size()==N);
     }
     for (int i=0; i<N; i++) {
         free(fnames[i]);

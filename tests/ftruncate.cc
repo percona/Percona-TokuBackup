@@ -3,7 +3,6 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -32,7 +31,7 @@ void test_truncate(void) {
 
     // Create a new file.
     int fd = openf(O_CREAT | O_RDWR, 0777, "%s/my.data", src);
-    assert(fd >= 0);
+    check(fd >= 0);
     free(src);
 
     // Write a large chunk of data to it.
@@ -41,24 +40,24 @@ void test_truncate(void) {
     // Truncate the end off.
     {
         int r = ftruncate(fd, 6);
-        assert(r==0);
+        check(r==0);
     }
     backup_set_keep_capturing(false);
     const int SIZE = 20;
     char buf_source[SIZE];
     size_t src_n_read = pread(fd, buf_source, SIZE, 0);
-    assert(src_n_read==6);
+    check(src_n_read==6);
 
     finish_backup_thread(thread);
 
     // Confirm that the both files are the same size.
     char *dst = get_dst();
     int backup_fd = openf(O_RDWR, 0, "%s/my.data", dst);
-    assert(backup_fd>=0);
+    check(backup_fd>=0);
     free(dst);
     char buf_copy[SIZE];
     size_t dst_n_read = read(backup_fd, buf_copy, SIZE);
-    assert(dst_n_read==6);
+    check(dst_n_read==6);
     result = memcmp(buf_source, buf_copy, src_n_read);
 
     if (result != 0) { 

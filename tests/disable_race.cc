@@ -7,7 +7,6 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
@@ -29,7 +28,7 @@ static void* write_ones(void *p) {
     const int nth_fd = *nth_ptr;
     char data[SIZE] = {ONE};
     int pwrite_r = write(fd_array[nth_fd], data, SIZE);
-    assert(pwrite_r == SIZE);
+    check(pwrite_r == SIZE);
     return NULL;
 }
 
@@ -50,9 +49,9 @@ static int verify(void)
         char src_buf[SIZE];
         char dst_buf[SIZE];
         int r = pread(src_fd, src_buf, SIZE, 0);
-        assert(r == SIZE);
+        check(r == SIZE);
         r = pread(dst_fd, dst_buf, SIZE, 0);
-        assert(r == SIZE);
+        check(r == SIZE);
 
         if (i == N || i == 0) {
             if (src_buf[0] == dst_buf[0]) {
@@ -82,10 +81,10 @@ static void create_n_files(void)
         snprintf(file, SIZE, "%s/%c%c%c%c", source_scratch, c, c, c, c);
         printf("%s\n", file);
         fd_array[i] = open(file, O_CREAT | O_RDWR, 0777);
-        assert(fd_array[i] >= 0);
+        check(fd_array[i] >= 0);
         char data[SIZE] = {ZERO};
         int r = write(fd_array[i], data, SIZE);
-        assert(r == SIZE);
+        check(r == SIZE);
     }
 
     free((void *) source_scratch);
@@ -115,12 +114,12 @@ static int disable_race(void) {
     pthread_t write_zero_thread;
     int first = 0;
     int r = pthread_create(&write_zero_thread, NULL, write_ones, &first); 
-    assert(r == 0);
+    check(r == 0);
 
     pthread_t write_n_thread;
     int second = N - 1;
     r = pthread_create(&write_n_thread, NULL, write_ones, &second);
-    assert(r == 0);
+    check(r == 0);
     printf("NOTE: Created write threads, waiting to hit critical section\n");
     sleep(1);
 
@@ -129,9 +128,9 @@ static int disable_race(void) {
     backup_pause_disable(false);
 
     r = pthread_join(write_n_thread, NULL);
-    assert(r == 0);
+    check(r == 0);
     r = pthread_join(write_zero_thread, NULL);
-    assert(r == 0);
+    check(r == 0);
     finish_backup_thread(backup_thread);
 
     // 9. Verify that neither write made it to the backup file.
@@ -145,7 +144,7 @@ static int disable_race(void) {
     // Close all the open files.
     for (int i = 0; i < N; ++i) {
         int rr = close(fd_array[i]);
-        assert(rr == 0);
+        check(rr == 0);
     }
 
     return result;

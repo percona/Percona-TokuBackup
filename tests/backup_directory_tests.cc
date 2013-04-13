@@ -3,7 +3,6 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -46,7 +45,7 @@ static int backup_sub_dirs(void) {
     *temp = 0;
     {
         int r = create_subdirectories(newpath);
-        assert(r==0);
+        check(r==0);
     }
     free(newpath);
 
@@ -55,7 +54,7 @@ static int backup_sub_dirs(void) {
     char dst_long_dir[PATH_MAX];
     {
         int r = snprintf(dst_long_dir, sizeof(dst_long_dir), "%s%s", dst, LONG_DIR);
-        assert(r<PATH_MAX);
+        check(r<PATH_MAX);
     }
     int r = stat(dst_long_dir, &sb);
 

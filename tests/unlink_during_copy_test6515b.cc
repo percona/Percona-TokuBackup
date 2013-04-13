@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,31 +24,31 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         {
             int r = snprintf(fname[i], sizeof(fname[i]), "%s/f%d", src, i);
             printf("r=%d fname[%d]=%s\n", r, i, fname[i]);
-            assert(r<(int)sizeof(fname[i]));
+            check(r<(int)sizeof(fname[i]));
         }
         fds[i] = open(fname[i], O_WRONLY|O_CREAT, 0777);
-        assert(fds[i]>=0);
+        check(fds[i]>=0);
         for (int j=0; j<1024; j++) {
             ssize_t r = write(fds[i], buf, sizeof(buf));
-            assert(r==sizeof(buf));
+            check(r==sizeof(buf));
         }
     }
     for (int i=0; i<N; i++) {
         int r = close(fds[i]);
-        assert(r==0);
+        check(r==0);
     }
     tokubackup_throttle_backup(1L<<19); // half a mebibyte per second, so that's 2 seconds.
     start_backup_thread(&thread);
     for (int i=0; i<N; i++) {
         int r = unlink(fname[i]);
-        assert(r==0);
+        check(r==0);
     }
     finish_backup_thread(thread);
     {
         int status = systemf("diff -r %s %s", src, dst);
-        assert(status!=-1);
-        assert(WIFEXITED(status));
-        assert(WEXITSTATUS(status)==0);
+        check(status!=-1);
+        check(WIFEXITED(status));
+        check(WEXITSTATUS(status)==0);
     }
     free(src);
     free(dst);

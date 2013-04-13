@@ -6,7 +6,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -38,7 +37,7 @@ void read_and_seek(void) {
 
     char *src = get_src();
     fd = openf(O_CREAT | O_RDWR, 0777, "%s/my.data", src);
-    assert(fd >= 0);
+    check(fd >= 0);
     free(src);
     result = write(fd, "Hello World\n", 12);
     char buf[10];
@@ -49,11 +48,11 @@ void read_and_seek(void) {
     }
 
     result = lseek(fd, 1, SEEK_CUR);
-    assert(result > 0);
+    check(result > 0);
     result = write(fd, "Cruel World\n", 12);
-    assert(result > 0);
+    check(result > 0);
     result = close(fd);
-    assert(result == 0);
+    check(result == 0);
 
     finish_backup_thread(thread);
 

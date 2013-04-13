@@ -1,5 +1,4 @@
 #include "backup_test_helpers.h"
-#include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,17 +26,17 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         char fname[1000];
         {
             int r = snprintf(fname, sizeof(fname), "%s/f%d", src, i);
-            assert(r<(int)sizeof(fname));
+            check(r<(int)sizeof(fname));
         }
         int fd = open(fname, O_WRONLY|O_CREAT, 0777);
-        assert(fd>=0);
+        check(fd>=0);
         for (int j=0; j<NBUFS; j++) {
             ssize_t r = write(fd, buf, sizeof(buf));
-            assert(r==sizeof(buf));
+            check(r==sizeof(buf));
         }
         {
             int r = close(fd);
-            assert(r==0);
+            check(r==0);
         }
     }
 
@@ -52,7 +51,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     double td = tdiff(start, end);
     printf("time used     == %6.3fs\n", td);
     printf("time expected >= %6.3fs\n", expected_n_seconds);
-    assert(td >= expected_n_seconds);
+    check(td >= expected_n_seconds);
 
     free(src);
     free(dst);

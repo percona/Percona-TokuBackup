@@ -9,7 +9,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdarg.h>
-#include <assert.h>
 #include <malloc.h>
 #include <unistd.h>
 
@@ -54,7 +53,7 @@ static int my_ftruncate(int fildes, off_t length)
 static int expect_error = 0;
 static int error_result = 0;
 static void my_error_fun(int e, const char *s, void *ignore) {
-    assert(ignore==NULL);
+    check(ignore==NULL);
     fprintf(stderr, "Got error %d (I expected errno=%d) (%s)\n", e, expect_error, s);
     error_result = e;
 }
@@ -65,14 +64,14 @@ static int test_ftruncate_failures(void)
     // 1.  Create the file.
     const char * src = get_src();
     int fd = openf(O_RDWR | O_CREAT, 0777, "%s/my.data", src);
-    assert(fd >= 0);
+    check(fd >= 0);
     const int SIZE = 10;
     char buf[SIZE] = {0};
     // write to the file.
     int write_r = write(fd, buf, SIZE);
-    assert(write_r == SIZE);
+    check(write_r == SIZE);
     int close_r = close(fd);
-    assert(close_r == 0);
+    check(close_r == 0);
 
     // 2.  Set backup to pause.
     backup_set_keep_capturing(true);
@@ -94,10 +93,10 @@ static int test_ftruncate_failures(void)
     // 4.  Open a new fd and truncate (SIZE - 1).
     expect_error = ERROR;
     int fd2 = openf(O_RDWR, 0777, "%s/my.data", src);
-    assert(fd2 >= 0);
+    check(fd2 >= 0);
     const off_t TRUNCATE_AMOUNT = SIZE - 1;
     int ftruncate_r = ftruncate(fd2, TRUNCATE_AMOUNT);
-    assert(ftruncate_r == 0);
+    check(ftruncate_r == 0);
 
     // 5.  Verify that error was returned.
     backup_set_keep_capturing(false);

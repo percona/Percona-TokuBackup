@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,22 +17,22 @@ static char *src, *dst;
 static void *doit(void* whoami_v) {
     int whoami = *(int*)whoami_v;
     int fd = openf(O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO, "%s/tfile%d", src, whoami);
-    assert(fd>=0);
+    check(fd>=0);
     {
         ssize_t r = write(fd, FIRSTBYTES, sizeof(FIRSTBYTES));
-        assert(r==sizeof(FIRSTBYTES));
+        check(r==sizeof(FIRSTBYTES));
     }
     usleep(1);
     {
         int r = close(fd);
-        assert(r==0);
+        check(r==0);
     }
     return whoami_v;
 }
 
 static void multithreaded_work(void) {
     int fd0 = openf(O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO,  "%s/file0", src);
-    assert(fd0>=0);
+    check(fd0>=0);
 
     int fd1 = openf(O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO,  "%s/filed1", src);
 
@@ -49,27 +48,27 @@ static void multithreaded_work(void) {
         for (int i=0; i<N_THREADS; i++) {
             whoami[i] = i;
             int r = pthread_create(&threads[i], NULL, doit, &whoami[i]);
-            assert(r==0);
+            check(r==0);
         }
         for (int i=0; i<N_THREADS; i++) {
             void *whowasi;
             int r = pthread_join(threads[i], &whowasi);
-            assert(r==0);
-            assert((int*)whowasi==&whoami[i]);
+            check(r==0);
+            check((int*)whowasi==&whoami[i]);
         }
     }
     {
         ssize_t r = write(fd0, FIRSTBYTES, sizeof(FIRSTBYTES));
-        assert(r==sizeof(FIRSTBYTES));
+        check(r==sizeof(FIRSTBYTES));
     }
 
     {
         ssize_t r = write(fd1, MOREBYTES, sizeof(MOREBYTES));
-        assert(r==sizeof(MOREBYTES));
+        check(r==sizeof(MOREBYTES));
     }
 
-    { int r = close(fd0); assert(r==0); }
-    { int r = close(fd1); assert(r==0); }
+    { int r = close(fd0); check(r==0); }
+    { int r = close(fd1); check(r==0); }
 }
 
 int test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
@@ -86,9 +85,9 @@ int test_main (int argc __attribute__((__unused__)), const char *argv[] __attrib
     finish_backup_thread(thread);
     {
         int status = systemf("diff -r %s %s", src, dst);
-        assert(status!=-1);
-        assert(WIFEXITED(status));
-        assert(WEXITSTATUS(status)==0);
+        check(status!=-1);
+        check(WIFEXITED(status));
+        check(WEXITSTATUS(status)==0);
     }
     free(src);
     free(dst);

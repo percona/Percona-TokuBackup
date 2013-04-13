@@ -1,6 +1,5 @@
 /* Inject enospc. */
 
-#include <assert.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -24,7 +23,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     int fds[n_fds];
     for (int i=0; i<n_fds; i++) {
         fds[i] = openf(O_RDWR|O_CREAT, 0777, "%s/my%d.data", src, i);
-        assert(fds[i]>=0);
+        check(fds[i]>=0);
     }
     
     start_backup_thread(&thread);
@@ -45,11 +44,11 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         int len = snprintf(data, sizeof(data), "data_order %d\n", count);
         {
             ssize_t r = write(fd, data, len);
-            assert(r==len);
+            check(r==len);
         }
         {
             int r = close(fd);
-            assert(r==0);
+            check(r==0);
         }
         count++;
         

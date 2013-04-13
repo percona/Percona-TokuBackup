@@ -141,7 +141,7 @@ int fmap::erase(int fd) {
         m_map[fd] = NULL;
         {
             int r = unlock_fmap();
-            int r2;
+            int r2 = 0;
             if (description) {
                 // Do this after releasing the lock
                 r2 = description->close();

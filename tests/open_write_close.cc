@@ -7,7 +7,6 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
@@ -24,11 +23,11 @@ static int verify(void)
 {
     char *dst = get_dst();
     int backup_fd = openf(O_RDONLY, 0, "%s/bar.data", dst);
-    assert(backup_fd >= 0);    
+    check(backup_fd >= 0);    
     free(dst);
     char backup_string[30] = {0};
     int r = read(backup_fd, backup_string, WRITTEN_STR_LEN);
-    assert(r == WRITTEN_STR_LEN);
+    check(r == WRITTEN_STR_LEN);
     r = strcmp(WRITTEN_STR, backup_string);
     return r;
 }
@@ -36,9 +35,9 @@ static int verify(void)
 volatile int write_done = 0;
 
 static int write_poll(float progress, const char *progress_string, void *extra) {
-    assert(0<=progress && progress<1);
-    assert(extra==NULL);
-    assert(strlen(progress_string)>8);
+    check(0<=progress && progress<1);
+    check(extra==NULL);
+    check(strlen(progress_string)>8);
     while (!write_done) {
         sched_yield();
     }
@@ -61,13 +60,13 @@ static void open_write_close(void) {
 
     char *src = get_src();
     int fd = openf(O_WRONLY, 0, "%s/bar.data", src);
-    assert(fd >= 0);
+    check(fd >= 0);
     free(src);
     int result = write(fd, WRITTEN_STR, WRITTEN_STR_LEN);
-    assert(result == 8);
+    check(result == 8);
     write_done = 1; // let the poll return, so that the backup will not finish before this write took place.
     result = close(fd);
-    assert(result == 0);
+    check(result == 0);
 
     finish_backup_thread(thread);
 

@@ -1,6 +1,5 @@
 /* Inject enospc. */
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -58,7 +57,7 @@ static ssize_t my_write(int fd, const void *buf, size_t nbyte) {
 
 static int ercount=0;
 static void my_error_fun(int e, const char *s, void *ignore) {
-    assert(ignore==NULL);
+    check(ignore==NULL);
     ercount++;
     fprintf(stderr, "Got error %d (I expected errno=%d) (%s)\n", e, ENOSPC, s);
 }
@@ -81,7 +80,7 @@ static void testit(void) {
     pthread_t thread;
 
     int fd = openf(O_RDWR|O_CREAT, 0777, "%s/my.data", src);
-    assert(fd>=0);
+    check(fd>=0);
     fprintf(stderr, "fd=%d\n", fd);
     ignore_fds.push_back(fd);
 
@@ -94,13 +93,13 @@ static void testit(void) {
     fprintf(stderr, "The backup is supposedly capturing\n");
     {
         ssize_t r = pwrite(fd, "hello", 5, 10);
-        assert(r==5);
+        check(r==5);
     }
     fprintf(stderr,"About to start copying\n");
     backup_set_start_copying(true);
     {
         int r = close(fd);
-        assert(r==0);
+        check(r==0);
     }
 
     backup_set_keep_capturing(false);

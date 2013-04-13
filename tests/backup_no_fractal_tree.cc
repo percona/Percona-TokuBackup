@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,10 +20,10 @@ int test_main (int argc __attribute__((__unused__)), const char *argv[] __attrib
     dst = get_dst();
 
     int fd0 = openf(O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO, "%s/file0", src);
-    assert(fd0>=0);
+    check(fd0>=0);
     {
         ssize_t r = write(fd0, FIRSTBYTES, sizeof(FIRSTBYTES)-1);
-        assert(r==sizeof(FIRSTBYTES)-1);
+        check(r==sizeof(FIRSTBYTES)-1);
     }
     backup_set_keep_capturing(true);
     pthread_t thread;
@@ -32,15 +31,15 @@ int test_main (int argc __attribute__((__unused__)), const char *argv[] __attrib
     usleep(100000);
     {
         ssize_t r = write(fd0, MOREBYTES, sizeof(MOREBYTES)-1);
-        assert(r==sizeof(MOREBYTES)-1);
+        check(r==sizeof(MOREBYTES)-1);
     }
     backup_set_keep_capturing(false);    
     finish_backup_thread(thread);
     {
         int status = systemf("diff -r %s %s", src, dst);
-        assert(status!=-1);
-        assert(WIFEXITED(status));
-        assert(WEXITSTATUS(status)==0);
+        check(status!=-1);
+        check(WIFEXITED(status));
+        check(WEXITSTATUS(status)==0);
     }
     free(src);
     free(dst);

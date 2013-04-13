@@ -1,6 +1,5 @@
 /* Inject enospc. */
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -28,7 +27,7 @@ static ssize_t my_write(int fd, const void *buf, size_t nbyte) {
 
 int ercount=0;
 static void my_error_fun(int e, const char *s, void *ignore) {
-    assert(ignore==NULL);
+    check(ignore==NULL);
     ercount++;
     fprintf(stderr, "Got error %d (I expected errno=%d) (%s)\n", e, ENOSPC, s);
 }
@@ -48,16 +47,16 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     pthread_t thread;
 
     int fd = openf(O_RDWR|O_CREAT, 0777, "%s/my.data", src);
-    assert(fd>=0);
+    check(fd>=0);
     fprintf(stderr, "fd=%d\n", fd);
     usleep(10000);
     {
         ssize_t r = pwrite(fd, "hello", 5, 10);
-        assert(r==5);
+        check(r==5);
     }
     {
         int r = close(fd);
-        assert(r==0);
+        check(r==0);
     }
 
     start_backup_thread_with_funs(&thread,

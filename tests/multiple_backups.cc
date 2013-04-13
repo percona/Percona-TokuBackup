@@ -7,7 +7,6 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
@@ -24,10 +23,10 @@ static void setup(void)
     for (int i = 0; i < TRIES; ++i) {
         char s[LEN];
         int r = snprintf(s, sizeof(s), "multiple_backups.backup_%d", i);
-        assert(r<(int)sizeof(s));
+        check(r<(int)sizeof(s));
         systemf("rm -rf %s", s);
         dirs[i] = strdup(s);
-        assert(dirs[i]);
+        check(dirs[i]);
     }
 }
 
@@ -44,11 +43,11 @@ static void write_lots_of_dummy_data(char *src)
     char file[SIZE];
     snprintf(file, SIZE, "%s/%s", src, "dummy");
     int fd = open(file, O_CREAT | O_RDWR, 0777);
-    assert(fd >= 0);
+    check(fd >= 0);
     const int MEGS = 10;
     for (int i = 0; i < MEGS; ++i) {
         int r = write(fd, dummy, MB);
-        assert(r == MB);
+        check(r == MB);
     }
 }
 
@@ -59,10 +58,10 @@ static void work_it(char *src, char *magic, int size)
 
     // 1.  Create a file.
     int fd = open(file, O_CREAT | O_RDWR, 0777);
-    assert(fd >= 0);
+    check(fd >= 0);
     // 2.  Write magic to the file.
     int r = write(fd, magic, size);
-    assert(r == size);
+    check(r == size);
 
     // 3.  Close the file.
     close(fd);

@@ -7,7 +7,6 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
@@ -25,7 +24,7 @@ static void* write_ones(void *p __attribute__((__unused__))) {
     void *ret = NULL;
     char data[SIZE] = {ONE};    
     int r = pwrite(fd, data, SIZE, 0);
-    assert(r == SIZE);
+    check(r == SIZE);
     return ret;
 }
 
@@ -44,9 +43,9 @@ static int verify(void)
     char src_buf[SIZE];
     char dst_buf[SIZE];
     int r = pread(src_fd, src_buf, SIZE, 0);
-    assert(r == SIZE);
+    check(r == SIZE);
     r = pread(dst_fd, dst_buf, SIZE, 0);
-    assert(r == SIZE);
+    check(r == SIZE);
 
     if (src_buf[0] != dst_buf[0]) {
         printf("\nCharacters in Buffers don't match: %c vs %c\n", src_buf[0], dst_buf[0]);
@@ -68,10 +67,10 @@ static int write_race(void) {
     char *free_me = get_src();
     snprintf(file, 100, "%s/%s", free_me, "MyFile.txt");
     fd = open(file, O_CREAT | O_RDWR, 0777);
-    assert(fd >= 0);
+    check(fd >= 0);
     char data[SIZE] = {ZERO};
     int r = write(fd, data, SIZE);
-    assert(r == SIZE);
+    check(r == SIZE);
 
     // 2. Set Pause point to after read but before write
     HotBackup::toggle_pause_point(HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);
@@ -84,7 +83,7 @@ static int write_race(void) {
     // 6. start new thread that writes to the first few bytes.
     pthread_t write_thread;
     r = pthread_create(&write_thread, NULL, write_ones, NULL);
-    assert(r == 0);
+    check(r == 0);
 
     // 7. Sleep for a little while to give the thread a chance to write and/or get blocked.
     sleep(2);
@@ -94,7 +93,7 @@ static int write_race(void) {
     HotBackup::toggle_pause_point(HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);
 
     r = pthread_join(write_thread, NULL);
-    assert(r == 0);
+    check(r == 0);
     HotBackup::toggle_pause_point(HotBackup::COPIER_AFTER_WRITE);
     finish_backup_thread(backup_thread);
 

@@ -1,6 +1,5 @@
 /* Inject enospc. */
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -53,7 +52,7 @@ static int my_mkdir(const char *path, mode_t mode) {
 
 static int ercount=0;
 static void my_error_fun(int e, const char *s, void *ignore) {
-    assert(ignore==NULL);
+    check(ignore==NULL);
     ercount++;
     fprintf(stderr, "Got error %d (I expected errno=%d) (%s)\n", e, ENOSPC, s);
 }
@@ -70,7 +69,7 @@ static void testit(int expect_error) {
         src = get_src();
         dst = get_dst();
         realdst = realpath(dst, NULL);
-        assert(realdst);
+        check(realdst);
     }
 
     disable_injections = false;
@@ -91,14 +90,14 @@ static void testit(int expect_error) {
         char s[1000];
         snprintf(s, sizeof(s), "%s/dir0", src);
         int r = mkdir(s, 0777);
-        assert(r==0);
+        check(r==0);
     }
 
     {
         char s[1000];
         snprintf(s, sizeof(s), "%s/dir0/dir1", src);
         int r = mkdir(s, 0777);
-        assert(r==0);
+        check(r==0);
     }
     fprintf(stderr,"About to start copying\n");
     backup_set_start_copying(true);

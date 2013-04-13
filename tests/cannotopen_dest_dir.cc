@@ -3,7 +3,6 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -37,7 +36,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     {
         char *dst = get_dst();
         int r = systemf("chmod ugo-rwx %s", dst);
-        assert(r==0);
+        check(r==0);
         free(dst);
     }
     // Dest dir is a file, not a directory

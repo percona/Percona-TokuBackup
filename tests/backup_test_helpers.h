@@ -67,4 +67,14 @@ static inline double tdiff(const struct timespec start, const struct timespec en
     return end.tv_sec - start.tv_sec + (end.tv_nsec - start.tv_nsec)*1e-9;
 }
 
+// Like assert, except it doesn't go away under ndebug
+#ifdef NDEBUG
+#include <stdlib.h>
+#include <stdio.h>
+#define check(x) ({ if (!(x)) { fprintf(stderr, "check(%s) failed at %s:%d", #x, __FILE__, __LINE__); abort(); } })
+#else
+#include <assert.h>
+#define check(x) assert(x)
+#endif
+
 #endif // End of header guardian.

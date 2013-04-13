@@ -3,7 +3,6 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include <assert.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdarg.h>
@@ -38,7 +37,7 @@ int systemf(const char *formatstring, ...) {
     char string[1000];
     int r = vsnprintf(string, sizeof(string), formatstring, ap);
     va_end(ap);
-    assert(r<(int)sizeof(string));
+    check(r<(int)sizeof(string));
     return system(string);
 }
 
@@ -48,7 +47,7 @@ int openf(int flags, int mode, const char *formatstring, ...) {
     char *string  = (char*)malloc(PATH_MAX);
     {
         int r = vsnprintf(string, PATH_MAX, formatstring, ap);
-        assert(r<=PATH_MAX);
+        check(r<=PATH_MAX);
     }
     int r = open(string, flags, mode);
     free(string);
@@ -115,7 +114,7 @@ static void* start_backup_thread_fun(void *backup_extra_v) {
     if (r!=backup_extra->expect_return_result) {
         printf("%s:%d Got error %d, Expected %d\n", __FILE__, __LINE__, r, backup_extra->expect_return_result);
     }
-    assert(r==backup_extra->expect_return_result);
+    check(r==backup_extra->expect_return_result);
     if (backup_extra->src_dir) free(backup_extra->src_dir);
     if (backup_extra->dst_dir) free(backup_extra->dst_dir);
     return backup_extra_v;
@@ -136,13 +135,13 @@ void start_backup_thread_with_funs(pthread_t *thread,
     p->error_extra = error_extra;
     p->expect_return_result = expect_return_result;
     int r = pthread_create(thread, NULL, start_backup_thread_fun, p);
-    assert(r==0);
+    check(r==0);
 }
 
 int simple_poll_fun(float progress, const char *progress_string, void *poll_extra) {
-    assert(progress>=0 && progress <= 1);
-    assert(progress_string!=NULL);
-    assert(poll_extra==NULL);
+    check(progress>=0 && progress <= 1);
+    check(progress_string!=NULL);
+    check(poll_extra==NULL);
     return 0;
 }
 
@@ -165,8 +164,8 @@ void start_backup_thread(pthread_t *thread, char* destination) {
 void finish_backup_thread(pthread_t thread) {
     void *retval;
     int r = pthread_join(thread, &retval);
-    assert(r==0);
-    assert(retval!=NULL);
+    check(r==0);
+    check(retval!=NULL);
     backup_thread_extra_t *extra = static_cast<backup_thread_extra_t*>(retval);
     delete(extra);
 }
@@ -174,24 +173,24 @@ void finish_backup_thread(pthread_t thread) {
 static const char *test_name = NULL;
 
 char *get_dst(void) {
-    assert(test_name);
+    check(test_name);
     size_t size = strlen(test_name)+100;
     char s[size];
     int r = snprintf(s, sizeof(s), "%s.backup", test_name);
-    assert(r<(int)size);
+    check(r<(int)size);
     char *result = strdup(s);
-    assert(result);
+    check(result);
     return result;
 }
 
 char *get_src(void) {
-    assert(test_name);
+    check(test_name);
     size_t size = strlen(test_name)+100;
     char s[size];
     int r = snprintf(s, size, "%s.source", test_name);
-    assert(r<(int)size);
+    check(r<(int)size);
     char *result = strdup(s);
-    assert(result);
+    check(result);
     return result;
 }
 
@@ -224,7 +223,7 @@ int main (int argc, const char *argv[]) {
     while (argnum < argc) {
 #define TESTNAME "--testname"
         if (0==strcmp(argv[argnum], TESTNAME)) {
-            assert(argnum+1 < argc);
+            check(argnum+1 < argc);
             test_name = argv[argnum+1];
             argnum+=2;
         } else if (0==strncmp(argv[argnum], TESTNAME "=", sizeof(TESTNAME))) {
