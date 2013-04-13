@@ -3,6 +3,7 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
+#include "glassbox.h"
 #include "manager.h"
 #include "real_syscalls.h"
 #include "backup_debug.h"
@@ -52,11 +53,14 @@ pthread_mutex_t manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
 //     Constructor.
 //
 manager::manager(void)
-    : m_pause_disable(false),
+    : 
+#ifdef GLASSBOX
+      m_pause_disable(false),
       m_start_copying(true),
       m_keep_capturing(false),
       m_is_capturing(false),
       m_done_copying(false),
+#endif
       m_backup_is_running(false),
       m_session(NULL),
       m_throttle(ULONG_MAX),
@@ -65,10 +69,13 @@ manager::manager(void)
       m_errstring(NULL)
 {
     VALGRIND_HG_DISABLE_CHECKING(&m_backup_is_running, sizeof(m_backup_is_running));
+#ifdef GLASSBOX
+    VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
     VALGRIND_HG_DISABLE_CHECKING(&m_done_copying, sizeof(m_done_copying));
     VALGRIND_HG_DISABLE_CHECKING(&m_an_error_happened, sizeof(m_an_error_happened));
     VALGRIND_HG_DISABLE_CHECKING(&m_errnum, sizeof(m_errnum));
     VALGRIND_HG_DISABLE_CHECKING(&m_errstring, sizeof(m_errstring));
+#endif
 }
 
 manager::~manager(void) {
@@ -193,11 +200,11 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
 
     this->enable_capture();
 
-    VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
-    m_is_capturing = true;
-    m_done_copying = false;
-
-    while (!m_start_copying) sched_yield();
+    WHEN_GLASSBOX( ({
+                m_is_capturing = true;
+                m_done_copying = false;
+                while (!m_start_copying) sched_yield();
+            }) );
 
     r = m_session->do_copy();
     if (r != 0) {
@@ -206,9 +213,11 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
     }
 
 disable_out:
-    m_done_copying = true;
-    // If the client asked us to keep capturing till they tell us to stop, then do what they said.
-    while (m_keep_capturing) sched_yield();
+    WHEN_GLASSBOX( ({
+        m_done_copying = true;
+        // If the client asked us to keep capturing till they tell us to stop, then do what they said.
+        while (m_keep_capturing) sched_yield();
+            }) );
 
     m_backup_is_running = false;
 
@@ -216,8 +225,7 @@ disable_out:
 
     this->disable_descriptions();
 
-    VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
-    m_is_capturing = false;
+    WHEN_GLASSBOX(m_is_capturing = false);
 
 unlock_out: // preserves r if r!0
 
@@ -297,13 +305,15 @@ void manager::disable_descriptions(void)
     printf("disabling\n");
     lock_fmap();
     const int size = m_map.size();
-    const int middle = size / 2;
+    const int middle __attribute__((unused)) = size / 2; // used only in glassbox mode.
     for (int i = 0; i < size; ++i) {
-        if (middle == i) {
-            TRACE("Pausing on i = ", i); 
-            while (m_pause_disable) { sched_yield(); }
-            TRACE("Done Pausing on i = ", i);
-        }
+        WHEN_GLASSBOX( ({
+                    if (middle == i) {
+                        TRACE("Pausing on i = ", i); 
+                        while (m_pause_disable) { sched_yield(); }
+                        TRACE("Done Pausing on i = ", i);
+                    }
+                }) );
         description *file = m_map.get_unlocked(i);
         if (file == NULL) {
             continue;
@@ -468,16 +478,6 @@ void manager::close(int fd) {
     int r1 = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
     if (r1!=0) {
         return;  // Any errors have been reported.  The caller doesn't care.
-    }
-
-    description *description;
-    { int r2 __attribute__((unused)) = m_map.get(fd, &description); }
-    assert(description==NULL); // TODO.  This code looks buggy as heck.  We just erased the fd from the m_map, now we get it and we want to kill the source.  So the code below is dead.
-    if (description != NULL) {
-        source_file * source = m_table.get(description->get_full_source_name());
-        if (source != NULL) {
-            m_table.try_to_remove(source);
-        }
     }
     // Any errors have been reported, and the caller doesn't want to hear about them.
 }
@@ -828,6 +828,7 @@ void manager::set_error_internal(int errnum, const char *format_string, va_list 
 }
 
 
+#ifdef GLASSBOX
 // Test routines.
 void manager::pause_disable(bool pause)
 {
@@ -851,3 +852,4 @@ void manager::set_start_copying(bool start_copying) {
     VALGRIND_HG_DISABLE_CHECKING(&m_start_copying, sizeof(m_start_copying));
     m_start_copying = start_copying;
 }
+#endif /*GLASSBOX*/

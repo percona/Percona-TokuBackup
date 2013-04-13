@@ -59,15 +59,16 @@ configure_file(CTestCustom.cmake . COPYONLY)
 
 # INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/../tokudb
 
-IF(BACKUP_TESTS)
-  add_subdirectory(tests)
-  # And a Glassbox version of the library in which the visibility is defaul, not hidden
-  add_library(HotBackupGlassbox      SHARED ${BACKUP_SOURCES})
-  IF(NOT APPLE)
-    target_link_libraries(HotBackupGlassbox LINK_PUBLIC rt)
-  ENDIF()
-  install(TARGETS HotBackupGlassbox  DESTINATION lib)
+add_subdirectory(tests)
+# And a Glassbox version of the library in which the visibility is defaul, not hidden
+add_library(HotBackupGlassbox      SHARED ${BACKUP_SOURCES})
+IF(NOT APPLE)
+  target_link_libraries(HotBackupGlassbox LINK_PUBLIC rt)
 ENDIF()
+
+set_property(TARGET HotBackupGlassbox APPEND PROPERTY COMPILE_DEFINITIONS
+  GLASSBOX)
+
 
 ##add_subdirectory(db-benchmark-test)
 

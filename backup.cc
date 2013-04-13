@@ -13,6 +13,7 @@
 #include <stdlib.h>
 
 #include "backup_internal.h"
+#include "glassbox.h"
 #include "manager.h"
 #include "real_syscalls.h"
 #include "backup_debug.h"
@@ -318,6 +319,7 @@ char *malloc_snprintf(size_t size, const char *format, ...) {
 
 const char tokubackup_sql_suffix[] = "-E"; // Tim says that we want it to say -E on the end.
 
+#ifdef GLASSBOX
 void backup_pause_disable(bool b)
 {
     the_manager.pause_disable(b);
@@ -338,3 +340,4 @@ void backup_set_start_copying(bool b)
 {
     the_manager.set_start_copying(b);
 }
+#endif

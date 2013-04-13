@@ -21,11 +21,14 @@
 class manager : public manager_state
 {
 private:
+
+#ifdef GLASSBOX
     volatile bool m_pause_disable;
     volatile bool m_start_copying; // For test purposes, we can arrange to initialize the backup but not actually start copying.
     volatile bool m_keep_capturing; // For test purposes, we can arrange to keep capturing the backup until the client tells us to stop.
     volatile bool m_is_capturing;   // Backup manager sets to true when capturing is running, sets to false when capturing has stopped.   We look at m_start_copying after setting m_is_capturing=true.
     volatile bool m_done_copying;   // Backup manager sets this true when copying is done.  Happens after m_is_captring
+#endif
 
     volatile bool m_is_dead; // true if some error occured so that the backup system shouldn't try any more.
     volatile bool m_backup_is_running; // true if the backup is running.  This can be accessed without any locks.

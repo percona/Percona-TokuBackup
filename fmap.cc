@@ -6,8 +6,8 @@
 #include "fmap.h"
 #include "backup_debug.h"
 #include "manager.h"
+#include "glassbox.h"
 
-#include <assert.h>
 #include <cstdlib>
 #include <pthread.h>
 #include <stdio.h>
@@ -108,7 +108,7 @@ int fmap::put(int fd, description**result) {
     //description->fds.push_back(0); // fd?
     pthread_mutex_lock(&get_put_mutex);    // TODO: #6531 handle any errors
     this->grow_array(fd);
-    assert(m_map[fd]==NULL);
+    glass_assert(m_map[fd]==NULL);
     m_map[fd] = desc;
     pthread_mutex_unlock(&get_put_mutex);    // TODO: #6531 handle any errors
     *result = desc;
