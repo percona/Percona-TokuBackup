@@ -60,19 +60,13 @@ int fmap::get(int fd, description** resultp) {
         printf("get() called with fd = %d \n", fd);
     }
     {
-        int r = pthread_mutex_lock(&get_put_mutex);
-        if (r!=0) {
-            the_manager.fatal_error(r, "Failed to lock mutex %s:%d\n", __FILE__, __LINE__);
-            return r;
-        }
+        int r = lock_fmap();
+        if (r!=0) return r;
     }
     description *result = this->get_unlocked(fd);
     {
-        int r = pthread_mutex_unlock(&get_put_mutex);
-        if (r!=0) {
-            the_manager.fatal_error(r, "Failed to unlock mutex %s:%d\n", __FILE__, __LINE__);
-            return r;
-        }
+        int r = unlock_fmap();
+        if (r!=0) return r;
     }
     *resultp = result;
     return 0;
@@ -97,22 +91,27 @@ int fmap::put(int fd, description**result) {
     }
     
     description *desc = new description();
-    int r = desc->init();
-    if (r != 0) {
-        *result = NULL;
-        return r; // the error has been reported.
+    {
+        int r = desc->init();
+        if (r != 0) {
+            *result = NULL;
+            return r; // the error has been reported.
+        }
     }
     
-    // <CER> Is this to make space for the backup fd?
-    // <CER> Shouldn't we do this when we are adding a file descriptor?
-    //description->fds.push_back(0); // fd?
-    pthread_mutex_lock(&get_put_mutex);    // TODO: #6531 handle any errors
+    {
+        int r = lock_fmap();
+        if (r!=0) return r;
+    }
     this->grow_array(fd);
     glass_assert(m_map[fd]==NULL);
     m_map[fd] = desc;
-    pthread_mutex_unlock(&get_put_mutex);    // TODO: #6531 handle any errors
+    {
+        int r = unlock_fmap();
+        if (r!=0) return r;
+    }
     *result = desc;
-    return r;
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,37 +131,26 @@ int fmap::erase(int fd) {
     }
 
     {
-        int r = pthread_mutex_lock(&get_put_mutex);
-        if (r!=0) {
-            the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
-            return r;
-        }
+        int r = lock_fmap();
+        if (r!=0) return r;
     }
     if ((size_t)fd  >= m_map.size()) {
-        int r = pthread_mutex_unlock(&get_put_mutex);
-        if (r!=0) {
-            the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
-        }
-        return r;
+        return unlock_fmap();
     } else {
         description *description = m_map[fd];
         m_map[fd] = NULL;
         {
-            int r = pthread_mutex_unlock(&get_put_mutex);
-            if (r!=0) {
-                the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
-                int ignore __attribute__((unused)) = description->close(); // ignore any errors, sine we're already losing.
+            int r = unlock_fmap();
+            int r2;
+            if (description) {
+                // Do this after releasing the lock
+                r2 = description->close();
                 delete description;
-                return r;
             }
+            if (r) return r;
+            if (r2) return r2;
+            return 0;
         }
-        // Do this after releasing the lock
-        if (description!=NULL) {
-            int r = description->close(); // The error should have been reported
-            delete description;
-            return r;
-        } 
-        return 0;
     }
 }
 
@@ -200,9 +188,18 @@ void fmap::grow_array(int fd)
     }
 }
 
-void lock_fmap(void) {
-    pthread_mutex_lock(&get_put_mutex);    // TODO: #6531 handle any errors
+int lock_fmap(void) {
+    int r = pthread_mutex_lock(&get_put_mutex);
+    if (r!=0) {
+        the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+    }
+    return r;
 }
-void unlock_fmap(void) {
-    pthread_mutex_unlock(&get_put_mutex);   // TODO: #6531 handle any errors
+
+int unlock_fmap(void) {
+    int r = pthread_mutex_unlock(&get_put_mutex);
+    if (r!=0) {
+        the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
+    }
+    return r;
 }
