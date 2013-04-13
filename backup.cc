@@ -317,7 +317,7 @@ char *malloc_snprintf(size_t size, const char *format, ...) {
     return result;
 }
 
-const char tokubackup_sql_suffix[] = "-E"; // Tim says that we want it to say -E on the end.
+const char tokubackup_version[] = "tokubackup 1.0 r$Id$";
 
 #ifdef GLASSBOX
 void backup_pause_disable(bool b)

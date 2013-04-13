@@ -71,7 +71,7 @@ void tokubackup_throttle_backup(unsigned long bytes_per_second) __attribute__((v
 //   at a high rate, then the destination directory will receive those modifications
 //   at the same rate, plus receive the throttled read data from the source.
 
-const extern char tokubackup_sql_suffix[]  __attribute__((visibility("default"))); // Put an "e" on the end of the mysql version if we are running with the backup library.
+const extern char tokubackup_version[]  __attribute__((visibility("default"))); // Put an "e" on the end of the mysql version if we are running with the backup library.
 
 const int BACKUP_SUCCESS = 0;
 }
