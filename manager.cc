@@ -493,72 +493,68 @@ void manager::close(int fd) {
 ssize_t manager::write(int fd, const void *buf, size_t nbyte)
 {
     TRACE("entering write() with fd = ", fd);
+    bool ok = true;
     description *description;
-    int rr = m_map.get(fd, &description);
-    if (rr!=0 || description == NULL) {
-        return call_real_write(fd, buf, nbyte);
-    } else {
-        {
-            int r = description->lock();
-            if (r!=0) {
-                return call_real_write(fd, buf, nbyte); // do the write, but don't do anything else.
-            }
-        }
+    if (ok) {
+        int r = m_map.get(fd, &description);
+        if (r!=0) ok = false;
+    }
+    bool have_description_lock = false;
+    if (ok && description) {
+        int r = description->lock();
+        if (r!=0) ok = false;
+        else      have_description_lock = true;
+    }
+    source_file *file;
+    bool have_range_lock = false;
+    uint64_t lock_start=0, lock_end=0;
+    if (ok && description) {
         m_table.lock();
-        source_file * file = m_table.get(description->get_full_source_name());
+        file = m_table.get(description->get_full_source_name());
         m_table.unlock();
 
         // We need the range lock before calling real lock so that the write into the source and backup are atomic wrt other writes.
         TRACE("Grabbing file range lock() with fd = ", fd);
-        const uint64_t lock_start = description->get_offset();
-        const uint64_t lock_end   = lock_start + nbyte;
+        lock_start = description->get_offset();
+        lock_end   = lock_start + nbyte;
 
         // We want to release the description->lock ASAP, since it's limiting other writes.
         // We cannot release it before the real write since the real write determines the new m_offset.
 
         {
             int r = file->lock_range(lock_start, lock_end);
-            if (r!=0) {
-                // We've reported the error.
-                int ignore __attribute__((__unused__)) = description->unlock(); // don't worry about errors
-                return call_real_write(fd, buf, nbyte);
-            }
+            if (r!=0) ok = false;
         }
-
-        ssize_t r = call_real_write(fd, buf, nbyte);
-        if (r>0) {
-            // actually wrote something.
-            description->increment_offset(r);
-            // Now we can release the description lock, since the offset is calculated.
-            {
-                int rrr = description->unlock();
-                if (rrr != 0) {
-                    int ignore __attribute__((unused)) = file->unlock_range(lock_start, lock_end);
-                    return r;
-                }
-            }
-
-            // We still have the lock range, which we do with pwrite
-
-            if (this->capture_is_enabled()) {
-                TRACE("write() captured with fd = ", fd);
-                int rrr = description->pwrite(buf, nbyte, lock_start);
-                if (rrr!=0) {
-                    backup_error(rrr, "failed pwrite while backing up %s at %s:%d", description->get_full_source_name(), __FILE__, __LINE__);
-                }
-            } 
-            TRACE("Releasing file range lock() with fd = ", fd);
-            {
-                int rrr = file->unlock_range(lock_start, lock_end);
-                if (rrr!=0) {
-                    backup_error(rrr, "failed unlock at %s:%d", __FILE__, __LINE__);
-                }
-            }
-        }
-        return r;
+        have_range_lock = true;
     }
-}
+    ssize_t n_wrote = call_real_write(fd, buf, nbyte);
+    if (n_wrote>0 && description) { // Don't need OK, just need description
+        // actually wrote something.
+        description->increment_offset(n_wrote);
+    }
+    // Now we can release the description lock, since the offset is calculated.  Release it even if not OK.
+    if (have_description_lock) {
+        int r = description->unlock();
+        if (r != 0) ok=false;
+    }
 
+    // We still have the lock range, with which we do the pwrite.
+    if (ok && capture_is_enabled()) {
+        TRACE("write() captured with fd = ", fd);
+        int r = description->pwrite(buf, nbyte, lock_start);
+        if (r!=0) {
+            // The error has been reported.
+            ok = false;
+        }
+    }
+    if (have_range_lock) { // Release the range lock if if not OK.
+        TRACE("Releasing file range lock() with fd = ", fd);
+        int r = file->unlock_range(lock_start, lock_end);
+        // The error has been reported.
+        if (r!=0) ok = false;
+    }
+    return n_wrote;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -671,7 +667,7 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) {
     bool ok = true;
     {
         int r = m_map.get(fd, &description);
-        if (r!=0) ok = false;
+        if (r!=0 || description==NULL) ok = false;
     }
     if (ok) {
         int r = description->lock();
