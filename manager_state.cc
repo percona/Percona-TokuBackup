@@ -25,7 +25,7 @@ bool manager_state::is_dead(void)
 
 bool manager_state::is_alive(void)
 {
-    return (m_is_dead != false);
+    return !m_is_dead;
 }
 
 void manager_state::kill(void)
