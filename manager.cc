@@ -521,27 +521,32 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
 
         {
             int r = file->lock_range(lock_start, lock_end);
-            assert(r==0); // TODO: if this fails, we should not call our write.
+            if (r!=0) {
+                // We've reported the error.
+                int ignore __attribute__((__unused__)) = description->unlock(); // don't worry about errors
+                return call_real_write(fd, buf, nbyte);
+            }
         }
 
         ssize_t r = call_real_write(fd, buf, nbyte);
-        assert(r==(ssize_t)nbyte); // TODO: #6535 Don't call our write if the first one fails.
+        if (r>0) {
+            // actually wrote something.
+            description->increment_offset(r);
+            // Now we can release the description lock, since the offset is calculated.
+            { int rrr = description->unlock(); assert(rrr==0); } // TODO: #6531 Handle any errors
 
-        description->increment_offset(r);
-        // Now we can release the description lock, since the offset is calculated.
-        { int rrr = description->unlock(); assert(rrr==0); } // TODO: #6531 Handle any errors
+            // We still have the lock range, which we do with pwrite
 
-        // We still have the lock range, which we do with pwrite
-
-        if (this->capture_is_enabled()) {
-            TRACE("write() captured with fd = ", fd);
-            int rrr = description->pwrite(buf, nbyte, lock_start);
-            if (rrr!=0) {
-                backup_error(rrr, "failed write while backing up %s", description->get_full_source_name());
-            }
-        } 
-        TRACE("Releasing file range lock() with fd = ", fd);
-        { int rrr = file->unlock_range(lock_start, lock_end);   assert(rrr == 0); }
+            if (this->capture_is_enabled()) {
+                TRACE("write() captured with fd = ", fd);
+                int rrr = description->pwrite(buf, nbyte, lock_start);
+                if (rrr!=0) {
+                    backup_error(rrr, "failed write while backing up %s", description->get_full_source_name());
+                }
+            } 
+            TRACE("Releasing file range lock() with fd = ", fd);
+            { int rrr = file->unlock_range(lock_start, lock_end);   assert(rrr == 0); }
+        }
         return r;
     }
 }

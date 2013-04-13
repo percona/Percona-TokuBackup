@@ -97,12 +97,14 @@ int source_file::lock_range(uint64_t lo, uint64_t hi)
     {
         int r = pthread_mutex_lock(&m_mutex);
         if (r!=0) {
+            the_manager.fatal_error(r, "Trying to acquire mutex at %s:%d", __FILE__, __LINE__);
             return r;
         }
     }
     while (this->lock_range_would_block_unlocked(lo, hi)) {
         int r = pthread_cond_wait(&m_cond, &m_mutex);
         if (r!=0) {
+            the_manager.fatal_error(r, "Trying to cond_wait at %s:%d", __FILE__, __LINE__);
             pthread_mutex_unlock(&m_mutex); // ignore any error.
             return r;
         }
@@ -112,6 +114,9 @@ int source_file::lock_range(uint64_t lo, uint64_t hi)
     m_locked_ranges.push_back((struct range)new_range);
     {
         int r = pthread_mutex_unlock(&m_mutex);
+        if (r!=0) {
+            the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
+        }
         return r;
     }
 }
