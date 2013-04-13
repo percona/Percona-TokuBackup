@@ -13,9 +13,7 @@
 
 class file_description {
 private:
-    int m_refcount;
     off_t m_offset;
-    std::vector<int> m_fds; // which fds refer to this file description.
     int m_fd_in_dest_space;   // what is the fd in the destination space?
     char *m_backup_name;       // These two strings are const except for the destructor which calls free().
     char *m_full_source_name;

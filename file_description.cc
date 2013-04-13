@@ -25,8 +25,7 @@ const int DEST_FD_INIT = -1;
 //     ...
 //
 file_description::file_description(volatile bool *is_dead)
-: m_refcount(1), 
-m_offset(0), 
+: m_offset(0),
 m_fd_in_dest_space(DEST_FD_INIT), 
 m_backup_name(NULL),
 m_full_source_name(NULL), 
