@@ -327,7 +327,7 @@ int copier::copy_regular_file(const char *source, const char *dest, off_t source
     if (file == NULL) {
         TRACE("Creating new source file", source);
         file = new source_file(source);
-        int r = file->init();
+        r = file->init();
         if (r != 0) {
             // already reported the error.
             m_table->unlock();       // ignore any errors from this.

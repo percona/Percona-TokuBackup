@@ -64,9 +64,8 @@ source_file * source_file::next(void)
 
 ////////////////////////////////////////////////////////
 //
-void source_file::set_next(source_file *next)
-{
-    m_next = next;
+void source_file::set_next(source_file *next_source) {
+    m_next = next_source;
 }
 
 static bool ranges_intersect (uint64_t lo0, uint64_t hi0,

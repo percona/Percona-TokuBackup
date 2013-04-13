@@ -377,7 +377,7 @@ int manager::create(int fd, const char *file)
         r = m_session->capture_create(file, &backup_file_name);
         if (r==0 && backup_file_name != NULL) {
             description->prepare_for_backup(backup_file_name);
-            int r = description->create();
+            r = description->create();
             if(r != 0) {
                 m_session->abort();
                 backup_error(r, "Could not create backup file");
@@ -422,7 +422,7 @@ int manager::open(int fd, const char *file, int oflag)
         source_file *source = m_table.get(description->get_full_source_name());
         if (source == NULL) {
             TRACE("Creating new source file in hash map ", fd);
-            source_file *source = new source_file(description->get_full_source_name());
+            source = new source_file(description->get_full_source_name());
             source->add_reference();
             r = source->init();
             if (r != 0) {
@@ -446,7 +446,7 @@ int manager::open(int fd, const char *file, int oflag)
         r = m_session->capture_open(file, &backup_file_name);
         if(r==0 && backup_file_name != NULL) {
             description->prepare_for_backup(backup_file_name);
-            int r = description->open();
+            r = description->open();
             if(r != 0) {
                 m_session->abort();
                 backup_error(r, "Could not open backup file.");
@@ -529,19 +529,19 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
 
         description->increment_offset(r);
         // Now we can release the description lock, since the offset is calculated.
-        { int r = description->unlock(); assert(r==0); } // TODO: #6531 Handle any errors
+        { int rrr = description->unlock(); assert(rrr==0); } // TODO: #6531 Handle any errors
 
         // We still have the lock range, which we do with pwrite
 
         if (this->capture_is_enabled()) {
             TRACE("write() captured with fd = ", fd);
-            int r = description->pwrite(buf, nbyte, lock_start);
+            r = description->pwrite(buf, nbyte, lock_start);
             if (r!=0) {
                 backup_error(r, "failed write while backing up %s", description->get_full_source_name());
             }
         } 
         TRACE("Releasing file range lock() with fd = ", fd);
-        { int r = file->unlock_range(lock_start, lock_end);   assert(r == 0); }
+        { int rrr = file->unlock_range(lock_start, lock_end);   assert(rrr == 0); }
         return r;
     }
 }
@@ -564,8 +564,9 @@ ssize_t manager::read(int fd, void *buf, size_t nbyte) {
         r = call_real_read(fd, buf, nbyte);
     } else {
         {
-            int r = description->lock();
-            if (r!=0) {
+            int rrr = description->lock();
+            if (rrr!=0) {
+                // Do the read if there was an error.
                 return call_real_read(fd, buf, nbyte);
             }
         }
@@ -575,8 +576,8 @@ ssize_t manager::read(int fd, void *buf, size_t nbyte) {
             description->increment_offset(r); //moves the offset
         }
         {
-            int r = description->unlock();
-            assert(r==0); // TODO: #6531 Handle any errors
+            int rrr = description->unlock();
+            assert(rrr==0); // TODO: #6531 Handle any errors
         }
     }
     
@@ -645,10 +646,10 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) {
     if (r!=0 || description == NULL) {
         return call_real_lseek(fd, nbyte, whence);
     } else {
-        { int r = description->lock(); assert(r==0); } // TODO: #6531 Handle any errors 
+        { int rrr = description->lock(); assert(rrr==0); } // TODO: #6531 Handle any errors 
         off_t new_offset = call_real_lseek(fd, nbyte, whence);
         description->lseek(new_offset);
-        { int r = description->unlock(); assert(r==0); } // TODO: #6531 Handle any errors
+        { int rrr = description->unlock(); assert(rrr==0); } // TODO: #6531 Handle any errors
         return new_offset;
     }
 }
@@ -694,12 +695,12 @@ int manager::ftruncate(int fd, off_t length)
     m_table.lock();
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
-    { int r = file->lock_range(length, LLONG_MAX);      assert(r == 0); }
+    { int rrr = file->lock_range(length, LLONG_MAX);      assert(rrr == 0); }
     int user_result = call_real_ftruncate(fd, length);
     int e = 0;
     if (user_result==0) {
         if (this->capture_is_enabled()) {
-            int r = description->truncate(length);
+            r = description->truncate(length);
             if (r != 0) {
                 e = errno;
                 backup_error(e, "failed ftruncate(%d, %ld) while backing up", fd, length);
@@ -708,7 +709,7 @@ int manager::ftruncate(int fd, off_t length)
     } else {
         e = errno; // save errno
     }
-    { int r = file->unlock_range(length, LLONG_MAX);    assert(r == 0); }
+    { int rr = file->unlock_range(length, LLONG_MAX);    assert(rr == 0); }
     
     if (user_result!=0) {
         errno = e; // restore errno

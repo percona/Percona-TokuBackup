@@ -147,12 +147,14 @@ int fmap::erase(int fd) {
     } else {
         description *description = m_map[fd];
         m_map[fd] = NULL;
-        int r = pthread_mutex_unlock(&get_put_mutex);
-        if (r!=0) {
-            the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
-            int ignore __attribute__((unused)) = description->close(); // ignore any errors, sine we're already losing.
-            delete description;
-            return r;
+        {
+            int r = pthread_mutex_unlock(&get_put_mutex);
+            if (r!=0) {
+                the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
+                int ignore __attribute__((unused)) = description->close(); // ignore any errors, sine we're already losing.
+                delete description;
+                return r;
+            }
         }
         // Do this after releasing the lock
         if (description!=NULL) {

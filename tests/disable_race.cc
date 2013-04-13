@@ -144,8 +144,8 @@ static int disable_race(void) {
 
     // Close all the open files.
     for (int i = 0; i < N; ++i) {
-        int r = close(fd_array[i]);
-        assert(r == 0);
+        int rr = close(fd_array[i]);
+        assert(rr == 0);
     }
 
     return result;
