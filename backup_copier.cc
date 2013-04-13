@@ -293,29 +293,27 @@ out:
 int backup_copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up)
 {
     int r = 0;
-    int copy_error = 0;
-    int create_error = 0;
     source_file * file = NULL;
     int destfd = 0;
     int srcfd = call_real_open(source, O_RDONLY);
     if (srcfd < 0) {
-        int e = errno;
+        r = errno;
         // Ignore errors about the source file not existing, 
         // because we someone must have deleted the source name
         // since we discovered it and stat'd it.
-        if (e != ENOENT) {
-            copy_error = -1;
+        if (r != ENOENT) {
+            manager.backup_error(r, "Couldn't open source file %s at %s:%d", source, __FILE__, __LINE__);
             goto out;
         }
     }
 
     destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
     if (destfd < 0) {
-        create_error = errno;
-        ERROR("Could not create backup copy of file.", dest);
-        if(create_error != EEXIST) {
-            r = -1;
-            goto close_source_fd;
+        r = errno;
+        if(r != EEXIST) {
+            manager.backup_error(r, "Couldn't open dest file %s at %s:%d", dest, __FILE__, __LINE__);
+            call_real_close(srcfd); // ignore any errors here.
+            goto out;
         }
     }
 
@@ -327,35 +325,48 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, off_t
         file = new source_file(source);
         int r = file->init();
         if (r != 0) {
-	  // TODO: #6531 handle rare pthread error.
+            // already reported the error.
+            m_table->unlock();       // ignore any errors from this.
+            call_real_close(destfd); // ignore any errors from this.
+            call_real_close(srcfd);  // ignore any errors from this.
+            goto out;
         }
-
         m_table->put(file);
     }
 
     file->add_reference();
     m_table->unlock();
     
-    copy_error = copy_file_data(srcfd, destfd, source, dest, file, source_file_size, total_bytes_backed_up, total_files_backed_up);
+    r = copy_file_data(srcfd, destfd, source, dest, file, source_file_size, total_bytes_backed_up, total_files_backed_up);
+
+    if (r!=0) {
+        // already reported the error.
+        call_real_close(destfd); // ignore any errors from this.
+        call_real_close(srcfd);  // ignore any errors from this.
+        goto out;
+    }
 
     m_table->lock();
     m_table->try_to_remove(file);
     m_table->unlock();
 
     r = call_real_close(destfd);
-    if(r != 0) {
-        // TODO: #6335 What happens when we can't close file descriptors as part of the copy process?
+    if (r != 0) {
+        r = errno;
+        manager.backup_error(r, "Could not close %s at %s:%d", dest, __FILE__, __LINE__);
+        call_real_close(srcfd); // ignore any errors from this.
+        goto out;
     }
     
-close_source_fd:
-
     r = call_real_close(srcfd);
-    if(r != 0) {
-        // TODO: #6535 What happens when we can't close file descriptors as part of the copy process?
+    if (r != 0) {
+        r = errno;
+        manager.backup_error(r, "Could not close %s at %s:%d", source, __FILE__, __LINE__);
+        goto out;
     }
 
 out:
-    return copy_error;
+    return r;
 }
 
 

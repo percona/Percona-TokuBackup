@@ -13,19 +13,20 @@
 
 class file_description {
 private:
-    off_t m_offset;
-    int m_fd_in_dest_space;   // what is the fd in the destination space?
-    char *m_backup_name;       // These two strings are const except for the destructor which calls free().
+    off_t m_offset;            // The offset that is moved by read(), write() and lseek().
+    int m_fd_in_dest_space;    // What is the fd in the destination space?
+    char *m_backup_name;       // These two strings would be const except for the destructor which calls free().  We'll be getting rid of names in file descriptions soon anyway.
     char *m_full_source_name;
 
     pthread_mutex_t m_mutex; // A mutex used to make m_offset move atomically when we perform a write (or read).
 
-    // NOTE: in the 'real' application, we may use another way to name
-    // the destination file, like its name.
 public:
-    file_description(); // if something goes bad, set *is_dead = true.
+    file_description();
     ~file_description(void);
-    int init(void);
+    int init(void) __attribute__((warn_unused_result));
+    // Effect: Initialize a file_description.  (Note that the constructor isn't allowed to do anything meaningful, since error handling is tricky.
+    //  Return 0 on success, otherwise inform the backup manager of the error (fatal_error or backup_error) and return the error code.
+
     void prepare_for_backup(const char *name);
     void disable_from_backup(void);
     void set_full_source_name(const char *name);

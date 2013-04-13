@@ -56,8 +56,8 @@ public:
     int do_backup(const char *source, const char *dest, backup_callbacks *calls);
 
     // Methods used during interposition:
-    void create(int fd, const char *file);
-    void open(int fd, const char *file, int oflag);
+    int create(int fd, const char *file) __attribute__((warn_unused_result)); // returns 0 on success, error number on failure and it has reported the error to the backup manager.
+    int open(int fd, const char *file, int oflag) __attribute__((warn_unused_result)); // returns 0 on success, error number on failure and it has reported the error to the backup manager.
     void close(int fd);
     ssize_t write(int fd, const void *buf, size_t nbyte); // Actually performs the write on fd (so that a lock can be obtained).
     ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset); // Actually performs the write on fd (so that a lock can be obtained).
@@ -93,5 +93,7 @@ private:
     int prepare_directories_for_backup(backup_session *session);
     void disable_descriptions(void);
 };
+
+extern backup_manager manager;
 
 #endif // End of header guardian.

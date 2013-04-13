@@ -330,32 +330,37 @@ void backup_manager::disable_descriptions(void)
 // difference that we KNOW the file doesn't yet exist (from
 // copy) for the create case?
 //
-void backup_manager::create(int fd, const char *file) 
+int backup_manager::create(int fd, const char *file) 
 {
     TRACE("entering create() with fd = ", fd);
-    file_description *description = m_map.put(fd);
-    if (description == NULL) {
-        fatal_error(-1, "pthread init error.\n");
+    file_description *description;
+    int r = m_map.put(fd, &description);
+    if (r != 0) {
+        // The error has been reported, so just return
+        goto out;
     }
 
     description->set_full_source_name(file);
 
     // Add description to hash table.
     m_table.lock();
-    source_file *source = m_table.get(description->get_full_source_name());
-    if (source == NULL) {
-        TRACE("Creating new source file in hash map ", fd);
-        source = new source_file(description->get_full_source_name());
-        source->add_reference();
-        int r = source->init();
-        if (r != 0) {
-            source->remove_reference();
-            delete source;
-            m_table.unlock();
-            goto out;
-        }
+    {
+        source_file *source = m_table.get(description->get_full_source_name());
+        if (source == NULL) {
+            TRACE("Creating new source file in hash map ", fd);
+            source = new source_file(description->get_full_source_name());
+            source->add_reference();
+            r = source->init();
+            if (r != 0) {
+                // The error has been reported.
+                source->remove_reference();
+                delete source;
+                m_table.unlock();
+                goto out;
+            }
 
-        m_table.put(source);
+            m_table.put(source);
+        }
     }
 
     m_table.unlock();
@@ -378,7 +383,7 @@ void backup_manager::create(int fd, const char *file)
     
     pthread_rwlock_unlock(&m_session_rwlock); // TODO: #6531  handle any errors
 out:
-    return;
+    return r;
 }
 
 
@@ -394,32 +399,36 @@ out:
 // it may be updated if and when the user updates the original/source
 // copy of the file.
 //
-void backup_manager::open(int fd, const char *file, int oflag)
+int backup_manager::open(int fd, const char *file, int oflag)
 {
     TRACE("entering open() with fd = ", fd);
-    file_description *description = m_map.put(fd);
-    if (description == NULL) {
-        fatal_error(-1, "pthread fatal error.");
+    file_description *description;
+    int r = m_map.put(fd, &description);
+    if (r!=0) {
+        goto out; // the error has been reported
     }
 
     description->set_full_source_name(file);
 
     // Add description to hash table.
     m_table.lock();
-    source_file *source = m_table.get(description->get_full_source_name());
-    if (source == NULL) {
-        TRACE("Creating new source file in hash map ", fd);
-        source_file *source = new source_file(description->get_full_source_name());
-        source->add_reference();
-        int r = source->init();
-        if (r != 0) {
-            source->remove_reference();
-            delete source;
-            m_table.unlock();
-            goto out;
-        }
+    {
+        source_file *source = m_table.get(description->get_full_source_name());
+        if (source == NULL) {
+            TRACE("Creating new source file in hash map ", fd);
+            source_file *source = new source_file(description->get_full_source_name());
+            source->add_reference();
+            r = source->init();
+            if (r != 0) {
+                // The error has been reported.
+                source->remove_reference();
+                delete source;
+                m_table.unlock();
+                goto out;
+            }
 
-        m_table.put(source);
+            m_table.put(source);
+        }
     }
 
     m_table.unlock();
@@ -445,7 +454,7 @@ void backup_manager::open(int fd, const char *file, int oflag)
     // TODO: #6533 Remove this dead code.
     oflag++;
  out:
-    return;
+    return r;
 }
 
 

@@ -94,8 +94,7 @@ file_description* file_descriptor_map::get_unlocked(int fd) {
 // then the array is expanded from it's current length, putting a NULL pointer 
 // in each expanded slot.
 //
-file_description* file_descriptor_map::put(int fd)
-{
+int file_descriptor_map::put(int fd, file_description**result) {
     if (HotBackup::MAP_DBG) { 
         printf("put() called with fd = %d \n", fd);
     }
@@ -103,7 +102,8 @@ file_description* file_descriptor_map::put(int fd)
     file_description *description = new file_description();
     int r = description->init();
     if (r != 0) {
-        return NULL;
+        *result = NULL;
+        return r; // the error has been reported.
     }
     
     // <CER> Is this to make space for the backup fd?
@@ -114,7 +114,8 @@ file_description* file_descriptor_map::put(int fd)
     assert(m_map[fd]==NULL);
     m_map[fd] = description;
     pthread_mutex_unlock(&get_put_mutex);    // TODO: #6531 handle any errors
-    return description;
+    *result = description;
+    return r;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
