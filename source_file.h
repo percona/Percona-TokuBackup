@@ -17,7 +17,7 @@ class source_file {
 public:
     source_file(const char * const path); // the source file owns the path
     ~source_file(void); /// the source file will delete the path.
-    int init(void);
+    int init(void);     // report any error, and return 0 on success or the error number.
     const char * name(void);
     source_file *next(void);
     void set_next(source_file *next);
@@ -34,8 +34,8 @@ public:
 
 
     // Name locking and associated rename call.
-    int name_write_lock(void);
-    int name_read_lock(void);
+    int name_write_lock(void) __attribute__((warn_unused_result));
+    int name_read_lock(void)  __attribute__((warn_unused_result));
     int name_unlock(void);
     int rename(const char * new_name);
 

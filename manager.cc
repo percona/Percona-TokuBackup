@@ -108,6 +108,7 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
             calls->report_error(r, "Another backup is in progress.");
             goto error_out;
         }
+        fatal_error(r, "mutex_trylock at %s:%d", __FILE__, __LINE__);
         goto error_out;
     }
     
@@ -123,17 +124,13 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         r = stat(dest, &sbuf);
         if (r!=0) {
             r = errno;
-            char error_msg[4000];
-            snprintf(error_msg, sizeof(error_msg), "Problem stat()ing backup directory %s. errno=%d (%s)", dest, r, strerror(r));
-            calls->report_error(r, error_msg);
+            backup_error(r, "Problem stat()ing backup directory %s", dest);
             ignore(pthread_mutex_unlock(&m_mutex)); // don't worry about errors here.
             goto error_out;
         }
         if (!S_ISDIR(sbuf.st_mode)) {
-            char error_msg[4000];
-            snprintf(error_msg, sizeof(error_msg), "Backup destination %s is not a directory", dest);
             r = EINVAL;
-            calls->report_error(EINVAL, error_msg);
+            backup_error(EINVAL,"Backup destination %s is not a directory", dest);
             ignore(pthread_mutex_unlock(&m_mutex)); // don't worry about errors here.
             goto error_out;
         }
@@ -141,9 +138,7 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
             DIR *dir = opendir(dest);
             if (dir == NULL) {
                 r = errno;
-                char error_msg[4000];
-                snprintf(error_msg, sizeof(error_msg), "Problem opening backup directory %s. errno=%d (%s)", dest, r, strerror(r));
-                calls->report_error(r, error_msg);
+                backup_error(r, "Problem opening backup directory %s", dest);
                 goto unlock_out;
             }
             errno = 0;
@@ -156,16 +151,12 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
             } else if (e!=NULL) {
                 // That's bad.  The directory should be empty.
                 r = EINVAL;
-                char error_msg[4000];
-                snprintf(error_msg, sizeof(error_msg), "Backup directory %s is not empty", dest);
-                calls->report_error(r, error_msg);
+                backup_error(r,  "Backup directory %s is not empty", dest);
                 closedir(dir);
                 goto unlock_out;
             } else if (errno!=0) {
                 r = errno;
-                char error_msg[4000];
-                snprintf(error_msg, sizeof(error_msg), "Problem readdir()ing backup directory %s. errno=%d (%s)", dest, r, strerror(r));
-                calls->report_error(r, error_msg);
+                backup_error(r, "Problem readdir()ing backup directory %s", dest);
                 closedir(dir);
                 goto unlock_out;
             } else {
@@ -173,9 +164,7 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
                 r = closedir(dir);
                 if (r!=0) {
                     r = errno;
-                    char error_msg[4000];
-                    snprintf(error_msg, sizeof(error_msg), "Problem closedir()ing backup directory %s. errno=%d (%s)", dest, r, strerror(r));
-                    calls->report_error(r, error_msg);
+                    backup_error(r, "Problem closedir()ing backup directory %s", dest);
                     // The dir is already as closed as I can get it.  Don't call closedir again.
                     goto unlock_out;
                 }
@@ -183,10 +172,16 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         }
     }
 
-    pthread_rwlock_wrlock(&m_session_rwlock);  // TODO: #6531 handle any errors 
-    m_session = new backup_session(source, dest, calls, &m_table, &r);
-    pthread_rwlock_unlock(&m_session_rwlock);   // TODO: #6531 handle any errors
+    r = pthread_rwlock_wrlock(&m_session_rwlock);
     if (r!=0) {
+        fatal_error(r, "Problem obtaining session lock at %s:%d", __FILE__, __LINE__);
+        goto unlock_out;
+    }
+
+    m_session = new backup_session(source, dest, calls, &m_table, &r);
+    r = pthread_rwlock_unlock(&m_session_rwlock);
+    if (r!=0) {
+        fatal_error(r, "Problem releasing session lock at %s:%d", __FILE__, __LINE__);
         goto unlock_out;
     }
     
@@ -209,7 +204,7 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         goto disable_out;
     }
 
-disable_out:
+disable_out: // preserves r if r!=0
     WHEN_GLASSBOX( ({
         m_done_copying = true;
         // If the client asked us to keep capturing till they tell us to stop, then do what they said.
@@ -226,31 +221,37 @@ disable_out:
 
 unlock_out: // preserves r if r!0
 
-    pthread_rwlock_wrlock(&m_session_rwlock);   // TODO: #6531 handle any errors
-    delete m_session;
-    m_session = NULL;
-    pthread_rwlock_unlock(&m_session_rwlock);   // TODO: #6531 handle any errors
-
     {
-        int pthread_error = pthread_mutex_unlock(&m_mutex);
-        if (pthread_error != 0) {
-            this->kill(); // disable backup permanently if the pthread mutexes are failing.
-            calls->report_error(pthread_error, "pthread_mutex_unlock failed.  Backup system is probably broken");
-            if (r == 0) {
-                r = pthread_error;
-            }
+        int r2 = pthread_rwlock_wrlock(&m_session_rwlock);
+        if (r==0 && r2!=0) {
+            fatal_error(r2, "Problem obtaining session lock at %s:%d", __FILE__, __LINE__);
+            r = r2;
         }
     }
-
+    delete m_session;
+    m_session = NULL;
+    {
+        int r2 = pthread_rwlock_unlock(&m_session_rwlock);
+        if (r==0 && r2!=0) {
+            fatal_error(r2, "Problem releasing session lock at %s:%d", __FILE__, __LINE__);
+            r = r2;
+        }
+    }
+    {
+        int r2 = pthread_mutex_unlock(&m_mutex);
+        if (r==0 && r2!=0) {
+            fatal_error(r2, "pthread_mutex_unlock failed at %s:%d", __FILE__, __LINE__);
+            r = r2;
+        }
+    }
     if (m_an_error_happened) {
-        calls->report_error(m_errnum, m_errstring);
+        backup_error(m_errnum, m_errstring);
         if (r==0) {
             r = m_errnum; // if we already got an error then keep it.
         }
     }
 
 error_out:
-    printf("returning %d\n", r);
     return r;
 }
 
