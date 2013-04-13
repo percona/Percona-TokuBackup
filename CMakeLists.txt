@@ -19,7 +19,7 @@ set(BACKUP_SOURCES
 	backup_directory.cc
 	backup_manager.cc
 	file_description.cc
-	file_descriptor_map.cc
+	fmap.cc
 	file_hash_table.cc
 	manager_state.cc
 	real_syscalls.cc

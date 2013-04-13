@@ -3,8 +3,8 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#ifndef FILE_DESCRIPTOR_MAP_H
-#define FILE_DESCRIPTOR_MAP_H
+#ifndef FMAP_H
+#define FMAP_H
 
 #include <vector>
 #include "file_description.h"
@@ -12,13 +12,13 @@
 
 class backup_directory;
 
-class file_descriptor_map
+class fmap
 {
 private:
     std::vector<file_description *> m_map;
 public:
-    file_descriptor_map();
-    ~file_descriptor_map();
+    fmap();
+    ~fmap();
 
     int get(int fd, file_description**result) __attribute__((warn_unused_result));
     // Effect:   Returns pointer (in *result) to the file description object that matches the
@@ -37,11 +37,11 @@ public:
 private:
     void grow_array(int fd);
     
-friend class file_descriptor_map_unit_test;
+friend class fmap_unit_test;
 };
 
 // Global locks used when the file descriptor map is updated.   Sometimes the backup system needs to hold the lock for several operations.
-void lock_file_descriptor_map(void);
-void unlock_file_descriptor_map(void);
+void lock_fmap(void);
+void unlock_fmap(void);
 
 #endif // End of header guardian.

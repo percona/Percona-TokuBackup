@@ -3,7 +3,7 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include "file_descriptor_map.h"
+#include "fmap.h"
 #include "backup_debug.h"
 #include "backup_manager.h"
 
@@ -22,24 +22,24 @@ static pthread_mutex_t get_put_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// file_descriptor_map():
+// fmap():
 //
 // Description: 
 //
 //     Constructor.
 //
-file_descriptor_map::file_descriptor_map()
+fmap::fmap()
 {}
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// ~file_descriptor_map():
+// ~fmap():
 //
 // Description: 
 //
 //     Destructor.
 //
-file_descriptor_map::~file_descriptor_map()
+fmap::~fmap()
 {
     for(std::vector<file_description *>::size_type i = 0; i < m_map.size(); ++i)
     {
@@ -54,8 +54,8 @@ file_descriptor_map::~file_descriptor_map()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Description:  See file_descriptor_map.h.
-int file_descriptor_map::get(int fd, file_description** resultp) {
+// Description:  See fmap.h.
+int fmap::get(int fd, file_description** resultp) {
     if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
@@ -78,7 +78,7 @@ int file_descriptor_map::get(int fd, file_description** resultp) {
     return 0;
 }
 
-file_description* file_descriptor_map::get_unlocked(int fd) {
+file_description* fmap::get_unlocked(int fd) {
     if (fd < 0) return NULL;
     file_description *result;
     if ((size_t)fd >= m_map.size()) {
@@ -90,8 +90,8 @@ file_description* file_descriptor_map::get_unlocked(int fd) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Description:  See file_descriptor_map.h.
-int file_descriptor_map::put(int fd, file_description**result) {
+// Description:  See fmap.h.
+int fmap::put(int fd, file_description**result) {
     if (HotBackup::MAP_DBG) { 
         printf("put() called with fd = %d \n", fd);
     }
@@ -126,7 +126,7 @@ int file_descriptor_map::put(int fd, file_description**result) {
 //
 // Requires: the fd is something currently mapped.
 
-int file_descriptor_map::erase(int fd) {
+int fmap::erase(int fd) {
     int r = 0;
     if (HotBackup::MAP_DBG) { 
         printf("erase() called with fd = %d \n", fd);
@@ -154,7 +154,7 @@ int file_descriptor_map::erase(int fd) {
 //
 // size():
 //
-int file_descriptor_map::size(void)
+int fmap::size(void)
 {
     return  m_map.size();
 }
@@ -172,7 +172,7 @@ int file_descriptor_map::size(void)
 // backup directory.
 // 
 // Requires: the get_put_mutex is held
-void file_descriptor_map::grow_array(int fd)
+void fmap::grow_array(int fd)
 {
     if (fd>=0) {
         while(m_map.size() <= (size_t)fd) {
@@ -183,9 +183,9 @@ void file_descriptor_map::grow_array(int fd)
     }
 }
 
-void lock_file_descriptor_map(void) {
+void lock_fmap(void) {
     pthread_mutex_lock(&get_put_mutex);    // TODO: #6531 handle any errors
 }
-void unlock_file_descriptor_map(void) {
+void unlock_fmap(void) {
     pthread_mutex_unlock(&get_put_mutex);   // TODO: #6531 handle any errors
 }

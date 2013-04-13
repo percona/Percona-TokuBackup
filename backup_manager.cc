@@ -260,7 +260,7 @@ int backup_manager::prepare_directories_for_backup(backup_session *session) {
     int r = 0;
     // Loop through all the current file descriptions and prepare them
     // for backup.
-    lock_file_descriptor_map(); // TODO: #6532 This lock is much too coarse.  Need to refine it.  This lock deals with a race between file->create() and a close() call from the application.  We aren't using the m_refcount in file_description (which we should be) and we even if we did, the following loop would be racy since m_map.size could change while we are running, and file descriptors could come and go in the meanwhile.  So this really must be fixed properly to refine this lock.
+    lock_fmap(); // TODO: #6532 This lock is much too coarse.  Need to refine it.  This lock deals with a race between file->create() and a close() call from the application.  We aren't using the m_refcount in file_description (which we should be) and we even if we did, the following loop would be racy since m_map.size could change while we are running, and file descriptors could come and go in the meanwhile.  So this really must be fixed properly to refine this lock.
     for (int i = 0; i < m_map.size(); ++i) {
         file_description *file = m_map.get_unlocked(i);
         if (file == NULL) {
@@ -291,7 +291,7 @@ int backup_manager::prepare_directories_for_backup(backup_session *session) {
     }
     
 out:
-    unlock_file_descriptor_map();
+    unlock_fmap();
     return r;
 }
 
@@ -300,7 +300,7 @@ out:
 void backup_manager::disable_descriptions(void)
 {
     printf("disabling\n");
-    lock_file_descriptor_map();
+    lock_fmap();
     const int size = m_map.size();
     const int middle = size / 2;
     for (int i = 0; i < size; ++i) {
@@ -317,7 +317,7 @@ void backup_manager::disable_descriptions(void)
         file->disable_from_backup();
         //printf("sleeping\n"); usleep(1000);
     }
-    unlock_file_descriptor_map();
+    unlock_fmap();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

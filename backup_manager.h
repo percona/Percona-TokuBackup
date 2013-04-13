@@ -30,7 +30,7 @@ private:
     volatile bool m_is_dead; // true if some error occured so that the backup system shouldn't try any more.
     volatile bool m_backup_is_running; // true if the backup is running.  This can be accessed without any locks.
 
-    file_descriptor_map m_map;
+    fmap m_map;
     file_hash_table m_table;
     static pthread_mutex_t m_mutex; // Used to serialize multiple backup operations.
 

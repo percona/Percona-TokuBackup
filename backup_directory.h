@@ -8,7 +8,7 @@
 #ident "$Id$"
 
 #include "file_description.h"
-#include "file_descriptor_map.h"
+#include "fmap.h"
 #include "backup_copier.h"
 #include "backup_callbacks.h"
 
