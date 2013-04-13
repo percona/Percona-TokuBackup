@@ -101,7 +101,11 @@ const char * description::get_full_source_name(void)
 //
 int description::lock(void)
 {
-    return pthread_mutex_lock(&m_mutex);
+    int r = pthread_mutex_lock(&m_mutex);
+    if (r!=0) {
+        the_manager.fatal_error(r, "acquiring description mutex at %s:%d", __FILE__, __LINE__);
+    }
+    return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -498,11 +498,15 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
     TRACE("entering write() with fd = ", fd);
     description *description;
     int rr = m_map.get(fd, &description);
-    ssize_t r = 0;
     if (rr!=0 || description == NULL) {
-        r = call_real_write(fd, buf, nbyte);
+        return call_real_write(fd, buf, nbyte);
     } else {
-        { int r = description->lock(); assert(r==0); } // TODO: #6531 Handle any errors
+        {
+            int r = description->lock();
+            if (r!=0) {
+                return call_real_write(fd, buf, nbyte); // do the write, but don't do anything else.
+            }
+        }
         m_table.lock();
         source_file * file = m_table.get(description->get_full_source_name());
         m_table.unlock();
@@ -515,10 +519,12 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
         // We want to release the description->lock ASAP, since it's limiting other writes.
         // We cannot release it before the real write since the real write determines the new m_offset.
 
-        r = file->lock_range(lock_start, lock_end);
-        assert(r==0); // TODO: if this fails, we should not call our write.
+        {
+            int r = file->lock_range(lock_start, lock_end);
+            assert(r==0); // TODO: if this fails, we should not call our write.
+        }
 
-        r = call_real_write(fd, buf, nbyte);
+        ssize_t r = call_real_write(fd, buf, nbyte);
         assert(r==(ssize_t)nbyte); // TODO: #6535 Don't call our write if the first one fails.
 
         description->increment_offset(r);
@@ -536,10 +542,8 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
         } 
         TRACE("Releasing file range lock() with fd = ", fd);
         { int r = file->unlock_range(lock_start, lock_end);   assert(r == 0); }
-
+        return r;
     }
-    
-    return r;
 }
 
 
@@ -559,7 +563,12 @@ ssize_t manager::read(int fd, void *buf, size_t nbyte) {
     if (rr!=0 || description == NULL) {
         r = call_real_read(fd, buf, nbyte);
     } else {
-        { int r = description->lock(); assert(r==0); } // TODO: #6531 Handle any errors
+        {
+            int r = description->lock();
+            if (r!=0) {
+                return call_real_read(fd, buf, nbyte);
+            }
+        }
         r = call_real_read(fd, buf, nbyte);
         printf("%s:%d r=%ld\n", __FILE__, __LINE__, r);
         if (r>0) {
