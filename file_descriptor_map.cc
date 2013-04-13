@@ -94,13 +94,17 @@ file_description* file_descriptor_map::get_unlocked(int fd) {
 // then the array is expanded from it's current length, putting a NULL pointer 
 // in each expanded slot.
 //
-file_description* file_descriptor_map::put(int fd, volatile bool *is_dead)
+file_description* file_descriptor_map::put(int fd)
 {
     if (HotBackup::MAP_DBG) { 
         printf("put() called with fd = %d \n", fd);
     }
     
-    file_description *description = new file_description(is_dead);
+    file_description *description = new file_description();
+    int r = description->init();
+    if (r != 0) {
+        return NULL;
+    }
     
     // <CER> Is this to make space for the backup fd?
     // <CER> Shouldn't we do this when we are adding a file descriptor?

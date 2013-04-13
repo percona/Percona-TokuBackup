@@ -23,8 +23,9 @@ private:
     // NOTE: in the 'real' application, we may use another way to name
     // the destination file, like its name.
 public:
-    file_description(volatile bool *is_dead); // if something goes bad, set *is_dead = true.
+    file_description(); // if something goes bad, set *is_dead = true.
     ~file_description(void);
+    int init(void);
     void prepare_for_backup(const char *name);
     void disable_from_backup(void);
     void set_full_source_name(const char *name);

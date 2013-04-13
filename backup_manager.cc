@@ -333,8 +333,11 @@ void backup_manager::disable_descriptions(void)
 void backup_manager::create(int fd, const char *file) 
 {
     TRACE("entering create() with fd = ", fd);
-    m_map.put(fd, &m_is_dead);
-    file_description *description = m_map.get(fd);
+    file_description *description = m_map.put(fd);
+    if (description == NULL) {
+        fatal_error(-1, "pthread init error.\n");
+    }
+
     description->set_full_source_name(file);
 
     // Add description to hash table.
@@ -394,8 +397,11 @@ out:
 void backup_manager::open(int fd, const char *file, int oflag)
 {
     TRACE("entering open() with fd = ", fd);
-    m_map.put(fd, &m_is_dead);
-    file_description *description = m_map.get(fd);
+    file_description *description = m_map.put(fd);
+    if (description == NULL) {
+        fatal_error(-1, "pthread fatal error.");
+    }
+
     description->set_full_source_name(file);
 
     // Add description to hash table.
