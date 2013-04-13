@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #include "backup_debug.h"
-#include "backup_manager.h"
+#include "manager.h"
 #include "description.h"
 #include "real_syscalls.h"
 
@@ -54,7 +54,7 @@ int description::init(void)
 {
     int r = pthread_mutex_init(&m_mutex, NULL);
     if (r != 0) {
-        manager.fatal_error(r, "Failed to initialize mutex: %s:%d errno=%d (%s)\n", __FILE__, __LINE__, r, strerror(r));
+        the_manager.fatal_error(r, "Failed to initialize mutex: %s:%d errno=%d (%s)\n", __FILE__, __LINE__, r, strerror(r));
     }
     return r;
 }

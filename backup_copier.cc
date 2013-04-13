@@ -4,10 +4,10 @@
 #ident "$Id$"
 
 #include "backup_copier.h"
-#include "real_syscalls.h"
 #include "backup_debug.h"
-#include "backup_manager.h"
 #include "file_hash_table.h"
+#include "manager.h"
+#include "real_syscalls.h"
 #include "source_file.h"
 
 #include <dirent.h>
@@ -302,7 +302,7 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, off_t
         // because we someone must have deleted the source name
         // since we discovered it and stat'd it.
         if (r != ENOENT) {
-            manager.backup_error(r, "Couldn't open source file %s at %s:%d", source, __FILE__, __LINE__);
+            the_manager.backup_error(r, "Couldn't open source file %s at %s:%d", source, __FILE__, __LINE__);
             goto out;
         }
     }
@@ -311,7 +311,7 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, off_t
     if (destfd < 0) {
         r = errno;
         if(r != EEXIST) {
-            manager.backup_error(r, "Couldn't open dest file %s at %s:%d", dest, __FILE__, __LINE__);
+            the_manager.backup_error(r, "Couldn't open dest file %s at %s:%d", dest, __FILE__, __LINE__);
             call_real_close(srcfd); // ignore any errors here.
             goto out;
         }
@@ -353,7 +353,7 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, off_t
     r = call_real_close(destfd);
     if (r != 0) {
         r = errno;
-        manager.backup_error(r, "Could not close %s at %s:%d", dest, __FILE__, __LINE__);
+        the_manager.backup_error(r, "Could not close %s at %s:%d", dest, __FILE__, __LINE__);
         call_real_close(srcfd); // ignore any errors from this.
         goto out;
     }
@@ -361,7 +361,7 @@ int backup_copier::copy_regular_file(const char *source, const char *dest, off_t
     r = call_real_close(srcfd);
     if (r != 0) {
         r = errno;
-        manager.backup_error(r, "Could not close %s at %s:%d", source, __FILE__, __LINE__);
+        the_manager.backup_error(r, "Could not close %s at %s:%d", source, __FILE__, __LINE__);
         goto out;
     }
 

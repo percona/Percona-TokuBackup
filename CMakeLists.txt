@@ -12,18 +12,19 @@ set(CMAKE_CXX_FLAGS "-Werror -W -Wall -Werror ${CMAKE_CXX_FLAGS}")
 message(STATUS "CMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}")
 
 set(BACKUP_SOURCES
-	backup.cc
-	backup_callbacks.cc
 	backup_copier.cc
 	backup_debug.cc
 	backup_directory.cc
-	backup_manager.cc
 	description.cc
-	fmap.cc
 	file_hash_table.cc
+	fmap.cc
+	manager.cc
 	manager_state.cc
 	real_syscalls.cc
-	source_file.cc)
+	source_file.cc
+        backup.cc
+        backup_callbacks.cc
+)
 
 add_library(HotBackup          SHARED ${BACKUP_SOURCES})
 

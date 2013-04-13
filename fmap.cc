@@ -5,7 +5,7 @@
 
 #include "fmap.h"
 #include "backup_debug.h"
-#include "backup_manager.h"
+#include "manager.h"
 
 #include <assert.h>
 #include <cstdlib>
@@ -62,7 +62,7 @@ int fmap::get(int fd, description** resultp) {
     {
         int r = pthread_mutex_lock(&get_put_mutex);
         if (r!=0) {
-            manager.fatal_error(r, "Failed to lock mutex %s:%d errno=%d (%s)\n", __FILE__, __LINE__, r, strerror(r));
+            the_manager.fatal_error(r, "Failed to lock mutex %s:%d errno=%d (%s)\n", __FILE__, __LINE__, r, strerror(r));
             return r;
         }
     }
@@ -70,7 +70,7 @@ int fmap::get(int fd, description** resultp) {
     {
         int r = pthread_mutex_unlock(&get_put_mutex);
         if (r!=0) {
-            manager.fatal_error(r, "Failed to unlock mutex %s:%d errno=%d (%s)\n", __FILE__, __LINE__, r, strerror(r));
+            the_manager.fatal_error(r, "Failed to unlock mutex %s:%d errno=%d (%s)\n", __FILE__, __LINE__, r, strerror(r));
             return r;
         }
     }

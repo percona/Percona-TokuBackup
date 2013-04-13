@@ -3,7 +3,7 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include "backup_manager.h"
+#include "manager.h"
 #include "real_syscalls.h"
 #include "backup_debug.h"
 #include "source_file.h"
@@ -39,19 +39,19 @@
 #define PAUSE(number)
 #endif
 
-pthread_mutex_t backup_manager::m_mutex         = PTHREAD_MUTEX_INITIALIZER;
-pthread_rwlock_t backup_manager::m_session_rwlock = PTHREAD_RWLOCK_INITIALIZER;
-pthread_mutex_t backup_manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t manager::m_mutex         = PTHREAD_MUTEX_INITIALIZER;
+pthread_rwlock_t manager::m_session_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+pthread_mutex_t manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// backup_manager() -
+// manager() -
 //
 // Description: 
 //
 //     Constructor.
 //
-backup_manager::backup_manager(void)
+manager::manager(void)
     : m_pause_disable(false),
       m_start_copying(true),
       m_keep_capturing(false),
@@ -68,7 +68,7 @@ backup_manager::backup_manager(void)
     VALGRIND_HG_DISABLE_CHECKING(&m_done_copying, sizeof(m_done_copying));
 }
 
-backup_manager::~backup_manager(void) {
+manager::~manager(void) {
     if (m_errstring) free(m_errstring);
 }
 
@@ -80,7 +80,7 @@ backup_manager::~backup_manager(void) {
 //
 //     
 //
-int backup_manager::do_backup(const char *source, const char *dest, backup_callbacks *calls) {
+int manager::do_backup(const char *source, const char *dest, backup_callbacks *calls) {
     int r = 0;
     if (this->is_dead()) {
         calls->report_error(-1, "Backup system is dead");
@@ -256,7 +256,7 @@ error_out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int backup_manager::prepare_directories_for_backup(backup_session *session) {
+int manager::prepare_directories_for_backup(backup_session *session) {
     int r = 0;
     // Loop through all the current file descriptions and prepare them
     // for backup.
@@ -297,7 +297,7 @@ out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void backup_manager::disable_descriptions(void)
+void manager::disable_descriptions(void)
 {
     printf("disabling\n");
     lock_fmap();
@@ -330,7 +330,7 @@ void backup_manager::disable_descriptions(void)
 // difference that we KNOW the file doesn't yet exist (from
 // copy) for the create case?
 //
-int backup_manager::create(int fd, const char *file) 
+int manager::create(int fd, const char *file) 
 {
     TRACE("entering create() with fd = ", fd);
     description *description;
@@ -399,7 +399,7 @@ out:
 // it may be updated if and when the user updates the original/source
 // copy of the file.
 //
-int backup_manager::open(int fd, const char *file, int oflag)
+int manager::open(int fd, const char *file, int oflag)
 {
     TRACE("entering open() with fd = ", fd);
     description *description;
@@ -466,7 +466,7 @@ int backup_manager::open(int fd, const char *file, int oflag)
 //
 //     Find and deallocate file description based on incoming fd.
 //
-void backup_manager::close(int fd) {
+void manager::close(int fd) {
     TRACE("entering close() with fd = ", fd);
     int r1 = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
     if (r1!=0) {
@@ -496,7 +496,7 @@ void backup_manager::close(int fd) {
 // backup copy of a prevously opened file.
 //     Also does the write itself (the write is in here so that a lock can be obtained to protect the file offset)
 //
-ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
+ssize_t manager::write(int fd, const void *buf, size_t nbyte)
 {
     TRACE("entering write() with fd = ", fd);
     description *description;
@@ -556,7 +556,7 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 //
 //     Do the read.
 //
-ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
+ssize_t manager::read(int fd, void *buf, size_t nbyte) {
     TRACE("entering write() with fd = ", fd);
     ssize_t r = 0;
     description *description;
@@ -588,7 +588,7 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
 //     Same as regular write, but uses additional offset argument
 // to write to a particular position in the backup file.
 //
-ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
+ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 // Do the write, returning the number of bytes written.
 // Note: If the backup destination gets a short write, that's an error.
 {
@@ -636,7 +636,7 @@ ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offs
 //     Move the backup file descriptor to the new position.  This allows
 // upcoming intercepted writes to be backed up properly.
 //
-off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
+off_t manager::lseek(int fd, size_t nbyte, int whence) {
     TRACE("entering seek() with fd = ", fd);
     description *description;
     int r = m_map.get(fd, &description);
@@ -660,7 +660,7 @@ off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
 //
 //     TBD...
 //
-void backup_manager::rename(const char *oldpath, const char *newpath)
+void manager::rename(const char *oldpath, const char *newpath)
 {
     TRACE("entering rename()...", "");
     TRACE("-> old path = ", oldpath);
@@ -678,7 +678,7 @@ void backup_manager::rename(const char *oldpath, const char *newpath)
 //
 //     TBD...
 //
-int backup_manager::ftruncate(int fd, off_t length)
+int manager::ftruncate(int fd, off_t length)
 {
     TRACE("entering ftruncate with fd = ", fd);
     // TODO: Remove the logic for null descriptions, since we will
@@ -724,7 +724,7 @@ int backup_manager::ftruncate(int fd, off_t length)
 //
 //     TBD...
 //
-void backup_manager::truncate(const char *path, off_t length)
+void manager::truncate(const char *path, off_t length)
 {
     TRACE("entering truncate() with path = ", path);
     // TODO: #6536
@@ -743,7 +743,7 @@ void backup_manager::truncate(const char *path, off_t length)
 //
 //     TBD...
 //
-void backup_manager::mkdir(const char *pathname)
+void manager::mkdir(const char *pathname)
 {
     pthread_rwlock_rdlock(&m_session_rwlock);  // TODO: #6531 handle any errors
     if(m_session != NULL) {
@@ -759,20 +759,20 @@ void backup_manager::mkdir(const char *pathname)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void backup_manager::set_throttle(unsigned long bytes_per_second) {
+void manager::set_throttle(unsigned long bytes_per_second) {
     VALGRIND_HG_DISABLE_CHECKING(&m_throttle, sizeof(m_throttle));
     m_throttle = bytes_per_second;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-unsigned long backup_manager::get_throttle(void) {
+unsigned long manager::get_throttle(void) {
     return m_throttle;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void backup_manager::fatal_error(int errnum, const char *format_string, ...)
+void manager::fatal_error(int errnum, const char *format_string, ...)
 {
     va_list ap;
     va_start(ap, format_string);
@@ -784,7 +784,7 @@ void backup_manager::fatal_error(int errnum, const char *format_string, ...)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void backup_manager::backup_error(int errnum, const char *format_string, ...)
+void manager::backup_error(int errnum, const char *format_string, ...)
 {
     va_list ap;
     va_start(ap, format_string);
@@ -795,7 +795,7 @@ void backup_manager::backup_error(int errnum, const char *format_string, ...)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void backup_manager::set_error(int errnum, const char *format_string, ...) {
+void manager::set_error(int errnum, const char *format_string, ...) {
     va_list ap;
     va_start(ap, format_string);
 
@@ -828,25 +828,25 @@ void backup_manager::set_error(int errnum, const char *format_string, ...) {
 
 
 // Test routines.
-void backup_manager::pause_disable(bool pause)
+void manager::pause_disable(bool pause)
 {
     VALGRIND_HG_DISABLE_CHECKING(&m_pause_disable, sizeof(m_pause_disable));
     m_pause_disable = pause;
 }
 
-void backup_manager::set_keep_capturing(bool keep_capturing) {
+void manager::set_keep_capturing(bool keep_capturing) {
     VALGRIND_HG_DISABLE_CHECKING(&m_keep_capturing, sizeof(m_keep_capturing));
     m_keep_capturing = keep_capturing;
 }
 
-bool backup_manager::is_done_copying(void) {
+bool manager::is_done_copying(void) {
     return m_done_copying;
 }
-bool backup_manager::is_capturing(void) {
+bool manager::is_capturing(void) {
     return m_is_capturing;
 }
 
-void backup_manager::set_start_copying(bool start_copying) {
+void manager::set_start_copying(bool start_copying) {
     VALGRIND_HG_DISABLE_CHECKING(&m_start_copying, sizeof(m_start_copying));
     m_start_copying = start_copying;
 }

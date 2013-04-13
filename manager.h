@@ -18,7 +18,7 @@
 #include <vector>
 #include <pthread.h>
 
-class backup_manager : public manager_state, public error_handler_interface
+class manager : public manager_state, public error_handler_interface
 {
 private:
     volatile bool m_pause_disable;
@@ -46,11 +46,11 @@ private:
     static pthread_mutex_t m_error_mutex;     // When testing errors grab this mutex. 
     volatile bool m_an_error_happened; // True if an error has happened.  This can be read without the mutex.
     int m_errnum;                      // The error number to be passed to the polling function.
-    char *m_errstring;                 // The error string to be passed to the polling function.  This string is malloc'd and owned by the backup_manager.
+    char *m_errstring;                 // The error string to be passed to the polling function.  This string is malloc'd and owned by the manager.
 
 public:
-    backup_manager(void);
-    virtual ~backup_manager(void);
+    manager(void);
+    virtual ~manager(void);
     // N.B. the google style guide requires all references to be either labeled as a const, or declared to be pointers.
     // I see no reason to use reference variables.  They are redundant with pointers.
     int do_backup(const char *source, const char *dest, backup_callbacks *calls);
@@ -94,6 +94,6 @@ private:
     void disable_descriptions(void);
 };
 
-extern backup_manager manager;
+extern manager the_manager;
 
 #endif // End of header guardian.
