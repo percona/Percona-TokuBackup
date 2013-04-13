@@ -5,11 +5,13 @@
 
 #include "file_descriptor_map.h"
 #include "backup_debug.h"
+#include "backup_manager.h"
 
 #include <assert.h>
 #include <cstdlib>
 #include <pthread.h>
 #include <stdio.h>
+#include <string.h>
 #include <vector>
 
 class file_description;
@@ -52,24 +54,28 @@ file_descriptor_map::~file_descriptor_map()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-//
-// get():
-//
-// Description: 
-//
-//     Returns pointer to the file description object that matches the
-// given file descriptor.  This will return NULL if the given file
-// descriptor has not been added to this map.
-//
-file_description* file_descriptor_map::get(int fd)
-{
+// Description:  See file_descriptor_map.h.
+int file_descriptor_map::get(int fd, file_description** resultp) {
     if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
-    pthread_mutex_lock(&get_put_mutex);   // TODO: #6531 handle any errors
+    {
+        int r = pthread_mutex_lock(&get_put_mutex);
+        if (r!=0) {
+            manager.fatal_error(r, "Failed to lock mutex %s:%d errno=%d (%s)\n", __FILE__, __LINE__, r, strerror(r));
+            return r;
+        }
+    }
     file_description *result = this->get_unlocked(fd);
-    pthread_mutex_unlock(&get_put_mutex);   // TODO: #6531 handle any errors
-    return result;
+    {
+        int r = pthread_mutex_unlock(&get_put_mutex);
+        if (r!=0) {
+            manager.fatal_error(r, "Failed to unlock mutex %s:%d errno=%d (%s)\n", __FILE__, __LINE__, r, strerror(r));
+            return r;
+        }
+    }
+    *resultp = result;
+    return 0;
 }
 
 file_description* file_descriptor_map::get_unlocked(int fd) {
@@ -84,16 +90,7 @@ file_description* file_descriptor_map::get_unlocked(int fd) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-//
-// put():
-//
-// Description: 
-//
-//     Allocates a new file description object and inserts it into the map.
-// If the given file descriptor is larger than the current size of the array,
-// then the array is expanded from it's current length, putting a NULL pointer 
-// in each expanded slot.
-//
+// Description:  See file_descriptor_map.h.
 int file_descriptor_map::put(int fd, file_description**result) {
     if (HotBackup::MAP_DBG) { 
         printf("put() called with fd = %d \n", fd);

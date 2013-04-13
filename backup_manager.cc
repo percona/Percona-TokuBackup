@@ -466,22 +466,23 @@ int backup_manager::open(int fd, const char *file, int oflag)
 //
 //     Find and deallocate file description based on incoming fd.
 //
-void backup_manager::close(int fd) 
-{
+void backup_manager::close(int fd) {
     TRACE("entering close() with fd = ", fd);
-    int r = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
-    if (r!=0) {
-        set_error(r, "failed close(%d) while backing up", fd);
-        // TODO: #6534 Shouldn't we abort the backup here?
+    int r1 = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
+    if (r1!=0) {
+        backup_error(r1, "failed close(%d) while backing up", fd);
     }
 
-    file_description * description = m_map.get(fd);
+    file_description *description;
+    { int r2 __attribute__((unused)) = m_map.get(fd, &description); }
+    assert(description==NULL); // TODO.  This code looks buggy as heck.  We just erased the fd from the m_map, now we get it and we want to kill the source.  So the code below is dead.
     if (description != NULL) {
         source_file * source = m_table.get(description->get_full_source_name());
         if (source != NULL) {
             m_table.try_to_remove(source);
         }
     }
+    // Any errors have been reported, and the caller doesn't want to hear about them.
 }
 
 
@@ -498,9 +499,10 @@ void backup_manager::close(int fd)
 ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 {
     TRACE("entering write() with fd = ", fd);
-    file_description *description = m_map.get(fd);
+    file_description *description;
+    int rr = m_map.get(fd, &description);
     ssize_t r = 0;
-    if (description == NULL) {
+    if (rr!=0 || description == NULL) {
         r = call_real_write(fd, buf, nbyte);
     } else {
         { int r = this->capture_read_lock(); assert(r == 0); }
@@ -557,8 +559,9 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
     TRACE("entering write() with fd = ", fd);
     ssize_t r = 0;
-    file_description *description = m_map.get(fd);
-    if (description == NULL) {
+    file_description *description;
+    int rr = m_map.get(fd, &description);
+    if (rr!=0 || description == NULL) {
         r = call_real_read(fd, buf, nbyte);
     } else {
         { int r = description->lock(); assert(r==0); } // TODO: #6531 Handle any errors
@@ -586,13 +589,16 @@ ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
 // to write to a particular position in the backup file.
 //
 ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
-// Do the write.  If the destination gets a short write, that's an error.
+// Do the write, returning the number of bytes written.
+// Note: If the backup destination gets a short write, that's an error.
 {
     TRACE("entering pwrite() with fd = ", fd);
-    file_description *description = NULL;
-    description = m_map.get(fd);
-    if (description == NULL) {
-        return 0;
+    file_description *description;
+    {
+        int r = m_map.get(fd, &description);
+        if (r!=0 || description == NULL) {
+            return call_real_pwrite(fd, buf, nbyte, offset);
+        }
     }
 
     m_table.lock();
@@ -632,9 +638,9 @@ ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offs
 //
 off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
     TRACE("entering seek() with fd = ", fd);
-    file_description *description = NULL;
-    description = m_map.get(fd);
-    if (description == NULL) {
+    file_description *description;
+    int r = m_map.get(fd, &description);
+    if (r!=0 || description == NULL) {
         return call_real_lseek(fd, nbyte, whence);
     } else {
         { int r = description->lock(); assert(r==0); } // TODO: #6531 Handle any errors 
@@ -677,9 +683,10 @@ int backup_manager::ftruncate(int fd, off_t length)
     TRACE("entering ftruncate with fd = ", fd);
     // TODO: Remove the logic for null descriptions, since we will
     // always have a file_description and a source_file.
-    file_description *description = m_map.get(fd);
-    if (description == NULL) {
-        return 0;
+    file_description *description;
+    int r = m_map.get(fd, &description);
+    if (r!=0 || description == NULL) {
+        return call_real_ftruncate(fd, length);
     }
 
     m_table.lock();

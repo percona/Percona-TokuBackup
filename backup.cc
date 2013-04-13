@@ -91,7 +91,7 @@ extern "C" int close(int fd) {
     TRACE("close() intercepted, fd = ", fd);
     r = call_real_close(fd);
     if (manager.is_alive()) {
-        manager.close(fd);
+        manager.close(fd); // The application doesn't want to hear about problems. The backup manager has been notified.
     }
     return r;
 }
