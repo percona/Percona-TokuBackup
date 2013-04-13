@@ -21,9 +21,6 @@
 #include <unistd.h>
 #include <valgrind/helgrind.h>
 
-// TODO: #6530 Get rid of this assert again. 
-#include <assert.h>
-
 #if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CaptureWarn(string, arg)
 #define TRACE(string, arg) HotBackup::CaptureTrace(string, arg)
@@ -533,7 +530,13 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
             // actually wrote something.
             description->increment_offset(r);
             // Now we can release the description lock, since the offset is calculated.
-            { int rrr = description->unlock(); assert(rrr==0); } // TODO: #6531 Handle any errors
+            {
+                int rrr = description->unlock();
+                if (rrr != 0) {
+                    int ignore __attribute__((unused)) = file->unlock_range(lock_start, lock_end);
+                    return r;
+                }
+            }
 
             // We still have the lock range, which we do with pwrite
 
@@ -665,16 +668,21 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 off_t manager::lseek(int fd, size_t nbyte, int whence) {
     TRACE("entering seek() with fd = ", fd);
     description *description;
-    int r = m_map.get(fd, &description);
-    if (r!=0 || description == NULL) {
-        return call_real_lseek(fd, nbyte, whence);
-    } else {
-        { int rrr = description->lock(); assert(rrr==0); } // TODO: #6531 Handle any errors 
-        off_t new_offset = call_real_lseek(fd, nbyte, whence);
-        description->lseek(new_offset);
-        { int rrr = description->unlock(); assert(rrr==0); } // TODO: #6531 Handle any errors
-        return new_offset;
+    bool ok = true;
+    {
+        int r = m_map.get(fd, &description);
+        if (r!=0) ok = false;
     }
+    if (ok) {
+        int r = description->lock();
+        if (r!=0) ok = false;
+    }
+    off_t new_offset = call_real_lseek(fd, nbyte, whence);
+    if (ok) {
+        description->lseek(new_offset);
+        int r __attribute__((unused)) = description->unlock();
+    }
+    return new_offset;
 }
 
 

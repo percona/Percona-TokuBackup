@@ -112,7 +112,11 @@ int description::lock(void)
 //
 int description::unlock(void)
 {
-    return pthread_mutex_unlock(&m_mutex);
+    int r = pthread_mutex_unlock(&m_mutex);
+    if (r!=0) {
+        the_manager.fatal_error(r, "releasing decsription mutex at %s:%d", __FILE__, __LINE__);
+    }
+    return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
