@@ -3,7 +3,7 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include "backup_copier.h"
+#include "copier.h"
 #include "backup_debug.h"
 #include "file_hash_table.h"
 #include "manager.h"
@@ -59,13 +59,13 @@ static bool is_dot(struct dirent const *entry)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// backup_copier() - 
+// copier() - 
 //
 // Description:
 //
 //     Constructor for this copier object.
 //
-backup_copier::backup_copier(backup_callbacks *calls, file_hash_table * const table)
+copier::copier(backup_callbacks *calls, file_hash_table * const table)
     : m_source(NULL), 
       m_dest(NULL), 
       m_must_abort(false),
@@ -82,7 +82,7 @@ backup_copier::backup_copier(backup_callbacks *calls, file_hash_table * const ta
 //     Adds a directory heirarchy to be copied from the given source
 // to the given destination.
 //
-void backup_copier::set_directories(const char *source, const char *dest)
+void copier::set_directories(const char *source, const char *dest)
 {
     m_source = source;
     m_dest = dest;
@@ -97,7 +97,7 @@ void backup_copier::set_directories(const char *source, const char *dest)
 //     Loops through all files and subdirectories of the current 
 // directory that has been selected for backup.
 //
-int backup_copier::do_copy(void) {
+int copier::do_copy(void) {
     int r = 0;
 
     // Start with "."
@@ -162,7 +162,7 @@ static void pathcat(char *dest, size_t destlen, const char *a, int alen, const c
 // destination directory members to determine the exact location
 // of the file in both the original and backup locations.
 //
-int backup_copier::copy_stripped_file(const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
+int copier::copy_stripped_file(const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
     int r = 0;
     bool is_dot = (strcmp(file, ".") == 0);
     if (is_dot) {
@@ -206,7 +206,7 @@ out:
 // determine the relative location of the file in the directory
 // heirarchy.
 //
-int backup_copier::copy_full_path(const char *source,
+int copier::copy_full_path(const char *source,
                                   const char* dest,
                                   const char *file,
                                   uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
@@ -290,7 +290,7 @@ out:
 // function creates the new file, then copies all the bytes from
 // one to the other.
 //
-int backup_copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up)
+int copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up)
 {
     int r = 0;
     source_file * file = NULL;
@@ -402,7 +402,7 @@ static double tdiff(struct timespec a, struct timespec b)
 //     This section actually copies all the bytes from the source
 // file to our newly created backup copy.
 //
-int backup_copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, source_file * const file, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
+int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, source_file * const file, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
     int r = 0;
 
     // TODO: #6539 Replace these magic numbers.
@@ -524,7 +524,7 @@ out:
 //     Loop through each entry, adding directories and regular
 // files to our copy 'todo' list.
 //
-int backup_copier::add_dir_entries_to_todo(DIR *dir, const char *file)
+int copier::add_dir_entries_to_todo(DIR *dir, const char *file)
 {
     TRACE("--Adding all entries in this directory to todo list: ", file);
     int r = 0;
@@ -569,7 +569,7 @@ out:
 //
 //     This should only be called if there is no future copy work.
 //
-void backup_copier::cleanup(void) {
+void copier::cleanup(void) {
     for(std::vector<char *>::size_type i = 0; i < m_todo.size(); ++i) {
         char *file = m_todo[i];
         if (file == NULL) {
@@ -584,6 +584,6 @@ void backup_copier::cleanup(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-void backup_copier::abort_copy(void) {
+void copier::abort_copy(void) {
     m_must_abort = true;
 }

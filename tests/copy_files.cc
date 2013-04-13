@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 
 #include "backup_test_helpers.h"
-#include "backup_copier.h"
+#include "copier.h"
 #include "file_hash_table.h"
 
 const int TEXT_COUNT = 9;
@@ -130,10 +130,10 @@ static void copy_files(void) {
 
     backup_callbacks calls(&dummy_poll, NULL, &dummy_error, NULL, &dummy_throttle);
     file_hash_table table;
-    backup_copier copier(&calls, &table);
-    copier.set_directories(src, dst);
+    copier the_copier(&calls, &table);
+    the_copier.set_directories(src, dst);
     {
-        int r = copier.do_copy();
+        int r = the_copier.do_copy();
         assert(r==0);
     }
 

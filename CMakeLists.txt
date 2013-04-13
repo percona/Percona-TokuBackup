@@ -12,9 +12,9 @@ set(CMAKE_CXX_FLAGS "-Werror -W -Wall -Werror ${CMAKE_CXX_FLAGS}")
 message(STATUS "CMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}")
 
 set(BACKUP_SOURCES
-	backup_copier.cc
 	backup_debug.cc
 	backup_directory.cc
+	copier.cc
 	description.cc
 	file_hash_table.cc
 	fmap.cc

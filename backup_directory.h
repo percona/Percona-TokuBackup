@@ -9,7 +9,7 @@
 
 #include "description.h"
 #include "fmap.h"
-#include "backup_copier.h"
+#include "copier.h"
 #include "backup_callbacks.h"
 
 #include <pthread.h>
@@ -47,7 +47,7 @@ public:
 private:
     const char *m_source_dir;
     const char *m_dest_dir;
-    backup_copier m_copier;
+    copier m_copier;
 };
 
 

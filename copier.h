@@ -1,8 +1,8 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 
-#ifndef BACKUP_COPIER
-#define BACKUP_COPIER
+#ifndef COPIER
+#define COPIER
 
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
@@ -18,7 +18,7 @@
 class file_hash_table;
 class source_file;
 
-class backup_copier {
+class copier {
 private:
     const char *m_source;
     const char *m_dest;
@@ -30,7 +30,7 @@ private:
     int add_dir_entries_to_todo(DIR *dir, const char *file)  __attribute__((warn_unused_result));
     void cleanup(void);
 public:
-    backup_copier(backup_callbacks *calls, file_hash_table * const table);
+    copier(backup_callbacks *calls, file_hash_table * const table);
     void set_directories(const char *source, const char *dest);
     void set_error(int error);
     int do_copy(void) __attribute__((warn_unused_result)) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
