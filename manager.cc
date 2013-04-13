@@ -614,7 +614,13 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
     m_table.lock();
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
-    { int r = file->lock_range(offset, offset+nbyte);   assert(r == 0); }
+    {
+        int r = file->lock_range(offset, offset+nbyte);
+        if (r!=0) {
+            // We've reported the error.
+            return call_real_pwrite(fd, buf, nbyte, offset);
+        }
+    }
     ssize_t nbytes_written = call_real_pwrite(fd, buf, nbyte, offset);
     int e = 0;
     if (nbytes_written>0) {
@@ -700,7 +706,12 @@ int manager::ftruncate(int fd, off_t length)
     m_table.lock();
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
-    { int rrr = file->lock_range(length, LLONG_MAX);      assert(rrr == 0); }
+    {
+        int rrr = file->lock_range(length, LLONG_MAX);
+        if (rr!=0) {
+            return call_real_ftruncate(fd, length);
+        }
+    }
     int user_result = call_real_ftruncate(fd, length);
     int e = 0;
     if (user_result==0) {
