@@ -62,7 +62,7 @@ int fmap::get(int fd, description** resultp) {
     {
         int r = pthread_mutex_lock(&get_put_mutex);
         if (r!=0) {
-            the_manager.fatal_error(r, "Failed to lock mutex %s:%d errno=%d (%s)\n", __FILE__, __LINE__, r, strerror(r));
+            the_manager.fatal_error(r, "Failed to lock mutex %s:%d\n", __FILE__, __LINE__);
             return r;
         }
     }
@@ -70,7 +70,7 @@ int fmap::get(int fd, description** resultp) {
     {
         int r = pthread_mutex_unlock(&get_put_mutex);
         if (r!=0) {
-            the_manager.fatal_error(r, "Failed to unlock mutex %s:%d errno=%d (%s)\n", __FILE__, __LINE__, r, strerror(r));
+            the_manager.fatal_error(r, "Failed to unlock mutex %s:%d\n", __FILE__, __LINE__);
             return r;
         }
     }
@@ -127,26 +127,41 @@ int fmap::put(int fd, description**result) {
 // Requires: the fd is something currently mapped.
 
 int fmap::erase(int fd) {
-    int r = 0;
     if (HotBackup::MAP_DBG) { 
         printf("erase() called with fd = %d \n", fd);
     }
 
-    pthread_mutex_lock(&get_put_mutex);    // TODO: #6531 handle any errors
+    {
+        int r = pthread_mutex_lock(&get_put_mutex);
+        if (r!=0) {
+            the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+            return r;
+        }
+    }
     if ((size_t)fd  >= m_map.size()) {
-        pthread_mutex_unlock(&get_put_mutex);    // TODO: #6531 handle any errors
+        int r = pthread_mutex_unlock(&get_put_mutex);
+        if (r!=0) {
+            the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
+        }
+        return r;
     } else {
         description *description = m_map[fd];
         m_map[fd] = NULL;
-        pthread_mutex_unlock(&get_put_mutex);    // TODO: #6531 handle any errors
-
+        int r = pthread_mutex_unlock(&get_put_mutex);
+        if (r!=0) {
+            the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
+            int ignore __attribute__((unused)) = description->close(); // ignore any errors, sine we're already losing.
+            delete description;
+            return r;
+        }
         // Do this after releasing the lock
         if (description!=NULL) {
-            r = description->close();
+            int r = description->close(); // The error should have been reported
             delete description;
-        }
+            return r;
+        } 
+        return 0;
     }
-    return r;
 }
 
 

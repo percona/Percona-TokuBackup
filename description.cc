@@ -54,7 +54,7 @@ int description::init(void)
 {
     int r = pthread_mutex_init(&m_mutex, NULL);
     if (r != 0) {
-        the_manager.fatal_error(r, "Failed to initialize mutex: %s:%d errno=%d (%s)\n", __FILE__, __LINE__, r, strerror(r));
+        the_manager.fatal_error(r, "Failed to initialize mutex: %s:%d\n", __FILE__, __LINE__);
     }
     return r;
 }
@@ -222,9 +222,10 @@ int description::close(void)
     // we can only decrement the refcount; other file descriptors
     // are still open in the main application.
     {
-        int r2 = call_real_close(this->m_fd_in_dest_space);
+        int r2 = call_real_close(m_fd_in_dest_space);
         if (r2==-1) {
             r = errno;
+            the_manager.backup_error(r, "Trying to close a backup file (fd=%d)", m_fd_in_dest_space);
         }
     }
 out:    

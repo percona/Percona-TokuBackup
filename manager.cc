@@ -66,6 +66,9 @@ manager::manager(void)
 {
     VALGRIND_HG_DISABLE_CHECKING(&m_backup_is_running, sizeof(m_backup_is_running));
     VALGRIND_HG_DISABLE_CHECKING(&m_done_copying, sizeof(m_done_copying));
+    VALGRIND_HG_DISABLE_CHECKING(&m_an_error_happened, sizeof(m_an_error_happened));
+    VALGRIND_HG_DISABLE_CHECKING(&m_errnum, sizeof(m_errnum));
+    VALGRIND_HG_DISABLE_CHECKING(&m_errstring, sizeof(m_errstring));
 }
 
 manager::~manager(void) {
@@ -188,10 +191,7 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         goto disable_out;
     }
 
-    r = this->enable_capture();
-    if (r != 0) {
-        goto disable_out;
-    }
+    this->enable_capture();
 
     VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
     m_is_capturing = true;
@@ -212,12 +212,7 @@ disable_out:
 
     m_backup_is_running = false;
 
-    {
-        int r2 = this->disable_capture();
-        if (r2 != 0 && r==0) {
-            r = r2; // keep going, but remember the error.   Try to disable the descriptoins even if turn_off_capture failed.
-        }
-    }
+    this->disable_capture();
 
     this->disable_descriptions();
 
@@ -278,14 +273,14 @@ int manager::prepare_directories_for_backup(backup_session *session) {
         free(file_name);
         if (r != 0) {
             session->abort();
-            this->set_error(r, "Failed to open path");
+            backup_error(r, "Failed to open path");
             goto out;
         }
 
         r = file->create();
         if (r != 0) {
             session->abort();
-            this->set_error(r, "Could not create backup file.");
+            backup_error(r, "Could not create backup file.");
             goto out;
         }
     }
@@ -375,7 +370,7 @@ int manager::create(int fd, const char *file)
             int r = description->create();
             if(r != 0) {
                 m_session->abort();
-                this->set_error(r, "Could not create backup file");
+                backup_error(r, "Could not create backup file");
             }
 
             free((void*)backup_file_name);
@@ -444,7 +439,7 @@ int manager::open(int fd, const char *file, int oflag)
             int r = description->open();
             if(r != 0) {
                 m_session->abort();
-                this->set_error(r, "Could not open backup file.");
+                backup_error(r, "Could not open backup file.");
             }
             
             free((void*)backup_file_name);
@@ -472,7 +467,7 @@ void manager::close(int fd) {
     TRACE("entering close() with fd = ", fd);
     int r1 = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
     if (r1!=0) {
-        backup_error(r1, "failed close(%d) while backing up", fd);
+        return;  // Any errors have been reported.  The caller doesn't care.
     }
 
     description *description;
@@ -507,7 +502,6 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
     if (rr!=0 || description == NULL) {
         r = call_real_write(fd, buf, nbyte);
     } else {
-        { int r = this->capture_read_lock(); assert(r == 0); }
         { int r = description->lock(); assert(r==0); } // TODO: #6531 Handle any errors
         m_table.lock();
         source_file * file = m_table.get(description->get_full_source_name());
@@ -537,13 +531,12 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
             TRACE("write() captured with fd = ", fd);
             int r = description->pwrite(buf, nbyte, lock_start);
             if (r!=0) {
-                set_error(r, "failed write while backing up %s", description->get_full_source_name());
+                backup_error(r, "failed write while backing up %s", description->get_full_source_name());
             }
         } 
         TRACE("Releasing file range lock() with fd = ", fd);
         { int r = file->unlock_range(lock_start, lock_end);   assert(r == 0); }
 
-        { int r = this->capture_unlock(); assert(r == 0); }
     }
     
     return r;
@@ -606,7 +599,6 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
     m_table.lock();
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
-    { int r = this->capture_read_lock(); assert(r == 0); }
     { int r = file->lock_range(offset, offset+nbyte);   assert(r == 0); }
     ssize_t nbytes_written = call_real_pwrite(fd, buf, nbyte, offset);
     int e = 0;
@@ -614,14 +606,13 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
         if (this->capture_is_enabled()) {
             int r = description->pwrite(buf, nbyte, offset);
             if (r!=0) {
-                set_error(r, "failed write while backing up %s", description->get_full_source_name());
+                backup_error(r, "failed write while backing up %s", description->get_full_source_name());
             }
         }
     } else if (nbytes_written<0) {
         e = errno; // save the errno
     }
     { int r = file->unlock_range(offset, offset+nbyte); assert(r == 0); }
-    { int r = this->capture_unlock(); assert(r == 0); }
     if (nbytes_written<0) {
         errno = e; // restore errno
     }
@@ -694,7 +685,6 @@ int manager::ftruncate(int fd, off_t length)
     m_table.lock();
     source_file * file = m_table.get(description->get_full_source_name());
     m_table.unlock();
-    { int r = this->capture_read_lock(); assert(r == 0); }
     { int r = file->lock_range(length, LLONG_MAX);      assert(r == 0); }
     int user_result = call_real_ftruncate(fd, length);
     int e = 0;
@@ -703,14 +693,13 @@ int manager::ftruncate(int fd, off_t length)
             int r = description->truncate(length);
             if (r != 0) {
                 e = errno;
-                set_error(e, "failed ftruncate(%d, %ld) while backing up", fd, length);
+                backup_error(e, "failed ftruncate(%d, %ld) while backing up", fd, length);
             }
         }
     } else {
         e = errno; // save errno
     }
     { int r = file->unlock_range(length, LLONG_MAX);    assert(r == 0); }
-    { int r = this->capture_unlock(); assert(r == 0); }
     
     if (user_result!=0) {
         errno = e; // restore errno
@@ -747,15 +736,29 @@ void manager::truncate(const char *path, off_t length)
 //
 void manager::mkdir(const char *pathname)
 {
-    pthread_rwlock_rdlock(&m_session_rwlock);  // TODO: #6531 handle any errors
-    if(m_session != NULL) {
-        int r = m_session->capture_mkdir(pathname);
-        if (r != 0) {
-            set_error(r, "failed mkdir creating %s", pathname);
+    {
+        int r = pthread_rwlock_rdlock(&m_session_rwlock);
+        if (r!=0) {
+            the_manager.fatal_error(r, "failed releasing rwlock at %s:%d", __FILE__, __LINE__);
+            return; // don't try to do any more once the lock failed.
         }
     }
 
-    pthread_rwlock_unlock(&m_session_rwlock);  // TODO: #6531 handle any errors
+    if(m_session != NULL) {
+        int r = m_session->capture_mkdir(pathname);
+        if (r != 0) {
+            the_manager.backup_error(r, "failed mkdir creating %s", pathname);
+            // proceed to unlocking below
+        }
+    }
+
+    {
+        int r = pthread_rwlock_unlock(&m_session_rwlock);
+        if (r!=0) {
+            the_manager.fatal_error(r, "failed releasing rwlock at %s:%d", __FILE__, __LINE__);
+        }
+    }
+            
 }
 
 
@@ -781,26 +784,24 @@ void manager::fatal_error(int errnum, const char *format_string, ...)
     
     this->kill();
     this->disable_capture();
-    this->set_error(errnum, format_string, ap);
+    set_error_internal(errnum, format_string, ap);
+    va_end(ap);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void manager::backup_error(int errnum, const char *format_string, ...)
-{
+void manager::backup_error(int errnum, const char *format_string, ...) {
     va_list ap;
     va_start(ap, format_string);
     
     this->disable_capture();
-    this->set_error(errnum, format_string, ap);
+    set_error_internal(errnum, format_string, ap);
+    va_end(ap);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void manager::set_error(int errnum, const char *format_string, ...) {
-    va_list ap;
-    va_start(ap, format_string);
-
+void manager::set_error_internal(int errnum, const char *format_string, va_list ap) {
     m_backup_is_running = false;
     {
         int r = pthread_mutex_lock(&m_error_mutex);
@@ -816,7 +817,7 @@ void manager::set_error(int errnum, const char *format_string, ...) {
         if (m_errstring) free(m_errstring);
         m_errstring = string;
         m_errnum = errnum;
-        m_an_error_happened = true;
+        m_an_error_happened = true; // set this last so that it will be OK.
     }
     {
         int r = pthread_mutex_unlock(&m_error_mutex);
@@ -824,8 +825,6 @@ void manager::set_error(int errnum, const char *format_string, ...) {
             this->kill();
         }
     }
-    va_end(ap);
-    
 }
 
 

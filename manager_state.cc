@@ -9,13 +9,12 @@
 
 #include "manager_state.h"
 
-pthread_rwlock_t manager_state::m_capture_rwlock = PTHREAD_RWLOCK_INITIALIZER;
-
 manager_state::manager_state()
     : m_is_dead(false),
       m_capture_enabled(false)
 {
     VALGRIND_HG_DISABLE_CHECKING(&m_is_dead, sizeof(m_is_dead));
+    VALGRIND_HG_DISABLE_CHECKING(&m_capture_enabled, sizeof(m_capture_enabled));
 }
 
 bool manager_state::is_dead(void)
@@ -38,45 +37,11 @@ bool manager_state::capture_is_enabled(void)
     return m_capture_enabled;
 }
 
-int manager_state::capture_read_lock(void)
-{
-    return pthread_rwlock_rdlock(&m_capture_rwlock);
-}
-
-int manager_state::capture_unlock(void)
-{
-    return pthread_rwlock_unlock(&m_capture_rwlock);
-}
-
-int manager_state::enable_capture(void) {
-    int r = pthread_rwlock_wrlock(&m_capture_rwlock);
-    if (r != 0) {
-        goto error_out;
-    }
-
+void manager_state::enable_capture(void) {
     m_capture_enabled = true;
-    r = pthread_rwlock_unlock(&m_capture_rwlock);
-    if (r != 0) {
-        goto error_out;
-    }
-    
- error_out:
-    return r;
 }
 
-int manager_state::disable_capture(void) 
+void manager_state::disable_capture(void) 
 {
-    int r = pthread_rwlock_wrlock(&m_capture_rwlock);
-    if (r != 0) {
-        goto error_out;
-    }
-
     m_capture_enabled = false;
-    r = pthread_rwlock_unlock(&m_capture_rwlock);
-    if (r != 0) {
-        goto error_out;
-    }
-    
- error_out:
-    return r;
 }

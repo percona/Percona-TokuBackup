@@ -12,13 +12,13 @@
 #include "description.h"
 #include "file_hash_table.h"
 #include "manager_state.h"
-#include "error_handler_interface.h"
 
+#include <pthread.h>
+#include <stdarg.h>
 #include <sys/types.h>
 #include <vector>
-#include <pthread.h>
 
-class manager : public manager_state, public error_handler_interface
+class manager : public manager_state
 {
 private:
     volatile bool m_pause_disable;
@@ -45,12 +45,12 @@ private:
     // Error handling.
     static pthread_mutex_t m_error_mutex;     // When testing errors grab this mutex. 
     volatile bool m_an_error_happened; // True if an error has happened.  This can be read without the mutex.
-    int m_errnum;                      // The error number to be passed to the polling function.
-    char *m_errstring;                 // The error string to be passed to the polling function.  This string is malloc'd and owned by the manager.
+    volatile int m_errnum;                      // The error number to be passed to the polling function.  This can be read without the mutex.
+    char * volatile m_errstring;                 // The error string to be passed to the polling function.  This string is malloc'd and owned by the manager.  This can be read without the mutex.
 
 public:
     manager(void);
-    virtual ~manager(void);
+    ~manager(void);
     // N.B. the google style guide requires all references to be either labeled as a const, or declared to be pointers.
     // I see no reason to use reference variables.  They are redundant with pointers.
     int do_backup(const char *source, const char *dest, backup_callbacks *calls);
@@ -71,11 +71,11 @@ public:
     void set_throttle(unsigned long bytes_per_second); // This is thread-safe.
     unsigned long get_throttle(void);                 // This is thread-safe.
 
-    virtual void fatal_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4)));
-    virtual void backup_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4)));
-    void set_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4)));
-    // Effect: Set the error information and turn off the backup.  The backup manager isn't dead
-    //  so the user could try doing backup again.
+    void fatal_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4)));
+    void backup_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4)));
+    // Effect: Set the error information and turn off the backup.  
+    //   For fatal errors, the backup manager is dead, and can not do any more backups.
+    //   For backup errors, the backup manager isn't dead  so the user could try doing backup again.
     //  This function adds information stating what the errnum is (so don't call strerror from the
     //  caller.
 
@@ -92,6 +92,8 @@ private:
     
     int prepare_directories_for_backup(backup_session *session);
     void disable_descriptions(void);
+
+    void set_error_internal(int errnum, const char *format, va_list ap);
 };
 
 extern manager the_manager;

@@ -37,7 +37,7 @@ public:
     int create(void);
     int pwrite(const void *buf, size_t nbyte, off_t offset) __attribute__((warn_unused_result)); // returns zero on success or an error number.  The number written must be equal to nbyte or it's an error.
     void lseek(off_t new_offset);        
-    int close(void) __attribute__((warn_unused_result)); // Returns zero on success or an error number (not errno)
+    int close(void) __attribute__((warn_unused_result)); // Returns zero on success or an error number (not errno).  It will have reported the error.
     int truncate(off_t offset);
     volatile bool m_in_source_dir; // this is communicating information asynchronously.  It ought to be atomic.
 

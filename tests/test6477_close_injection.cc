@@ -37,6 +37,7 @@ static int my_close(int fd) {
     fprintf(stderr, "Doing close on fd=%d\n", fd); // ok to do a write, since we aren't further interposing writes in this test.
     if (inject_this_time(fd)) {
         fprintf(stderr, "Injecting error\n");
+        original_close(fd); // close it.
         errno = EIO;
         return -1;
     } else {
@@ -102,12 +103,17 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     src = get_src();
     original_close = register_close(my_close);
 
-    injection_pattern.push_back(0);
-    testit(EIO);
-    
-    printf("2nd test\n");
+    const int N = 5;
+    for (int i=0; i<N; i++) {
+        printf("TEST %d\n", i);
+        injection_pattern.resize(0);
+        injection_pattern.push_back(i);
+        testit(EIO);
+    }
+
+    printf("Final test\n");
     injection_pattern.resize(0);
-    injection_pattern.push_back(1);
+    injection_pattern.push_back(N);
     testit(0);
 
     free(src);

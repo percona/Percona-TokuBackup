@@ -15,15 +15,12 @@ public:
     bool is_alive(void);
     void kill(void);
     bool capture_is_enabled(void);
-    int capture_read_lock(void);
-    int capture_unlock(void);
 protected:
-    int enable_capture(void);
-    int disable_capture(void);
+    void enable_capture(void);
+    void disable_capture(void);
 private:
     volatile bool m_is_dead;
     volatile bool m_capture_enabled;
-    static pthread_rwlock_t m_capture_rwlock;
 };
 
 #endif // End of header guardian.
