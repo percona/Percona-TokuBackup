@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "source_file.h"
+#include "manager.h"
 
 ////////////////////////////////////////////////////////
 //
@@ -129,6 +130,7 @@ int source_file::unlock_range(uint64_t lo, uint64_t hi)
     {
         int r = pthread_mutex_lock(&m_mutex);
         if (r!=0) {
+            the_manager.fatal_error(r, "Trying to acquire mutex at %s:%d", __FILE__, __LINE__);
             return r;
         }
     }
@@ -141,11 +143,19 @@ int source_file::unlock_range(uint64_t lo, uint64_t hi)
             {
                 int r = pthread_cond_broadcast(&m_cond);
                 if (r!=0) {
+                    the_manager.fatal_error(r, "Trying to cond_broadcast at %s:%d", __FILE__, __LINE__);
                     pthread_mutex_unlock(&m_mutex); // ignore any error from this, since we already have an error.
                     return r;
                 }
             }
-            return pthread_mutex_unlock(&m_mutex);
+            {
+                int r = pthread_mutex_unlock(&m_mutex);
+                if (r!=0) {
+                    the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
+                    return r;
+                }
+            }
+            return 0;
         }
     }
     // No such range.

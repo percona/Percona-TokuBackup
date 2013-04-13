@@ -377,10 +377,10 @@ int manager::create(int fd, const char *file)
         r = m_session->capture_create(file, &backup_file_name);
         if (r==0 && backup_file_name != NULL) {
             description->prepare_for_backup(backup_file_name);
-            int r = description->create();
-            if(r != 0) {
+            int rr = description->create();
+            if (rr != 0) {
                 m_session->abort();
-                backup_error(r, "Could not create backup file");
+                backup_error(rr, "Could not create backup file");
             }
 
             free((void*)backup_file_name);
@@ -541,11 +541,16 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
                 TRACE("write() captured with fd = ", fd);
                 int rrr = description->pwrite(buf, nbyte, lock_start);
                 if (rrr!=0) {
-                    backup_error(rrr, "failed write while backing up %s", description->get_full_source_name());
+                    backup_error(rrr, "failed pwrite while backing up %s at %s:%d", description->get_full_source_name(), __FILE__, __LINE__);
                 }
             } 
             TRACE("Releasing file range lock() with fd = ", fd);
-            { int rrr = file->unlock_range(lock_start, lock_end);   assert(rrr == 0); }
+            {
+                int rrr = file->unlock_range(lock_start, lock_end);
+                if (rrr!=0) {
+                    backup_error(rrr, "failed unlock at %s:%d", __FILE__, __LINE__);
+                }
+            }
         }
         return r;
     }
@@ -582,7 +587,9 @@ ssize_t manager::read(int fd, void *buf, size_t nbyte) {
         }
         {
             int rrr = description->unlock();
-            assert(rrr==0); // TODO: #6531 Handle any errors
+            if (rrr!=0) {
+                backup_error(rrr, "failed unlock at %s:%d", __FILE__, __LINE__);
+            }
         }
     }
     
@@ -633,7 +640,12 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
     } else if (nbytes_written<0) {
         e = errno; // save the errno
     }
-    { int r = file->unlock_range(offset, offset+nbyte); assert(r == 0); }
+    {
+        int r = file->unlock_range(offset, offset+nbyte);
+        if (r!=0) {
+            backup_error(r, "failed unlock at %s:%d", __FILE__, __LINE__);
+        }
+    }
     if (nbytes_written<0) {
         errno = e; // restore errno
     }
@@ -708,7 +720,7 @@ int manager::ftruncate(int fd, off_t length)
     m_table.unlock();
     {
         int rrr = file->lock_range(length, LLONG_MAX);
-        if (rr!=0) {
+        if (rrr!=0) {
             return call_real_ftruncate(fd, length);
         }
     }
@@ -725,7 +737,12 @@ int manager::ftruncate(int fd, off_t length)
     } else {
         e = errno; // save errno
     }
-    { int rr = file->unlock_range(length, LLONG_MAX);    assert(rr == 0); }
+    {
+        int rr = file->unlock_range(length, LLONG_MAX);
+        if (rr!=0) {
+            backup_error(rr, "failed unlock at %s:%d", __FILE__, __LINE__);
+        }
+    }
     
     if (user_result!=0) {
         errno = e; // restore errno
