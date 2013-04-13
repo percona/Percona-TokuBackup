@@ -18,7 +18,7 @@ set(BACKUP_SOURCES
 	backup_debug.cc
 	backup_directory.cc
 	backup_manager.cc
-	file_description.cc
+	description.cc
 	fmap.cc
 	file_hash_table.cc
 	manager_state.cc

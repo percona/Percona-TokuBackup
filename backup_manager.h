@@ -9,7 +9,7 @@
 
 #include "backup.h"
 #include "backup_directory.h"
-#include "file_description.h"
+#include "description.h"
 #include "file_hash_table.h"
 #include "manager_state.h"
 #include "error_handler_interface.h"

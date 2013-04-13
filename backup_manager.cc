@@ -262,7 +262,7 @@ int backup_manager::prepare_directories_for_backup(backup_session *session) {
     // for backup.
     lock_fmap(); // TODO: #6532 This lock is much too coarse.  Need to refine it.  This lock deals with a race between file->create() and a close() call from the application.  We aren't using the m_refcount in file_description (which we should be) and we even if we did, the following loop would be racy since m_map.size could change while we are running, and file descriptors could come and go in the meanwhile.  So this really must be fixed properly to refine this lock.
     for (int i = 0; i < m_map.size(); ++i) {
-        file_description *file = m_map.get_unlocked(i);
+        description *file = m_map.get_unlocked(i);
         if (file == NULL) {
             continue;
         }
@@ -309,7 +309,7 @@ void backup_manager::disable_descriptions(void)
             while (m_pause_disable) { sched_yield(); }
             TRACE("Done Pausing on i = ", i);
         }
-        file_description *file = m_map.get_unlocked(i);
+        description *file = m_map.get_unlocked(i);
         if (file == NULL) {
             continue;
         }
@@ -333,7 +333,7 @@ void backup_manager::disable_descriptions(void)
 int backup_manager::create(int fd, const char *file) 
 {
     TRACE("entering create() with fd = ", fd);
-    file_description *description;
+    description *description;
     int r = m_map.put(fd, &description);
     if (r != 0) {
         // The error has been reported, so just return
@@ -394,7 +394,7 @@ out:
 // Description: 
 //
 //     If the given file is in our source directory, this method
-// creates a new file_description object and opens the file in
+// creates a new description object and opens the file in
 // the backup directory.  We need the bakcup copy open because
 // it may be updated if and when the user updates the original/source
 // copy of the file.
@@ -402,7 +402,7 @@ out:
 int backup_manager::open(int fd, const char *file, int oflag)
 {
     TRACE("entering open() with fd = ", fd);
-    file_description *description;
+    description *description;
     int r = m_map.put(fd, &description);
     if (r!=0) {
         goto out; // the error has been reported
@@ -473,7 +473,7 @@ void backup_manager::close(int fd) {
         backup_error(r1, "failed close(%d) while backing up", fd);
     }
 
-    file_description *description;
+    description *description;
     { int r2 __attribute__((unused)) = m_map.get(fd, &description); }
     assert(description==NULL); // TODO.  This code looks buggy as heck.  We just erased the fd from the m_map, now we get it and we want to kill the source.  So the code below is dead.
     if (description != NULL) {
@@ -499,7 +499,7 @@ void backup_manager::close(int fd) {
 ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 {
     TRACE("entering write() with fd = ", fd);
-    file_description *description;
+    description *description;
     int rr = m_map.get(fd, &description);
     ssize_t r = 0;
     if (rr!=0 || description == NULL) {
@@ -559,7 +559,7 @@ ssize_t backup_manager::write(int fd, const void *buf, size_t nbyte)
 ssize_t backup_manager::read(int fd, void *buf, size_t nbyte) {
     TRACE("entering write() with fd = ", fd);
     ssize_t r = 0;
-    file_description *description;
+    description *description;
     int rr = m_map.get(fd, &description);
     if (rr!=0 || description == NULL) {
         r = call_real_read(fd, buf, nbyte);
@@ -593,7 +593,7 @@ ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offs
 // Note: If the backup destination gets a short write, that's an error.
 {
     TRACE("entering pwrite() with fd = ", fd);
-    file_description *description;
+    description *description;
     {
         int r = m_map.get(fd, &description);
         if (r!=0 || description == NULL) {
@@ -638,7 +638,7 @@ ssize_t backup_manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offs
 //
 off_t backup_manager::lseek(int fd, size_t nbyte, int whence) {
     TRACE("entering seek() with fd = ", fd);
-    file_description *description;
+    description *description;
     int r = m_map.get(fd, &description);
     if (r!=0 || description == NULL) {
         return call_real_lseek(fd, nbyte, whence);
@@ -682,8 +682,8 @@ int backup_manager::ftruncate(int fd, off_t length)
 {
     TRACE("entering ftruncate with fd = ", fd);
     // TODO: Remove the logic for null descriptions, since we will
-    // always have a file_description and a source_file.
-    file_description *description;
+    // always have a description and a source_file.
+    description *description;
     int r = m_map.get(fd, &description);
     if (r!=0 || description == NULL) {
         return call_real_ftruncate(fd, length);

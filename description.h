@@ -1,8 +1,8 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 
-#ifndef FILE_DESCRIPTION_H
-#define FILE_DESCRIPTION_H
+#ifndef DESCRIPTION_H
+#define DESCRIPTION_H
 
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
@@ -11,7 +11,7 @@
 #include <sys/types.h>
 #include <vector>
 
-class file_description {
+class description {
 private:
     off_t m_offset;            // The offset that is moved by read(), write() and lseek().
     int m_fd_in_dest_space;    // What is the fd in the destination space?
@@ -21,10 +21,10 @@ private:
     pthread_mutex_t m_mutex; // A mutex used to make m_offset move atomically when we perform a write (or read).
 
 public:
-    file_description();
-    ~file_description(void);
+    description();
+    ~description(void);
     int init(void) __attribute__((warn_unused_result));
-    // Effect: Initialize a file_description.  (Note that the constructor isn't allowed to do anything meaningful, since error handling is tricky.
+    // Effect: Initialize a description.  (Note that the constructor isn't allowed to do anything meaningful, since error handling is tricky.
     //  Return 0 on success, otherwise inform the backup manager of the error (fatal_error or backup_error) and return the error code.
 
     void prepare_for_backup(const char *name);

@@ -7,7 +7,7 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include "file_description.h"
+#include "description.h"
 #include "fmap.h"
 #include "backup_copier.h"
 #include "backup_callbacks.h"

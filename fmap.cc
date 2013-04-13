@@ -43,7 +43,7 @@ fmap::~fmap()
 {
     for(std::vector<file_description *>::size_type i = 0; i < m_map.size(); ++i)
     {
-        file_description *file = m_map[i];
+        description *file = m_map[i];
         if (file == NULL) {
             continue;
         }
@@ -55,7 +55,7 @@ fmap::~fmap()
 
 ////////////////////////////////////////////////////////////////////////////////
 // Description:  See fmap.h.
-int fmap::get(int fd, file_description** resultp) {
+int fmap::get(int fd, description** resultp) {
     if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
@@ -66,7 +66,7 @@ int fmap::get(int fd, file_description** resultp) {
             return r;
         }
     }
-    file_description *result = this->get_unlocked(fd);
+    description *result = this->get_unlocked(fd);
     {
         int r = pthread_mutex_unlock(&get_put_mutex);
         if (r!=0) {
@@ -78,9 +78,9 @@ int fmap::get(int fd, file_description** resultp) {
     return 0;
 }
 
-file_description* fmap::get_unlocked(int fd) {
+description* fmap::get_unlocked(int fd) {
     if (fd < 0) return NULL;
-    file_description *result;
+    description *result;
     if ((size_t)fd >= m_map.size()) {
         result = NULL;
     } else {
@@ -91,13 +91,13 @@ file_description* fmap::get_unlocked(int fd) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Description:  See fmap.h.
-int fmap::put(int fd, file_description**result) {
+int fmap::put(int fd, description**result) {
     if (HotBackup::MAP_DBG) { 
         printf("put() called with fd = %d \n", fd);
     }
     
-    file_description *description = new file_description();
-    int r = description->init();
+    description *desc = new description();
+    int r = desc->init();
     if (r != 0) {
         *result = NULL;
         return r; // the error has been reported.
@@ -109,9 +109,9 @@ int fmap::put(int fd, file_description**result) {
     pthread_mutex_lock(&get_put_mutex);    // TODO: #6531 handle any errors
     this->grow_array(fd);
     assert(m_map[fd]==NULL);
-    m_map[fd] = description;
+    m_map[fd] = desc;
     pthread_mutex_unlock(&get_put_mutex);    // TODO: #6531 handle any errors
-    *result = description;
+    *result = desc;
     return r;
 }
 
@@ -136,7 +136,7 @@ int fmap::erase(int fd) {
     if ((size_t)fd  >= m_map.size()) {
         pthread_mutex_unlock(&get_put_mutex);    // TODO: #6531 handle any errors
     } else {
-        file_description *description = m_map[fd];
+        description *description = m_map[fd];
         m_map[fd] = NULL;
         pthread_mutex_unlock(&get_put_mutex);    // TODO: #6531 handle any errors
 

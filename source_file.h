@@ -6,7 +6,7 @@
 #ifndef SOURCE_FILE_H
 #define SOURCE_FILE_H
 
-#include "file_description.h"
+#include "description.h"
 #include <stdint.h>
 
 struct range {

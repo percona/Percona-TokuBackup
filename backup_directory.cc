@@ -4,7 +4,7 @@
 #ident "$Id$"
 
 #include "backup_directory.h"
-#include "file_description.h"
+#include "description.h"
 #include "backup_debug.h"
 #include "real_syscalls.h"
 

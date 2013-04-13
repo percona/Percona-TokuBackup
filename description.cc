@@ -13,7 +13,7 @@
 
 #include "backup_debug.h"
 #include "backup_manager.h"
-#include "file_description.h"
+#include "description.h"
 #include "real_syscalls.h"
 
 
@@ -21,13 +21,13 @@ const int DEST_FD_INIT = -1;
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// file_description() -
+// description() -
 //
 // Description: 
 //
 //     ...
 //
-file_description::file_description()
+description::description()
 : m_offset(0),
   m_fd_in_dest_space(DEST_FD_INIT), 
   m_backup_name(NULL),
@@ -36,7 +36,7 @@ file_description::file_description()
 {
 }
 
-file_description::~file_description(void)
+description::~description(void)
 {
     if (m_full_source_name) {
         free(m_full_source_name);
@@ -49,8 +49,8 @@ file_description::~file_description(void)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// See file_description.h for specification.
-int file_description::init(void)
+// See description.h for specification.
+int description::init(void)
 {
     int r = pthread_mutex_init(&m_mutex, NULL);
     if (r != 0) {
@@ -61,7 +61,7 @@ int file_description::init(void)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void file_description::prepare_for_backup(const char *name)
+void description::prepare_for_backup(const char *name)
 {
     char *temp = m_backup_name;
     m_backup_name = strdup(name);
@@ -74,7 +74,7 @@ void file_description::prepare_for_backup(const char *name)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void file_description::disable_from_backup(void)
+void description::disable_from_backup(void)
 {
     // Set this atomically.  It's a little bit overkill, but the atomic primitives didn't convince drd to keep quiet.
     // __sync_lock_release(&m_in_source_dir); // this is a way to write a zero atomically.  drd won't keep quiet here either.
@@ -84,7 +84,7 @@ void file_description::disable_from_backup(void)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void file_description::set_full_source_name(const char *name)
+void description::set_full_source_name(const char *name)
 {
     if (m_full_source_name) free(m_full_source_name); // I guess we'll free the old one.
     m_full_source_name = realpath(name, NULL);
@@ -92,7 +92,7 @@ void file_description::set_full_source_name(const char *name)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-const char * file_description::get_full_source_name(void)
+const char * description::get_full_source_name(void)
 {
     return m_full_source_name;
 }
@@ -100,14 +100,14 @@ const char * file_description::get_full_source_name(void)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int file_description::lock(void)
+int description::lock(void)
 {
     return pthread_mutex_lock(&m_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int file_description::unlock(void)
+int description::unlock(void)
 {
     return pthread_mutex_unlock(&m_mutex);
 }
@@ -127,7 +127,7 @@ int file_description::unlock(void)
 //     Open assumes that the backup file exists.  Create assumes the 
 // backup file does NOT exist.
 //
-int file_description::open(void)
+int description::open(void)
 {
     int r = 0;
     int fd = 0;
@@ -171,7 +171,7 @@ out:
 //     Open assumes that the backup file exists.  Create assumes the 
 // backup file does NOT exist.
 //
-int file_description::create(void)
+int description::create(void)
 {
     int r = 0;
     // Create file that was just opened, this assumes the parent directories
@@ -206,7 +206,7 @@ out:
 //
 //     ...
 //
-int file_description::close(void)
+int description::close(void)
 {
     int r = 0;
     if(!m_in_source_dir) {
@@ -233,11 +233,11 @@ out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void file_description::increment_offset(ssize_t nbyte) {    
+void description::increment_offset(ssize_t nbyte) {    
     m_offset += nbyte;
 }
 
-off_t file_description::get_offset(void) {    
+off_t description::get_offset(void) {    
     return m_offset;
 }
 
@@ -249,7 +249,7 @@ off_t file_description::get_offset(void) {
 //
 //     ...
 //
-void file_description::lseek(off_t new_offset) {
+void description::lseek(off_t new_offset) {
     m_offset = new_offset;
 }
 
@@ -262,7 +262,7 @@ void file_description::lseek(off_t new_offset) {
 //     If there is a destination file, then pwrite it and return whatever the pwrite returns
 //       (that is, return the number of bytes written, or a -1 and set errno)
 //
-int file_description::pwrite(const void *buf, size_t nbyte, off_t offset)
+int description::pwrite(const void *buf, size_t nbyte, off_t offset)
 {
     int r = 0;
     if(!m_in_source_dir) {
@@ -300,7 +300,7 @@ out:
 //
 //     ...
 //
-int file_description::truncate(off_t length)
+int description::truncate(off_t length)
 {
     int r = 0;
     if(!m_in_source_dir) {
