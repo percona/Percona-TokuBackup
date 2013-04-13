@@ -377,7 +377,7 @@ int manager::create(int fd, const char *file)
         r = m_session->capture_create(file, &backup_file_name);
         if (r==0 && backup_file_name != NULL) {
             description->prepare_for_backup(backup_file_name);
-            r = description->create();
+            int r = description->create();
             if(r != 0) {
                 m_session->abort();
                 backup_error(r, "Could not create backup file");
@@ -535,9 +535,9 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
 
         if (this->capture_is_enabled()) {
             TRACE("write() captured with fd = ", fd);
-            r = description->pwrite(buf, nbyte, lock_start);
-            if (r!=0) {
-                backup_error(r, "failed write while backing up %s", description->get_full_source_name());
+            int rrr = description->pwrite(buf, nbyte, lock_start);
+            if (rrr!=0) {
+                backup_error(rrr, "failed write while backing up %s", description->get_full_source_name());
             }
         } 
         TRACE("Releasing file range lock() with fd = ", fd);
