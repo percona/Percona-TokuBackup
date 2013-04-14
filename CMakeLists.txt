@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(HotBackup)
 
-include(CTest)
-
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS 
   _FILE_OFFSET_BITS=64 
   _LARGEFILE64_SOURCE)
@@ -64,21 +62,22 @@ configure_file(CTestCustom.cmake . COPYONLY)
 
 # INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/../tokudb
 
-add_subdirectory(tests)
-# And a Glassbox version of the library in which the visibility is defaul, not hidden
-add_library(HotBackupGlassbox      SHARED ${BACKUP_SOURCES})
-IF(NOT APPLE)
-  target_link_libraries(HotBackupGlassbox LINK_PUBLIC rt)
-ENDIF()
-
-set_property(TARGET HotBackupGlassbox APPEND PROPERTY COMPILE_DEFINITIONS
-  GLASSBOX)
-
-
 ##add_subdirectory(db-benchmark-test)
 
 IF (NOT DEFINED INSTALL_LIBDIR)
-    SET(INSTALL_LIBDIR lib)
+  SET(INSTALL_LIBDIR lib)
+
+  include(CTest)
+  add_subdirectory(tests)
+
+  # And a Glassbox version of the library in which the visibility is defaul, not hidden
+  add_library(HotBackupGlassbox      SHARED ${BACKUP_SOURCES})
+  IF(NOT APPLE)
+    target_link_libraries(HotBackupGlassbox LINK_PUBLIC rt)
+  ENDIF()
+
+  set_property(TARGET HotBackupGlassbox APPEND PROPERTY COMPILE_DEFINITIONS
+    GLASSBOX)
 ENDIF()
 install(TARGETS HotBackup          DESTINATION ${INSTALL_LIBDIR} COMPONENT Server)
 
