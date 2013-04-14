@@ -605,3 +605,4 @@ void copier::cleanup(void) {
 void copier::abort_copy(void) {
     m_must_abort = true;
 }
+

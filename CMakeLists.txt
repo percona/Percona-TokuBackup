@@ -102,6 +102,9 @@ if (USE_CTAGS AND
   endif ()
 endif ()
 
+# Add this after including the tests directory, since we want the tests to instantiate templates
+set(CMAKE_CXX_FLAGS "-fno-implicit-templates  ${CMAKE_CXX_FLAGS}")
+
 option(USE_ETAGS "Build the etags database." ON)
 if (USE_ETAGS)
   find_program(ETAGS "etags")

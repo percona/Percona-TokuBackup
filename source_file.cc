@@ -235,3 +235,6 @@ unsigned int source_file::get_reference_count(void)
 {
     return m_reference_count;
 }
+
+// Instantiate the templates we need
+template class std::vector<range>;

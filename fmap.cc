@@ -203,3 +203,6 @@ int unlock_fmap(void) {
     }
     return r;
 }
+
+// Instantiate the templates we need
+template class std::vector<description*>;
