@@ -77,7 +77,10 @@ set_property(TARGET HotBackupGlassbox APPEND PROPERTY COMPILE_DEFINITIONS
 
 ##add_subdirectory(db-benchmark-test)
 
-install(TARGETS HotBackup          DESTINATION lib)
+IF (NOT DEFINED INSTALL_LIBDIR)
+    SET(INSTALL_LIBDIR lib)
+ENDIF()
+install(TARGETS HotBackup          DESTINATION ${INSTALL_LIBDIR} COMPONENT Server)
 
 set(HOT_BACKUP_LIBS HotBackup PARENT_SCOPE)
 
