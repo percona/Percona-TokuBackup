@@ -546,7 +546,7 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
         if (r!=0) ok = false;
         else      have_description_lock = true;
     }
-    source_file *file;
+    source_file *file = 0;
     bool have_range_lock = false;
     uint64_t lock_start=0, lock_end=0;
     if (ok && description) {
