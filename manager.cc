@@ -245,7 +245,7 @@ unlock_out: // preserves r if r!0
         }
     }
     if (m_an_error_happened) {
-        backup_error(m_errnum, m_errstring);
+        calls->report_error(m_errnum, m_errstring);
         if (r==0) {
             r = m_errnum; // if we already got an error then keep it.
         }
