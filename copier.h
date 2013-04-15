@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <vector>
 #include <dirent.h>
+#include <pthread.h>
 
 class file_hash_table;
 class source_file;
@@ -26,6 +27,7 @@ private:
     std::vector<char *> m_todo;
     backup_callbacks *m_calls;
     file_hash_table * const m_table;
+    static pthread_mutex_t m_todo_mutex;
     int copy_regular_file(const char *source, const char *dest, off_t file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up)  __attribute__((warn_unused_result));
     int add_dir_entries_to_todo(DIR *dir, const char *file)  __attribute__((warn_unused_result));
     void cleanup(void);
@@ -38,6 +40,7 @@ public:
     int copy_stripped_file(const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
     int copy_full_path(const char *source, const char* dest, const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
     int copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, source_file * const file, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up)  __attribute__((warn_unused_result)); // Returns the error code (not in errno)
+    void add_file_to_todo(const char *file);
 };
 
 #endif // End of header guardian.
