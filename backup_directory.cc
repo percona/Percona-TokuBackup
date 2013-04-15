@@ -299,34 +299,3 @@ void backup_session::add_to_copy_todo_list(const char *file_path)
 {
      m_copier.add_file_to_todo(file_path);
 }
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// set_directories():
-//
-// Description: 
-// Note: source and dest are copied (so the caller may free them immediately or otherwise reuse the strings).
-//
-//int backup_directory::set_directories(const char *source, const char *dest,
-//                                      backup_poll_fun_t poll_fun __attribute__((unused)), void *poll_extra __attribute__((unused)),
-//                                      backup_error_fun_t error_fun, void *error_extra)
-//{
-//    m_source_dir = realpath(source, NULL);
-//    m_dest_dir =   realpath(dest,   NULL);
-//    if (m_source_dir==NULL) {
-//        char string[1000];
-//        snprintf(string, sizeof(string), "Source directory %s does not exist", source);
-//        error_fun(ENOENT, string, error_extra);
-//        return ENOENT;
-//    }
-//    if (m_dest_dir==NULL) {
-//        free((void*)m_source_dir);
-//        m_source_dir = NULL;
-//        char string[1000];
-//        snprintf(string, sizeof(string), "Destination directory %s does not exist", dest);
-//        error_fun(ENOENT, string, error_extra);
-//        return ENOENT;
-//    }
-//    return 0;
-//}
-
