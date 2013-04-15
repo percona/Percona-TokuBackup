@@ -67,6 +67,7 @@ public:
     ssize_t read(int fd, void *buf, size_t nbyte);        // Actually performs the read (so a lock can be obtained).  Returns the number read.
     off_t   lseek(int fd, size_t nbyte, int whence);      // Actually performs the seek (so a lock can be obtained).
     int rename(const char *oldpath, const char *newpath);
+    int unlink(const char *path);
     int ftruncate(int fd, off_t length);                  // Actually performs the trunate (so a lock can be obtained).
     int truncate(const char *path, off_t length);
     void mkdir(const char *pathname);

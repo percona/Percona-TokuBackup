@@ -917,6 +917,65 @@ source_free_out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
+// unlink() -
+//
+//
+int manager::unlink(const char *path)
+{
+    int user_error = 0;
+    const char * full_path = realpath(path, NULL);
+    if (full_path == NULL) {
+        int error = errno;
+        user_error = call_real_unlink(path);
+        the_manager.backup_error(error, "Could not unlink path.");
+        return user_error;
+    }
+
+    // Get file/dir from hash table.
+    source_file * file = NULL;
+    {
+        int r = m_table.lock();
+        if (r != 0) {
+            user_error = call_real_unlink(path);
+            goto free_out;
+        }
+    }
+
+    file = m_table.get(path);
+    user_error = call_real_unlink(path);
+    if (file != NULL && this->capture_is_enabled()) {
+        // If it does not exist, and if backup is running,
+        // it may be in the todo list. Since we have the hash 
+        // table lock, the copier can't add it, and rename() threads
+        // can't alter the name and re-hash it till we are done.
+        int r = call_real_unlink(file->name());
+        if (r != 0) {
+            int error = errno;
+            if (error != ENOENT) {
+                the_manager.backup_error(error, "Could not unlink backup copy.");
+                goto unlock_out;
+            }
+        }
+
+        file->name_unlock();
+        m_table.try_to_remove(file);
+    }
+
+unlock_out:
+    {
+        int r = m_table.unlock();
+        if (r != 0) {
+            goto free_out;
+        }
+    }
+
+free_out:
+    free((void*)full_path);
+    return user_error;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
 // ftruncate() -
 //
 // Description:

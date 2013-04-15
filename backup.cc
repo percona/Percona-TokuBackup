@@ -237,7 +237,11 @@ extern "C" int truncate(const char *path, off_t length) {
 extern "C" int unlink(const char *path) {
     int r = 0;
     TRACE("unlink() intercepted, path = ", path);
-    r = call_real_unlink(path);
+    if (the_manager.is_alive()) {
+        r = call_real_unlink(path);
+    } else {
+        r = the_manager.unlink(path);
+    }
     return r;
 }
 
