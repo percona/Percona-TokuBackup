@@ -66,7 +66,7 @@ public:
     ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset); // Actually performs the write on fd (so that a lock can be obtained).
     ssize_t read(int fd, void *buf, size_t nbyte);        // Actually performs the read (so a lock can be obtained).  Returns the number read.
     off_t   lseek(int fd, size_t nbyte, int whence);      // Actually performs the seek (so a lock can be obtained).
-    void rename(const char *oldpath, const char *newpath);
+    int rename(const char *oldpath, const char *newpath);
     int ftruncate(int fd, off_t length);                  // Actually performs the trunate (so a lock can be obtained).
     void truncate(const char *path, off_t length);
     void mkdir(const char *pathname);

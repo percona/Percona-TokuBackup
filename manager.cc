@@ -342,18 +342,25 @@ int manager::create(int fd, const char *file)
         if (r != 0) return r; // The error has been reported.
     }
 
-    description->set_full_source_name(file);
+    const char *full_source_file_path = realpath(file, NULL);
+    if (full_source_file_path == NULL) {
+        int error = errno;
+        return error;
+    }
 
     // Add description to hash table.
     {
         int r = m_table.lock();
         if (r!=0) return r;
     }
+
+    source_file *source = NULL;
+
     {
-        source_file *source = m_table.get(description->get_full_source_name());
+        source = m_table.get(full_source_file_path);
         if (source == NULL) {
             TRACE("Creating new source file in hash map ", fd);
-            source = new source_file(description->get_full_source_name());
+            source = new source_file(full_source_file_path);
             source->add_reference();
             int r = source->init();
             if (r != 0) {
@@ -367,7 +374,10 @@ int manager::create(int fd, const char *file)
             m_table.put(source);
         }
     }
-
+    
+    source->add_reference();
+    description->set_source_file(source);
+    
     {
         int r = m_table.unlock();
         if (r!=0) return r;
@@ -383,9 +393,18 @@ int manager::create(int fd, const char *file)
             
     
     if (m_session != NULL) {
+        {
+            int r = source->name_read_lock();
+            if (r != 0) {
+                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                the_manager.fatal_error(r, "pthread error.");
+                return r;
+            }
+        }
+        
         char *backup_file_name;
         {
-            int r = m_session->capture_create(file, &backup_file_name);
+            int r = m_session->capture_create(source->name(), &backup_file_name);
             if (r!=0) {
                 ignore(pthread_rwlock_unlock(&m_session_rwlock));
                 return r;
@@ -401,6 +420,14 @@ int manager::create(int fd, const char *file)
                 return r;
             }
             free((void*)backup_file_name);
+        }
+        {
+            int r = source->name_unlock();
+            if (r != 0) {
+                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                the_manager.fatal_error(r, "pthread error.");
+                return r;
+            }
         }
     }
     {
@@ -434,19 +461,26 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
         int r = m_map.put(fd, &description);
         if (r!=0) return r; // Unlike some of the other functions, we don't do the orignal open here.
     }
-
-    description->set_full_source_name(file);
+    
+    const char *full_source_file_path = realpath(file, NULL);
+    if (full_source_file_path == NULL) {
+        int error = errno;
+        return error;
+    }
 
     // Add description to hash table.
     {
         int r = m_table.lock();
         if (r!=0) return r;
     }
+
+    source_file * source = NULL;
+
     {
-        source_file *source = m_table.get(description->get_full_source_name());
+        source = m_table.get(full_source_file_path);
         if (source == NULL) {
             TRACE("Creating new source file in hash map ", fd);
-            source = new source_file(description->get_full_source_name());
+            source = new source_file(full_source_file_path);
             source->add_reference();
             int r = source->init();
             if (r != 0) {
@@ -459,6 +493,10 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
             m_table.put(source);
         }
     }
+    
+    source->add_reference();
+    description->set_source_file(source);
+    
     {
         int r = m_table.unlock();
         if (r!=0) return r;
@@ -472,6 +510,14 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
     }
 
     if(m_session != NULL) {
+        {
+            int r = source->name_read_lock();
+            if (r != 0) {
+                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                the_manager.fatal_error(r, "pthread error.");
+                return r;
+            }
+        }
         char *backup_file_name;
         {
             int r = m_session->capture_open(file, &backup_file_name);
@@ -490,6 +536,14 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
                 return r;
             }
             free(backup_file_name);
+        }
+        {
+            int r = source->name_unlock();
+            if (r != 0) {
+                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                the_manager.fatal_error(r, "pthread error.");
+                return r;
+            }
         }
     }
     {
@@ -513,6 +567,19 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
 //
 void manager::close(int fd) {
     TRACE("entering close() with fd = ", fd);
+    description * file = NULL;
+    int r = m_map.get(fd, &file);
+    if (r != 0) {
+        the_manager.fatal_error(r, "Pthread locking failure trying to close file.");
+        return;
+    }
+    
+    if (file != NULL) {
+        source_file * source = file->get_source_file();
+        source->remove_reference();
+        file->set_source_file(NULL);
+    }
+    
     int r1 = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
     if (r1!=0) {
         return;  // Any errors have been reported.  The caller doesn't care.
@@ -732,14 +799,120 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) {
 //
 //     TBD...
 //
-void manager::rename(const char *oldpath, const char *newpath)
+int manager::rename(const char *oldpath, const char *newpath)
 {
-    TRACE("entering rename()...", "");
-    TRACE("-> old path = ", oldpath);
-    TRACE("-> new path = ", newpath);
-    // TODO: #6529
-    oldpath++;
-    newpath++;
+    int user_error = 0;
+    int error = 0;
+    const char * full_old_destination_path = NULL;
+    const char * full_new_destination_path = NULL;
+    const char *full_old_path = realpath(oldpath, NULL);
+    if (full_old_path == NULL) {
+        error = errno;
+        the_manager.backup_error(error, "Could not rename file.");
+        return call_real_rename(oldpath, newpath);
+    }
+    const char *full_new_path = realpath(newpath, NULL);
+    if (full_new_path == NULL) {
+        error = errno;
+        free((void*)full_old_path);
+        the_manager.backup_error(error, "Could not rename file.");
+        return call_real_rename(oldpath, newpath);;
+    }
+    
+    // Rename the source file using the 'name lock'.
+    int r = m_table.rename_locked(full_old_path, full_new_path);
+    if (r != 0) {
+        error = errno;
+        the_manager.fatal_error(error, "pthread error. Could not rename file.");
+        user_error = call_real_rename(oldpath, newpath);
+        goto source_free_out;
+    }
+
+    r = pthread_rwlock_rdlock(&m_session_rwlock);
+    if (r!=0) {
+        the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+        user_error = call_real_rename(oldpath, newpath);
+        goto source_free_out;
+    }
+    
+    // If backup is running...
+    if (m_session != NULL && this->capture_is_enabled()) {
+        // Check to see that both paths are in our source directory.
+        if (!m_session->is_prefix(full_old_path) || !m_session->is_prefix(full_new_path)) {
+            user_error = call_real_rename(oldpath, newpath);
+            goto source_free_out;
+        }
+        
+        full_old_destination_path = m_session->translate_prefix(full_old_path);
+        full_new_destination_path = m_session->translate_prefix(full_new_path);
+        
+        r = m_table.lock();
+        if (r != 0) {
+            user_error = call_real_rename(oldpath, newpath);
+            goto destination_free_out;
+        }
+        
+        source_file * file = m_table.get(full_new_path);
+        file->add_reference();
+        r = m_table.unlock();
+        if (r != 0) {
+            user_error = call_real_rename(oldpath, newpath);
+            file->remove_reference();
+            goto destination_free_out;
+        }
+        
+        user_error = call_real_rename(oldpath, newpath);
+        if (user_error == 0) {
+            //
+            // Rename the backup version, if it exists.
+            //
+            // If the copier has already copied or is copying the file, this
+            // will succceed.  If the copier has not yet created the file
+            // this will fail, and it should find it in its todo list.
+            // However, if we want to be sure that the new name is in its todo
+            // list, we must add it to the todo list ourselves, just to be sure
+            // that it is copied.
+            //
+            // NOTE: If the orignal file name is still in our todo list, the
+            // copier will attempt to copy it, but since it has already been
+            // renamed it will fail with ENOENT, which we ignore in COPY, and 
+            // move on to the next item in the todo list. 
+            //
+            r = call_real_rename(full_old_destination_path, full_new_destination_path);
+            if (r != 0) {
+                error = errno;
+                if (error != ENOENT) {
+                    the_manager.backup_error(error, "rename() on backup copy failed.");
+                } else {
+                    // Add to the copier's todo list.
+                    m_session->add_to_copy_todo_list(full_new_destination_path);
+                }
+            }
+        }
+        
+
+    } else {
+        // Backup is not running.  Just call the syscall on the source file.
+        user_error = call_real_rename(oldpath, newpath);
+    }
+    
+    r = pthread_rwlock_unlock(&m_session_rwlock);
+    if (r != 0) {
+        the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+    }
+
+destination_free_out:
+    if (full_old_destination_path != NULL) {
+        free((void*)full_old_destination_path);
+    }
+    if (full_new_destination_path != NULL) {
+        free((void*)full_new_destination_path);
+    }
+
+source_free_out:
+    free((void*)full_old_path);
+    free((void*)full_new_path);
+    return user_error;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

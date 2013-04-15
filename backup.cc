@@ -217,9 +217,10 @@ extern "C" int ftruncate(int fd, off_t length) {
 extern "C" int truncate(const char *path, off_t length) {
     int r = 0;
     TRACE("truncate() intercepted, path = ", path);
-    r = call_real_truncate(path, length);
     if (the_manager.is_alive()) {
         the_manager.truncate(path, length);
+    } else {
+        r = call_real_truncate(path, length);
     }
     
     return r;
@@ -251,9 +252,11 @@ extern "C" int rename(const char *oldpath, const char *newpath) {
     TRACE("rename() intercepted","");
     TRACE("-> oldpath = ", oldpath);
     TRACE("-> newpath = ", newpath);
-    r = call_real_rename(oldpath, newpath);
+    
     if (the_manager.is_alive()) {
-        the_manager.rename(oldpath, newpath);
+        r = the_manager.rename(oldpath, newpath);
+    } else {
+        r = call_real_rename(oldpath, newpath);
     }
 
     return r;

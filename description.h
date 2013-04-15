@@ -11,13 +11,14 @@
 #include <sys/types.h>
 #include <vector>
 
+class source_file;
+
 class description {
 private:
     off_t m_offset;            // The offset that is moved by read(), write() and lseek().
     int m_fd_in_dest_space;    // What is the fd in the destination space?
     char *m_backup_name;       // These two strings would be const except for the destructor which calls free().  We'll be getting rid of names in file descriptions soon anyway.
-    char *m_full_source_name;
-
+    source_file *m_source_file;
     pthread_mutex_t m_mutex; // A mutex used to make m_offset move atomically when we perform a write (or read).
 
 public:
@@ -26,10 +27,10 @@ public:
     int init(void) __attribute__((warn_unused_result));
     // Effect: Initialize a description.  (Note that the constructor isn't allowed to do anything meaningful, since error handling is tricky.
     //  Return 0 on success, otherwise inform the backup manager of the error (fatal_error or backup_error) and return the error code.
-
+    void set_source_file(source_file *file);
+    source_file * get_source_file(void) const;
     void prepare_for_backup(const char *name);
     void disable_from_backup(void);
-    void set_full_source_name(const char *name);
     const char * get_full_source_name(void);
     int lock(void) __attribute__((warn_unused_result));
     int unlock(void) __attribute__((warn_unused_result));

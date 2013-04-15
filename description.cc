@@ -14,6 +14,7 @@
 #include "manager.h"
 #include "description.h"
 #include "real_syscalls.h"
+#include "source_file.h"
 
 
 const int DEST_FD_INIT = -1;
@@ -30,17 +31,13 @@ description::description()
 : m_offset(0),
   m_fd_in_dest_space(DEST_FD_INIT), 
   m_backup_name(NULL),
-  m_full_source_name(NULL), 
+  m_source_file(NULL),
   m_in_source_dir(false)
 {
 }
 
 description::~description(void)
 {
-    if (m_full_source_name) {
-        free(m_full_source_name);
-        m_full_source_name = NULL;
-    }
     if (m_backup_name) {
         free(m_backup_name);
         m_backup_name = NULL;
@@ -56,6 +53,20 @@ int description::init(void)
         the_manager.fatal_error(r, "Failed to initialize mutex: %s:%d\n", __FILE__, __LINE__);
     }
     return r;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+void description::set_source_file(source_file *file)
+{
+    m_source_file = file;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+source_file * description::get_source_file(void) const
+{
+    return m_source_file;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -83,19 +94,21 @@ void description::disable_from_backup(void)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void description::set_full_source_name(const char *name)
-{
-    if (m_full_source_name) free(m_full_source_name); // I guess we'll free the old one.
-    m_full_source_name = realpath(name, NULL);
-}
+//const char * description::set_full_source_name(void)
+//{
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 const char * description::get_full_source_name(void)
 {
-    return m_full_source_name;
-}
+    const char * result = NULL;
+    if (m_source_file != NULL) {
+        result = m_source_file->name();
+    }
 
+    return result;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
