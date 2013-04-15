@@ -68,7 +68,7 @@ public:
     off_t   lseek(int fd, size_t nbyte, int whence);      // Actually performs the seek (so a lock can be obtained).
     int rename(const char *oldpath, const char *newpath);
     int ftruncate(int fd, off_t length);                  // Actually performs the trunate (so a lock can be obtained).
-    void truncate(const char *path, off_t length);
+    int truncate(const char *path, off_t length);
     void mkdir(const char *pathname);
     
     void set_throttle(unsigned long bytes_per_second); // This is thread-safe.

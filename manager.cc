@@ -973,15 +973,87 @@ int manager::ftruncate(int fd, off_t length)
 //
 //     TBD...
 //
-void manager::truncate(const char *path, off_t length)
+int manager::truncate(const char *path, off_t length)
 {
-    TRACE("entering truncate() with path = ", path);
-    // TODO: #6536
-    // 1. Convert the path to the backup dir.
-    // 2. Call real_ftruncate directly.
-    if(path) {
-        length++;
+    int user_error = 0;
+    int error = 0;
+    const char * full_path = realpath(path, NULL);
+    if (full_path == NULL) {
+        error = errno;
+        the_manager.backup_error(error, "Failed to truncate backup file.");
+        return call_real_truncate(path, length);
     }
+
+    int r = pthread_rwlock_rdlock(&m_session_rwlock);
+    if (r != 0) {
+        the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+        user_error = call_real_truncate(path, length);
+        goto free_out;
+    }
+
+    
+    if (m_session != NULL && m_session->is_prefix(full_path)) {
+        const char * destination_file = NULL;
+        destination_file = m_session->translate_prefix(full_path);
+        // Find and lock the associated source file.
+        r = m_table.lock();
+        if (r != 0) {
+            user_error = call_real_truncate(path, length);
+            goto free_out;
+        }
+
+        source_file * file = m_table.get(destination_file);
+        file->add_reference();
+        r = m_table.unlock();
+        if (r != 0) {
+            user_error = call_real_truncate(path, length);
+            file->remove_reference();
+            goto free_out;
+        }
+        
+        r = file->lock_range(length, LLONG_MAX);
+        if (r != 0) {
+            user_error = call_real_truncate(path, length);
+            file->remove_reference();
+            goto free_out;
+        }
+        
+        user_error = call_real_truncate(full_path, length);
+        if (user_error == 0 && this->capture_is_enabled()) {
+            r = call_real_truncate(destination_file, length);
+            if (r != 0) {
+                error = errno;
+                if (error != ENOENT) {
+                    the_manager.backup_error(error, "Could not truncate backup file.");
+                }
+            }
+        }
+
+        r = file->unlock_range(length, LLONG_MAX);
+        file->remove_reference();
+        if (r != 0) {
+            user_error = call_real_truncate(path, length);
+            goto free_out;
+        }
+        
+        free((void*) destination_file);
+    } else {
+        // No backup is in progress, just truncate the source file.
+        user_error = call_real_truncate(path, length);
+        if (user_error != 0) {
+            goto free_out;
+        }
+    }
+
+    r = pthread_rwlock_unlock(&m_session_rwlock);
+    if (r != 0) {
+        the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+    }
+    
+free_out:
+    free((void*) full_path);
+    return user_error;
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -218,7 +218,7 @@ extern "C" int truncate(const char *path, off_t length) {
     int r = 0;
     TRACE("truncate() intercepted, path = ", path);
     if (the_manager.is_alive()) {
-        the_manager.truncate(path, length);
+        r = the_manager.truncate(path, length);
     } else {
         r = call_real_truncate(path, length);
     }
