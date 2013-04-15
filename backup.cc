@@ -11,6 +11,7 @@
 #include <dlfcn.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "backup_internal.h"
 #include "glassbox.h"
@@ -297,6 +298,27 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
         }
         //int r = the_manager.add_directory(source_dirs[i], dest_dirs[i], poll_fun, poll_extra, error_fun, error_extra);
         //if (r!=0) return r;
+    }
+    
+    // Check to make sure that the source and destination directories are
+    // actually different.
+    const char * full_source = realpath(source_dirs[0], NULL);
+    if (full_source == NULL) {
+        int error = errno;
+        error_fun(error, "Could not resolve source directory path.", error_extra);
+        return EINVAL;
+    }
+    
+    const char * full_destination = realpath(source_dirs[0], NULL);
+    if (full_destination == NULL) {
+        int error = errno;
+        error_fun(error, "Could not resolve destination directory path.", error_extra);
+        return EINVAL;
+    }
+
+    if (strcmp(full_source, full_destination) == 0) {
+        error_fun(EINVAL, "Source and destination directories are the same.", error_extra);
+        return EINVAL;
     }
 
     backup_callbacks calls(poll_fun, poll_extra, error_fun, error_extra, &get_throttle);
