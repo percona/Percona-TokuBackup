@@ -37,6 +37,16 @@
 #define PAUSE(number)
 #endif
 
+//////////////////////////////////////////////////////////////////////////////
+//
+static void print_time(const char *toku_string) {
+    time_t t;
+    char buf[27];
+    time(&t);
+    ctime_r(&t, buf);
+    fprintf(stderr, "%s %s\n", toku_string, buf);
+}
+
 pthread_mutex_t manager::m_mutex         = PTHREAD_MUTEX_INITIALIZER;
 pthread_rwlock_t manager::m_session_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 pthread_mutex_t manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
@@ -179,6 +189,8 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
     }
 
     m_session = new backup_session(source, dest, calls, &m_table, &r);
+    print_time("Toku Hot Backup: Started:");    
+
     r = pthread_rwlock_unlock(&m_session_rwlock);
     if (r!=0) {
         fatal_error(r, "Problem releasing session lock at %s:%d", __FILE__, __LINE__);
@@ -228,8 +240,11 @@ unlock_out: // preserves r if r!0
             r = r2;
         }
     }
+
+    print_time("Toku Hot Backup: Finished:");
     delete m_session;
     m_session = NULL;
+
     {
         int r2 = pthread_rwlock_unlock(&m_session_rwlock);
         if (r==0 && r2!=0) {

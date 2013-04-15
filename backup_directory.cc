@@ -14,17 +14,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-
-//////////////////////////////////////////////////////////////////////////////
-//
-static void print_time(const char *toku_string) {
-    time_t t;
-    char buf[27];
-    time(&t);
-    ctime_r(&t, buf);
-    fprintf(stderr, "%s %s\n", toku_string, buf);
-}
-
 //////////////////////////////////////////////////////////////////////////////
 //
 backup_session::backup_session(const char* source, const char *dest, backup_callbacks *calls, file_hash_table * const file, int *errnum)
@@ -72,9 +61,7 @@ backup_session::~backup_session()
 //
 int backup_session::do_copy()
 {
-    print_time("Toku Hot Backup: Started:");    
     int r = m_copier.do_copy();
-    print_time("Toku Hot Backup: Finished:");
     return r;
 }
 
