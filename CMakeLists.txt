@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(HotBackup)
 
+# No implicit templates, since that's how mysql compiles.
+set(CMAKE_CXX_FLAGS "-fno-implicit-templates  ${CMAKE_CXX_FLAGS}")
+
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS 
   _FILE_OFFSET_BITS=64 
   _LARGEFILE64_SOURCE)
 
-message(STATUS "CMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS "-Werror -W -Wall -Wshadow ${CMAKE_CXX_FLAGS}")
-message(STATUS "CMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}")
 
 set(BACKUP_SOURCES
 	backup_debug.cc
@@ -43,7 +44,7 @@ function(add_space_separated_property type obj propname val)
   endif ()
 endfunction(add_space_separated_property)
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto -s")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto -s")
 
 ## add a version script and set -fvisibility=hidden for the shared library.
 configure_file(export.map . COPYONLY)
@@ -101,9 +102,6 @@ if (USE_CTAGS AND
     add_custom_target(build_ctags ALL DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tags" ctags-stamp)
   endif ()
 endif ()
-
-# Add this after including the tests directory, since we want the tests to instantiate templates
-set(CMAKE_CXX_FLAGS "-fno-implicit-templates  ${CMAKE_CXX_FLAGS}")
 
 option(USE_ETAGS "Build the etags database." ON)
 if (USE_ETAGS)

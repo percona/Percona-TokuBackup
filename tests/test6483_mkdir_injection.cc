@@ -126,3 +126,6 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     free(realdst);
     return 0;
 }
+
+// Instantiate what we need
+template class std::vector<long>;
