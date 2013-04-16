@@ -11,6 +11,7 @@
     tokubackup_create_backup;
     tokubackup_sql_suffix;
     tokubackup_throttle_backup;
+    tokubackup_version_string;
     truncate64; truncate;
     unlink;
     write;

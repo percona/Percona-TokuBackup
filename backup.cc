@@ -346,7 +346,7 @@ char *malloc_snprintf(size_t size, const char *format, ...) {
     return result;
 }
 
-const char tokubackup_version[] = "tokubackup 1.0 $Revision$";
+const char *tokubackup_version_string = "tokubackup 1.0 $Revision$";
 
 #ifdef GLASSBOX
 void backup_pause_disable(bool b)
