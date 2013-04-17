@@ -182,27 +182,26 @@ out:
 
 
 //////////////////////////////////////////////////////////////////////////////
-//
-// translate_prefix():
-//
-// Description: 
-//
-char* backup_session::translate_prefix(const char *file)
-{
+// Effect: See backup_directory.h
+char* backup_session::translate_prefix(const char *file) {
     char *absfile = realpath(file, NULL);
+    // TODO: What if realpath returns a NULL?  It would segfault.  See #6605.
+    char *result = translate_prefix_of_realpath(absfile);
+    free(absfile);
+    return result;
+}
 
+char* backup_session::translate_prefix_of_realpath(const char *absfile) {
     // TODO: #6543 Should we have a copy of these lengths already?
     size_t len_op = strlen(m_source_dir);
     size_t len_np = strlen(m_dest_dir);
     size_t len_s = strlen(absfile);
-    size_t new_len = len_s - len_op + len_np;
-    char *new_string = NULL;
-    new_string = (char *)calloc(new_len + 1, sizeof(char));
+    size_t new_len = len_s - len_op + len_np +1;
+    char *new_string = (char*)malloc(new_len);
     memcpy(new_string, m_dest_dir, len_np);
     
     // Copy the file name from the directory with the newline at the end.
     memcpy(new_string + len_np, absfile + len_op, len_s - len_op + 1);
-    free(absfile);
     return new_string;
 }
 
