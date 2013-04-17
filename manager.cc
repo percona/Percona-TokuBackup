@@ -401,7 +401,9 @@ int manager::create(int fd, const char *file)
     
     {
         int r = m_table.unlock();
-        if (r!=0) return r;
+        if (r!=0) {
+            return r;
+        }
     }
     
     {
@@ -722,7 +724,6 @@ ssize_t manager::read(int fd, void *buf, size_t nbyte) {
             }
         }
         r = call_real_read(fd, buf, nbyte);
-        printf("%s:%d r=%ld\n", __FILE__, __LINE__, r);
         if (r>0) {
             description->increment_offset(r); //moves the offset
         }
@@ -971,28 +972,32 @@ int manager::unlink(const char *path)
 
     file = m_table.get(path);
     user_error = call_real_unlink(path);
-    if (file != NULL && this->capture_is_enabled()) {
+    
+    if (this->capture_is_enabled()) {
         // If it does not exist, and if backup is running,
         // it may be in the todo list. Since we have the hash 
         // table lock, the copier can't add it, and rename() threads
         // can't alter the name and re-hash it till we are done.
-        int r = call_real_unlink(file->name());
+        char * dest_name = m_session->translate_prefix_of_realpath(full_path);
+        int r = call_real_unlink(dest_name);
+        int error = 0;
+        if (r!=0) error=errno;
+        free(dest_name);
         if (r != 0) {
-            int error = errno;
             if (error != ENOENT) {
                 the_manager.backup_error(error, "Could not unlink backup copy.");
                 goto unlock_out;
             }
         }
-
-        file->name_unlock();
-        m_table.try_to_remove(file);
     }
+        
+    if (file) m_table.try_to_remove(file);
 
 unlock_out:
     {
         int r = m_table.unlock();
         if (r != 0) {
+            // TODO.  If this fails, then we should do something.
             goto free_out;
         }
     }
