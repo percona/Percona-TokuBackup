@@ -9,6 +9,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <assert.h>
+
 #include "source_file.h"
 #include "manager.h"
 
@@ -217,16 +219,16 @@ int source_file::rename(const char * new_name)
 //
 void source_file::add_reference(void)
 {
-    ++m_reference_count;
+    __sync_fetch_and_add(&m_reference_count, 1);
 }
 
 ////////////////////////////////////////////////////////
 //
 void source_file::remove_reference(void)
 {
-    if (m_reference_count != 0) {
-        --m_reference_count;
-    }
+    // TODO.  How can the code that decremented a reference count only if it was positive be right?  Under what conditions could someone be decrementing a refcount when they don't know that it's positive?
+    assert(m_reference_count>0);
+    __sync_fetch_and_add(&m_reference_count, -1);
 }
 
 ////////////////////////////////////////////////////////
