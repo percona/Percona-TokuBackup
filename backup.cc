@@ -238,9 +238,9 @@ extern "C" int unlink(const char *path) {
     int r = 0;
     TRACE("unlink() intercepted, path = ", path);
     if (the_manager.is_alive()) {
-        r = call_real_unlink(path);
-    } else {
         r = the_manager.unlink(path);
+    } else {
+        r = call_real_unlink(path);
     }
     return r;
 }
