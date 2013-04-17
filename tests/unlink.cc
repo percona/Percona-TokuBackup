@@ -111,21 +111,21 @@ static int rename_test(void)
     backup_set_start_copying(false);
     // 3. Tell backup to keep capturing.
     backup_set_keep_capturing(true);
-    // 4. Rename first file.
+    // 4. Unlink first file.
     my_unlink(0);
     // 5. Start backup.
     pthread_t thread;
     start_backup_thread(&thread);
-    // 6. Rename second file.
+    // 6. Unlink second file.
     my_unlink(1);
     // 7. Let backup finish copy.
     backup_set_start_copying(true);
-    // 8. Rename third file.
+    // 8. Unlink third file.
     my_unlink(2);
     // 9. Let backup finish (release keep_capturing bool)
     backup_set_keep_capturing(false);
     finish_backup_thread(thread);
-    // 10. Rename fourth file.
+    // 10. Unlink fourth file.
     my_unlink(3);
     // 11. Verify that all but the third rename succeeded in the backup.
     result = verify();
