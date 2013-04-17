@@ -357,7 +357,7 @@ int manager::create(int fd, const char *file)
         if (r != 0) return r; // The error has been reported.
     }
 
-    const char *full_source_file_path = realpath(file, NULL);
+    char *full_source_file_path = realpath(file, NULL);
     if (full_source_file_path == NULL) {
         int error = errno;
         return error;
@@ -366,7 +366,10 @@ int manager::create(int fd, const char *file)
     // Add description to hash table.
     {
         int r = m_table.lock();
-        if (r!=0) return r;
+        if (r!=0) {
+            free(full_source_file_path);
+            return r;
+        }
     }
 
     source_file *source = NULL;
@@ -383,13 +386,16 @@ int manager::create(int fd, const char *file)
                 source->remove_reference();
                 delete source;
                 ignore(m_table.unlock());
+                free(full_source_file_path);
                 return r;
             }
 
             m_table.put(source);
         }
     }
-    
+
+    free(full_source_file_path);
+
     source->add_reference();
     description->set_source_file(source);
     
@@ -477,7 +483,7 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
         if (r!=0) return r; // Unlike some of the other functions, we don't do the orignal open here.
     }
     
-    const char *full_source_file_path = realpath(file, NULL);
+    char *full_source_file_path = realpath(file, NULL);
     if (full_source_file_path == NULL) {
         int error = errno;
         return error;
@@ -486,7 +492,10 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
     // Add description to hash table.
     {
         int r = m_table.lock();
-        if (r!=0) return r;
+        if (r!=0) {
+            free(full_source_file_path);
+            return r;
+        }
     }
 
     source_file * source = NULL;
@@ -503,12 +512,15 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
                 source->remove_reference();
                 delete source;
                 ignore(m_table.unlock());
+                free(full_source_file_path);
                 return r;
             }
             m_table.put(source);
         }
     }
     
+    free(full_source_file_path);
+
     source->add_reference();
     description->set_source_file(source);
     
