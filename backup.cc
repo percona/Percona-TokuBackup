@@ -308,16 +308,14 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
     // actually different.
     const char * full_source = realpath(source_dirs[0], NULL);
     if (full_source == NULL) {
-        int error = errno;
-        error_fun(error, "Could not resolve source directory path.", error_extra);
-        return EINVAL;
+        error_fun(ENOENT, "Could not resolve source directory path.", error_extra);
+        return ENOENT;
     }
     
     const char * full_destination = realpath(dest_dirs[0], NULL);
     if (full_destination == NULL) {
-        int error = errno;
-        error_fun(error, "Could not resolve destination directory path.", error_extra);
-        return EINVAL;
+        error_fun(ENOENT, "Could not resolve destination directory path.", error_extra);
+        return ENOENT;
     }
 
     if (strcmp(full_source, full_destination) == 0) {
