@@ -307,26 +307,24 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
     // Check to make sure that the source and destination directories are
     // actually different.
     {
-        const char * full_source = realpath(source_dirs[0], NULL);
+        char * full_source = realpath(source_dirs[0], NULL);
         if (full_source == NULL) {
             error_fun(ENOENT, "Could not resolve source directory path.", error_extra);
             return ENOENT;
         }
         free(full_source);
-    }
     
-    {
-        const char * full_destination = realpath(dest_dirs[0], NULL);
+        char * full_destination = realpath(dest_dirs[0], NULL);
         if (full_destination == NULL) {
             error_fun(ENOENT, "Could not resolve destination directory path.", error_extra);
             return ENOENT;
         }
         free(full_destination);
-    }
 
-    if (strcmp(full_source, full_destination) == 0) {
-        error_fun(EINVAL, "Source and destination directories are the same.", error_extra);
-        return EINVAL;
+        if (strcmp(full_source, full_destination) == 0) {
+            error_fun(EINVAL, "Source and destination directories are the same.", error_extra);
+            return EINVAL;
+        }
     }
 
     backup_callbacks calls(poll_fun, poll_extra, error_fun, error_extra, &get_throttle);
