@@ -41,12 +41,18 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         }
     }
     tokubackup_throttle_backup(1L<<19); // half a mebibyte per second, so that's 2 seconds.
+    backup_set_keep_capturing(true);
+    backup_set_start_copying(false);
     start_backup_thread(&thread);
+    // Wait until the copy phase is done, then unlink before  the capture is disabled.
+    backup_set_start_copying(true);
     while (!backup_done_copying()) /*nothing*/;
     for (int i=0; i<N; i++) {
+        printf("unlinking %s\n", fname[i]);
         int r = unlink(fname[i]);
         check(r==0);
     }
+    backup_set_keep_capturing(false);
     finish_backup_thread(thread);
     for (int i=0; i<N; i++) {
         {
