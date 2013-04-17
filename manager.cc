@@ -547,6 +547,7 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
             if (r != 0) {
                 backup_error(r, "Could not open backup file %s", backup_file_name);
                 free(backup_file_name);
+                source->name_unlock();
                 ignore(pthread_rwlock_unlock(&m_session_rwlock));
                 return r;
             }
