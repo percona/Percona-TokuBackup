@@ -82,6 +82,8 @@ public:
     //   For backup errors, the backup manager isn't dead  so the user could try doing backup again.
     //  This function adds information stating what the errnum is (so don't call strerror from the
     //  caller.
+    //  If this function is called on the backup thread, the errors are reported immediately.
+    //  If this function is called on another thread, the error is saved for later so that the backup thread can report it.
   private:
     void backup_error_ap(int errnum, const char *format, va_list ap); // This is the internal shared part of those two functions.
 
