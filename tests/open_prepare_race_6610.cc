@@ -34,7 +34,7 @@ int test_main(int argc, const char *argv[] __attribute__((__unused__))) {
     for (int i=0; i<n_backups_to_do; i++) {
         pthread_t bth;
         setup_destination();
-        start_backup_thread(&bth, dst);
+        start_backup_thread(&bth);
         finish_backup_thread(bth);
         __sync_fetch_and_add(&n_backups_done, 1);
     }
