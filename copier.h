@@ -23,7 +23,6 @@ class copier {
 private:
     const char *m_source;
     const char *m_dest;
-    bool m_must_abort;
     std::vector<char *> m_todo;
     backup_callbacks *m_calls;
     file_hash_table * const m_table;
@@ -36,7 +35,6 @@ public:
     void set_directories(const char *source, const char *dest);
     void set_error(int error);
     int do_copy(void) __attribute__((warn_unused_result)) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
-    void abort_copy(void);
     int copy_stripped_file(const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
     int copy_full_path(const char *source, const char* dest, const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
     int copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, source_file * const file, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up)  __attribute__((warn_unused_result)); // Returns the error code (not in errno)

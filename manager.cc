@@ -89,6 +89,13 @@ manager::~manager(void) {
     if (m_errstring) free(m_errstring);
 }
 
+// This is a per-thread variable that indicates if we are the thread that can do the backup calls directly (and if so, here they are).
+// If NULL then any errors must be saved using set_error_internal.
+// The functions fatal_error and backup_error handle all of this. 
+// Except for a few calls right at the top of the tree, everything should use fatal_error and backup_error.
+__thread backup_callbacks *thread_has_backup_calls = NULL;
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // do_backup() -
@@ -98,30 +105,31 @@ manager::~manager(void) {
 //     
 //
 int manager::do_backup(const char *source, const char *dest, backup_callbacks *calls) {
+    thread_has_backup_calls = calls;
+
     int r = 0;
     if (this->is_dead()) {
-        calls->report_error(-1, "Backup system is dead");
-        r = -1;
+        r = EINVAL;
+        backup_error(r, "Backup system is dead");
         goto error_out;
     }
     m_an_error_happened = false;
     m_backup_is_running = true;
     r = calls->poll(0, "Preparing backup");
     if (r != 0) {
-        calls->report_error(r, "User aborted backup");
+        backup_error(r, "User aborted backup");
         goto error_out;
     }
 
     r = pthread_mutex_trylock(&m_mutex);
     if (r != 0) {
         if (r==EBUSY) {
-            calls->report_error(r, "Another backup is in progress.");
+            backup_error(r, "Another backup is in progress.");
             goto error_out;
         }
         fatal_error(r, "mutex_trylock at %s:%d", __FILE__, __LINE__);
         goto error_out;
     }
-    
     // Complain if
     //   1) the backup directory cannot be stat'd (perhaps because it doesn't exist), or
     //   2) The backup directory is not a directory (perhaps because it's a regular file), or
@@ -203,6 +211,7 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
     }
 
     this->enable_capture();
+    this->enable_copy();
 
     WHEN_GLASSBOX( ({
                 m_is_capturing = true;
@@ -267,6 +276,7 @@ unlock_out: // preserves r if r!0
     }
 
 error_out:
+    thread_has_backup_calls = NULL;
     return r;
 }
 
@@ -293,14 +303,12 @@ int manager::prepare_directories_for_backup(backup_session *session) {
         r = open_path(file_name);
         free(file_name);
         if (r != 0) {
-            session->abort();
             backup_error(r, "Failed to open path");
             goto out;
         }
 
         r = file->create();
         if (r != 0) {
-            session->abort();
             backup_error(r, "Could not create backup file.");
             goto out;
         }
@@ -1197,16 +1205,29 @@ unsigned long manager::get_throttle(void) {
     return m_throttle;
 }
 
+void manager::backup_error_ap(int errnum, const char *format_string, va_list ap) {
+    this->disable_capture();
+    this->disable_copy();
+    if (thread_has_backup_calls) {
+        int len = 2*PATH_MAX + strlen(format_string) + 1000;
+        char *string = (char*)malloc(len);
+        int nwrote = vsnprintf(string, len, format_string, ap);
+        snprintf(string+nwrote, len-nwrote, "  error %d (%s)", errnum, strerror(errnum));
+        thread_has_backup_calls->report_error(errnum, string);
+        free(string);
+    } else {
+        set_error_internal(errnum, format_string, ap);
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 void manager::fatal_error(int errnum, const char *format_string, ...)
 {
     va_list ap;
     va_start(ap, format_string);
-    
     this->kill();
-    this->disable_capture();
-    set_error_internal(errnum, format_string, ap);
+    this->backup_error_ap(errnum, format_string, ap);
     va_end(ap);
 }
 
@@ -1215,9 +1236,7 @@ void manager::fatal_error(int errnum, const char *format_string, ...)
 void manager::backup_error(int errnum, const char *format_string, ...) {
     va_list ap;
     va_start(ap, format_string);
-    
-    this->disable_capture();
-    set_error_internal(errnum, format_string, ap);
+    this->backup_error_ap(errnum, format_string, ap);
     va_end(ap);
 }
 

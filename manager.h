@@ -82,7 +82,10 @@ public:
     //   For backup errors, the backup manager isn't dead  so the user could try doing backup again.
     //  This function adds information stating what the errnum is (so don't call strerror from the
     //  caller.
+  private:
+    void backup_error_ap(int errnum, const char *format, va_list ap); // This is the internal shared part of those two functions.
 
+  public:
     // TODO: #6537 Factor the test interface out of the main class, cleanly.
     // Test interface.  We'd probably like to compile all this stuff away in production code.
     void pause_disable(bool pause);

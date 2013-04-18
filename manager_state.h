@@ -15,12 +15,16 @@ public:
     bool is_alive(void);
     void kill(void);
     bool capture_is_enabled(void);
+    bool copy_is_enabled(void);
 protected:
     void enable_capture(void);
     void disable_capture(void);
+    void enable_copy(void);
+    void disable_copy(void);
 private:
     volatile bool m_is_dead;
     volatile bool m_capture_enabled;
+    volatile bool m_copy_enabled;
 };
 
 #endif // End of header guardian.

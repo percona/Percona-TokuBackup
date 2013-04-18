@@ -71,7 +71,6 @@ pthread_mutex_t copier::m_todo_mutex = PTHREAD_MUTEX_INITIALIZER;
 copier::copier(backup_callbacks *calls, file_hash_table * const table)
     : m_source(NULL), 
       m_dest(NULL), 
-      m_must_abort(false),
       m_calls(calls), 
       m_table(table)
 {}
@@ -116,9 +115,7 @@ int copier::do_copy(void) {
     if (r != 0) goto out;
     while (n_known != 0) {
 
-        if (m_must_abort) {
-            goto out;
-        }
+        if (!the_manager.copy_is_enabled()) goto out;
         
         fname = m_todo.back();
         TRACE("Copying: ", fname);
@@ -459,9 +456,7 @@ int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const
     if (r!=0) goto out;
 
     while (1) {
-        if (m_must_abort) {
-            goto out;
-        }
+        if (!the_manager.copy_is_enabled()) goto out;
 
         PAUSE(HotBackup::COPIER_BEFORE_READ);
         const ssize_t lock_start = total_written_this_file;
@@ -513,9 +508,7 @@ int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const
 
         PAUSE(HotBackup::COPIER_AFTER_WRITE);
         while (1) {
-            if (m_must_abort) {
-                goto out;
-            }
+            if (!the_manager.copy_is_enabled()) goto out;
 
             // Sleep until we've used up enough time.  Be sure to keep polling once per second.
             struct timespec endtime;
@@ -543,9 +536,7 @@ int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const
                 usleep((long)(sleep_time*1e6));
             }
 
-            if (m_must_abort) {
-            goto out;
-        }
+            if (!the_manager.copy_is_enabled()) goto out;
 
         }
     }
@@ -575,6 +566,7 @@ int copier::add_dir_entries_to_todo(DIR *dir, const char *file)
     }
     struct dirent const *e = NULL;
     while((e = readdir(dir)) != NULL) {
+        if (!the_manager.copy_is_enabled()) break;
         if(is_dot(e)) {
             TRACE("skipping: ", e->d_name);
         } else {
@@ -646,11 +638,3 @@ void copier::cleanup(void) {
         m_todo[i] = NULL;
     }
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-//
-void copier::abort_copy(void) {
-    m_must_abort = true;
-}
-
