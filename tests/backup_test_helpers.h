@@ -7,7 +7,7 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include "backup.h"
+#include "backup_internal.h"
 #include <pthread.h>
 #include <time.h>
 

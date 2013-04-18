@@ -20,6 +20,7 @@ set(blackboxtests
   empty_dest
   multiple_backups
   open_write_close
+  open_prepare_race_6610
   read_and_seek
   test6128
   no_dest_dir_6317b
