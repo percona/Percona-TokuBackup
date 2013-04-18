@@ -5,4 +5,30 @@
 \date{$Date$  $Rev$}
 \begin{document}
 \maketitle
+
+The hot backup library maintains a ghostly mirror of the file system.  We have several things that mirror the unix file system:
+\begin{itemize}
+\item filenodes: Keeps track of the range locking for a file.  A file needs to be represented by its device and inode.  Represents a unix file or an inode.
+\item directories: The mapping of names to filenodes. Represents the directory heirarchy of the file system, but only the part that involves open files.
+\item description: Contains a pair $\left<\mbox{offset},\mbox{filenode}\right>$.  Represents a unix file description.
+\item descriptors: Contains a pointer to a description.  For every open open file we have a descriptor.  (In principle several descriptors could point to the same description, but that won't happen until we implement \texttt{dup}).
+\end{itemize}
+
+What must happen:
+\begin{itemize}
+\item On \texttt{write(fd)}: 
+
+ If no backup is running, we must still maintain the descriptoin (increment the offset).
+
+ If backup is running, we must do the write in the destination space.
+ (It's possible that the destination file hasn't been copied yet, in
+ which case we have a choice: We don't have to mirror the write to the
+ backup.
+
+ To handle parallelism: we need to lock the range being written (in the filenode) before doing any of the updates.
+  We need to lock the description so that we can update the offset and perform the writes.
+
+\end{itemize}
+
+
 \end{document}
