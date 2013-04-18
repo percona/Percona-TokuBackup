@@ -3,12 +3,12 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
+#include "backup_debug.h"
+#include "file_hash_table.h"
 #include "glassbox.h"
 #include "manager.h"
 #include "real_syscalls.h"
-#include "backup_debug.h"
 #include "source_file.h"
-#include "file_hash_table.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -1226,7 +1226,7 @@ void manager::backup_error(int errnum, const char *format_string, ...) {
 void manager::set_error_internal(int errnum, const char *format_string, va_list ap) {
     m_backup_is_running = false;
     {
-        int r = pthread_mutex_lock(&m_error_mutex);
+        int r = pthread_mutex_lock(&m_error_mutex); // don't use pmutex here.
         if (r!=0) {
             this->kill();  // go ahead and set the error, however
         }
@@ -1242,7 +1242,7 @@ void manager::set_error_internal(int errnum, const char *format_string, va_list 
         m_an_error_happened = true; // set this last so that it will be OK.
     }
     {
-        int r = pthread_mutex_unlock(&m_error_mutex);
+        int r = pthread_mutex_unlock(&m_error_mutex);  // don't use pmutex here.
         if (r!=0) {
             this->kill();
         }

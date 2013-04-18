@@ -3,10 +3,11 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include "copier.h"
 #include "backup_debug.h"
+#include "copier.h"
 #include "file_hash_table.h"
 #include "manager.h"
+#include "mutex.h"
 #include "real_syscalls.h"
 #include "source_file.h"
 
@@ -108,17 +109,11 @@ int copier::do_copy(void) {
     uint64_t total_bytes_backed_up = 0;
     uint64_t total_files_backed_up = 0;
     size_t n_known = 0;
-    r = pthread_mutex_lock(&m_todo_mutex);
-    if (r != 0) {
-        the_manager.fatal_error(r, "pthread lock failure.");
-        goto out;
-    }
+    r = pmutex_lock(&m_todo_mutex);
+    if (r != 0) goto out;
     n_known = m_todo.size();
-    r = pthread_mutex_unlock(&m_todo_mutex);
-    if (r != 0) {
-        the_manager.fatal_error(r, "pthread lock failure.");
-        goto out;
-    }
+    r = pmutex_unlock(&m_todo_mutex);
+    if (r != 0) goto out;
     while (n_known != 0) {
 
         if (m_must_abort) {
@@ -137,17 +132,12 @@ int copier::do_copy(void) {
             goto out;
         }
 
-        r = pthread_mutex_lock(&m_todo_mutex);
-        if (r != 0) {
-            the_manager.fatal_error(r, "pthread lock failure.");
-            goto out;
-        }
+        r = pmutex_lock(&m_todo_mutex);
+        if (r != 0) goto out;
+
         m_todo.pop_back();
-        r = pthread_mutex_unlock(&m_todo_mutex);
-        if (r != 0) {
-            the_manager.fatal_error(r, "pthread lock failure.");
-            goto out;
-        }
+        r = pmutex_unlock(&m_todo_mutex);
+        if (r != 0) goto out;
         
         r = this->copy_stripped_file(fname, &total_bytes_backed_up, total_files_backed_up);
         free((void*)fname);
@@ -157,17 +147,12 @@ int copier::do_copy(void) {
         }
         total_files_backed_up++;
         
-        r = pthread_mutex_lock(&m_todo_mutex);
-        if (r != 0) {
-            the_manager.fatal_error(r, "pthread lock failure.");
-            goto out;
-        }
+        r = pmutex_lock(&m_todo_mutex);
+        if (r != 0) goto out;
+
         n_known = m_todo.size();
-        r = pthread_mutex_unlock(&m_todo_mutex);
-        if (r != 0) {
-            the_manager.fatal_error(r, "pthread lock failure.");
-            goto out;
-        }
+        r = pmutex_unlock(&m_todo_mutex);
+        if (r != 0) goto out;
     }
 
 out:
@@ -585,11 +570,8 @@ int copier::add_dir_entries_to_todo(DIR *dir, const char *file)
     TRACE("--Adding all entries in this directory to todo list: ", file);
     int error = 0;
     {
-        int r = pthread_mutex_lock(&m_todo_mutex);
-        if (r != 0) {
-            the_manager.fatal_error(r, "pthread lock failure.");
-            return r;
-        }
+        int r = pmutex_lock(&m_todo_mutex);
+        if (r != 0) return r;
     }
     struct dirent const *e = NULL;
     while((e = readdir(dir)) != NULL) {
@@ -618,11 +600,8 @@ int copier::add_dir_entries_to_todo(DIR *dir, const char *file)
     
 out:
     {
-        int r = pthread_mutex_unlock(&m_todo_mutex);
-        if (r != 0) {
-            the_manager.fatal_error(r, "pthread lock failure.");
-            return r;
-        }
+        int r = pmutex_unlock(&m_todo_mutex);
+        if (r != 0) return r;
     }
 
     return error;
@@ -632,15 +611,16 @@ out:
 //
 void copier::add_file_to_todo(const char *file)
 {
-    int r = pthread_mutex_lock(&m_todo_mutex);
+    int r = pmutex_lock(&m_todo_mutex);
     if (r != 0) {
-        the_manager.fatal_error(r, "pthread lock failure.");
+        return;
     }
     m_todo.push_back(strdup(file));
-    r = pthread_mutex_unlock(&m_todo_mutex);
+    r = pmutex_unlock(&m_todo_mutex);
     if (r != 0) {
-        the_manager.fatal_error(r, "pthread lock failure.");
+        return;
     }
+    // TODO. Handle those errors properly.
 }
 
 ////////////////////////////////////////////////////////////////////////////////

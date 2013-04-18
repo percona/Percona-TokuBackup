@@ -12,6 +12,7 @@
 
 #include "backup_debug.h"
 #include "manager.h"
+#include "mutex.h"
 #include "description.h"
 #include "real_syscalls.h"
 #include "source_file.h"
@@ -114,22 +115,14 @@ const char * description::get_full_source_name(void)
 //
 int description::lock(void)
 {
-    int r = pthread_mutex_lock(&m_mutex);
-    if (r!=0) {
-        the_manager.fatal_error(r, "acquiring description mutex at %s:%d", __FILE__, __LINE__);
-    }
-    return r;
+    return pmutex_lock(&m_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 int description::unlock(void)
 {
-    int r = pthread_mutex_unlock(&m_mutex);
-    if (r!=0) {
-        the_manager.fatal_error(r, "releasing decsription mutex at %s:%d", __FILE__, __LINE__);
-    }
-    return r;
+    return pmutex_unlock(&m_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

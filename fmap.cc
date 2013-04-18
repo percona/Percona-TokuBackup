@@ -3,10 +3,11 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include "fmap.h"
 #include "backup_debug.h"
-#include "manager.h"
+#include "fmap.h"
 #include "glassbox.h"
+#include "manager.h"
+#include "mutex.h"
 
 #include <cstdlib>
 #include <pthread.h>
@@ -189,19 +190,11 @@ void fmap::grow_array(int fd)
 }
 
 int lock_fmap(void) {
-    int r = pthread_mutex_lock(&get_put_mutex);
-    if (r!=0) {
-        the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
-    }
-    return r;
+    return pmutex_lock(&get_put_mutex);
 }
 
 int unlock_fmap(void) {
-    int r = pthread_mutex_unlock(&get_put_mutex);
-    if (r!=0) {
-        the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
-    }
-    return r;
+    return pmutex_unlock(&get_put_mutex);
 }
 
 // Instantiate the templates we need

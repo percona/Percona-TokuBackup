@@ -19,10 +19,11 @@ set(BACKUP_SOURCES
 	fmap.cc
 	manager.cc
 	manager_state.cc
+	mutex.cc
 	real_syscalls.cc
 	source_file.cc
-        backup.cc
-        backup_callbacks.cc
+	backup.cc
+	backup_callbacks.cc
 )
 
 add_library(HotBackup          SHARED ${BACKUP_SOURCES})
