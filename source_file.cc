@@ -115,10 +115,7 @@ int source_file::lock_range(uint64_t lo, uint64_t hi)
     // Got here, we don't intersect any of the ranges.
     struct range new_range = {lo,hi};
     m_locked_ranges.push_back((struct range)new_range);
-    {
-        int r = pmutex_unlock(&m_mutex);
-        return r;
-    }
+    return pmutex_unlock(&m_mutex);
 }
 
 
