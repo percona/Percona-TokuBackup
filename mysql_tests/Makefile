@@ -1,4 +1,4 @@
-CFLAGS   = -W -Wall -Werror -O2
+CFLAGS   = -W -Wall -Werror -O2 -g
 CXXFLAGS = $(CFLAGS)
 default: check_linkage linkit.well linkit.badly
 check_linkage:
@@ -18,5 +18,7 @@ check: check.well check.badly
 check.well: check_linkage linkit.well
 	./check_linkage linkit.well
 check.badly: check_linkage linkit.badly
-	echo Expect lots of errors:
-	./check_linkage linkit.badly; test $$?==1
+	./check_linkage linkit.badly 2> /dev/null; test $$?==1
+
+clean:
+	rm *.so linkit.well linkit.badly check_linkage

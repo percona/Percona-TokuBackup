@@ -1,7 +1,9 @@
+#define _FILE_OFFSET_BITS 64
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 int main(int argc, char*argv[]  __attribute__((__unused__))) {
     if (argc>=1) abort(); // should never run.
@@ -15,5 +17,6 @@ int main(int argc, char*argv[]  __attribute__((__unused__))) {
     unlink("hello");
     rename("hello", "goodbye");
     mkdir("hello.dir", 0777);
+    lseek(fd, 0, 0);
     return 0;
 }

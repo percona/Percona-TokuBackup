@@ -78,6 +78,7 @@ int main (int argc, const char *argv[]) {
                 size_t len = end-filestart;
                 char *filename = (char*)malloc(len+1);
                 strncpy(filename, filestart, len);
+                filename[len]=0;
                 libs.push_back(filename);
             }
         }
@@ -94,8 +95,10 @@ int main (int argc, const char *argv[]) {
         const char *sym = symbols[symnum];
         //printf("checking symbol %s\n", sym);
         for (size_t libnum=0; libnum<libs.size(); libnum++) {
-            //printf("checking lib %s\n", libs[libnum]);
-            size_t len = strlen(progname) + strlen(libs[libnum]) + strlen(sym) + 100;
+            size_t len = strlen(progname);
+            len += strlen(libs[libnum]);
+            len += strlen(sym);
+            len += 100;
             char cmd[len];
             size_t actual_len = snprintf(cmd, len, "nm -D %s | egrep \"[WT] %s\\$\" > %s.searched", libs[libnum], sym, progname);
             assert(actual_len<len);
@@ -129,6 +132,25 @@ int main (int argc, const char *argv[]) {
     }
 
     // Should also check that the versions of open, pwrite, lseek, ftruncate, and truncate aren't unresolved in the original source.
+    for (int symnum=0; symbols[symnum]; symnum++) {
+        const char *sym = symbols[symnum];
+        if (strstr(sym, "64")!=NULL) {
+            size_t slen = strlen(sym);
+            size_t len =  strlen(exename) + slen + 100;
+            char cmd[len];
+            snprintf(cmd, len, "nm %s | egrep \" %.*s($|@)\" > /dev/null", exename, (int)slen-2, sym);
+            if (1) printf("cmd=%s\n", cmd);
+            int r = system(cmd);
+            assert(WIFEXITED(r));
+            if (WEXITSTATUS(r)==0) {
+                fprintf(stderr, "I expected %.*s not to be used (in favor of of %s).  But the executable uses the short version.\n",
+                        (int)slen-2, sym, sym);
+                result_status = 1;
+            } else {
+                assert(WEXITSTATUS(r)==1); // I don't want that function to be there.
+            }
+        }
+    }
 
     return result_status;
 }
