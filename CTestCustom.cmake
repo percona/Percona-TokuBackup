@@ -14,6 +14,7 @@ foreach(test
  ftruncate_injection_6480
  multiple_backups
  open_injection_6476
+ open_prepare_race_6610
  open_write_close
  no_dest_dir_6317b
  null_dest_dir_6317
@@ -21,6 +22,7 @@ foreach(test
  readdirfails_dest_dir
  range_locks
  read_and_seek
+ rename
  test6128
  test6361
  test6415_enospc_injection
@@ -30,6 +32,7 @@ foreach(test
  test6478_read_injection
  test6483_mkdir_injection
  throttle_6564
+ unlink
  unlink_during_copy_test6515
  unlink_during_copy_test6515b
  unlink_during_copy_test6515c
