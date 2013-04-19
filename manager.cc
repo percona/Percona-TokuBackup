@@ -877,7 +877,7 @@ int manager::rename(const char *oldpath, const char *newpath)
         // Check to see that both paths are in our source directory.
         if (!m_session->is_prefix(full_old_path) || !m_session->is_prefix(full_new_path)) {
             user_error = call_real_rename(oldpath, newpath);
-            goto source_free_out;
+            goto session_unlock_out;
         }
         
         full_old_destination_path = m_session->translate_prefix(full_old_path);
@@ -932,6 +932,8 @@ int manager::rename(const char *oldpath, const char *newpath)
         // Backup is not running.  Just call the syscall on the source file.
         user_error = call_real_rename(oldpath, newpath);
     }
+
+ session_unlock_out:
     
     r = pthread_rwlock_unlock(&m_session_rwlock);
     if (r != 0) {
