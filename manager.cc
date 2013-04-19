@@ -981,7 +981,7 @@ int manager::unlink(const char *path)
     file = m_table.get(path);
     user_error = call_real_unlink(path);
     
-    if (this->capture_is_enabled()) {
+    if (m_session != NULL && this->capture_is_enabled()) {
         // If it does not exist, and if backup is running,
         // it may be in the todo list. Since we have the hash 
         // table lock, the copier can't add it, and rename() threads
@@ -1300,7 +1300,7 @@ int manager::setup_description_and_source_file(int fd, const char *file)
     // to be created.  NOTE: This code assumes that only
     // create() and open() call this function.
     source = m_table.get(full_source_file_path);
-    if (file == NULL) {
+    if (source == NULL) {
         TRACE("Creating new source file in hash map ", fd);
         TRACE("With source name = ", full_source_file_path);
         source = new source_file();
