@@ -17,17 +17,63 @@ char *not_src;
 
 void exercise(void) {
     int nlen = strlen(not_src)+10;
-    char filea_name[nlen];
-    snprintf(filea_name, nlen, "%s/filea", not_src);
-    int fda = open(filea_name, O_RDWR|O_CREAT, 0777);
-    assert(fda>=0);
+    // open, write, close, unlink
     {
-        int r = close(fda);
-        assert(r==0);
+        char filea_name[nlen];
+        snprintf(filea_name, nlen, "%s/filea", not_src);
+        int fda = open(filea_name, O_RDWR|O_CREAT, 0777);
+        assert(fda>=0);
+        {
+            ssize_t r = write(fda, filea_name, nlen);
+            assert(r==nlen);
+        }
+        {
+            int r = close(fda);
+            assert(r==0);
+        }
+        {
+            int r = unlink(filea_name);
+            assert(r==0);
+        }
+    }
+    // open, unlink, write, close
+    {
+        char filea_name[nlen];
+        snprintf(filea_name, nlen, "%s/filea", not_src);
+        int fda = open(filea_name, O_RDWR|O_CREAT, 0777);
+        assert(fda>=0);
+        {
+            int r = unlink(filea_name);
+            assert(r==0);
+        }
+        {
+            ssize_t r = write(fda, filea_name, nlen);
+            assert(r==nlen);
+        }
+        {
+            int r = close(fda);
+            assert(r==0);
+        }
     }
     {
-        int r = unlink(filea_name);
-        assert(r==0);
+        char filea_name[nlen];
+        char fileb_name[nlen];
+        snprintf(filea_name, nlen, "%s/filea", not_src);
+        snprintf(fileb_name, nlen, "%s/fileb", not_src);
+        int fda = open(filea_name, O_RDWR|O_CREAT, 0777);
+        assert(fda>=0);
+        {
+            ssize_t r = write(fda, filea_name, nlen);
+            assert(r==nlen);
+        }
+        {
+            int r = rename(filea_name, fileb_name);
+            assert(r==0);
+        }
+        {
+            int r = close(fda);
+            assert(r==0);
+        }
     }
 }
 
