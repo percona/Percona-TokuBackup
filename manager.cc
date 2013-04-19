@@ -827,7 +827,6 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) {
     return new_offset;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
 //
 // rename() -
@@ -838,109 +837,96 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) {
 //
 int manager::rename(const char *oldpath, const char *newpath)
 {
+    TRACE("entering rename() with oldpath = ", oldpath);
+    int r = 0;
     int user_error = 0;
     int error = 0;
     const char * full_old_destination_path = NULL;
     const char * full_new_destination_path = NULL;
-    const char *full_old_path = realpath(oldpath, NULL);
+    const char * full_new_path = NULL;
+    const char * full_old_path = realpath(oldpath, NULL);
     if (full_old_path == NULL) {
         error = errno;
-        the_manager.backup_error(error, "Could not rename file.");
+        the_manager.fatal_error(error, "Could not rename file.");
         return call_real_rename(oldpath, newpath);
     }
-    const char *full_new_path = realpath(newpath, NULL);
-    if (full_new_path == NULL) {
-        error = errno;
-        free((void*)full_old_path);
-        the_manager.backup_error(error, "Could not rename file.");
-        return call_real_rename(oldpath, newpath);;
-    }
-    
-    // Rename the source file using the 'name lock'.
-    int r = m_table.rename_locked(full_old_path, full_new_path);
-    if (r != 0) {
-        error = errno;
-        the_manager.fatal_error(error, "pthread error. Could not rename file.");
-        user_error = call_real_rename(oldpath, newpath);
-        goto source_free_out;
-    }
 
-    r = pthread_rwlock_rdlock(&m_session_rwlock);
-    if (r!=0) {
-        the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
-        user_error = call_real_rename(oldpath, newpath);
-        goto source_free_out;
-    }
+     // We need the newpath to exist to finish our own rename work.
+     // So just call it now, regardless of CAPTURE state.
+     user_error = call_real_rename(oldpath, newpath);
+     if (user_error == 0) {
+        // Get the full path of the recently renanmed file.
+        // We could not call this earlier, since the new file path
+        // did not exist till AFTER we called the real rename on 
+        // the original source file.
+         full_new_path = realpath(newpath, NULL);
+         if (full_new_path == NULL) {
+             error = errno;
+             this->fatal_error(error, "Could not complete rename().");
+             goto source_free_out;
+         }
+     }
     
-    // If backup is running...
-    if (m_session != NULL && this->capture_is_enabled()) {
-        // Check to see that both paths are in our source directory.
-        if (!m_session->is_prefix(full_old_path) || !m_session->is_prefix(full_new_path)) {
-            user_error = call_real_rename(oldpath, newpath);
-            goto session_unlock_out;
-        }
-        
-        full_old_destination_path = m_session->translate_prefix(full_old_path);
-        full_new_destination_path = m_session->translate_prefix(full_new_path);
-        
-        r = m_table.lock();
-        if (r != 0) {
-            user_error = call_real_rename(oldpath, newpath);
-            goto destination_free_out;
-        }
-        
-        source_file * file = m_table.get(full_new_path);
-        file->add_reference();
-        r = m_table.unlock();
-        if (r != 0) {
-            user_error = call_real_rename(oldpath, newpath);
-            file->remove_reference();
-            goto destination_free_out;
-        }
-        
-        user_error = call_real_rename(oldpath, newpath);
-        if (user_error == 0) {
+    // Grab the session lock.
+     r = pthread_rwlock_rdlock(&m_session_rwlock);
+     if (r!=0) {
+         this->fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+         user_error = call_real_rename(oldpath, newpath);
+         goto source_free_out;
+     }
+    
+    // If the rename succeeded and backup is running...
+    if (user_error != 0 && m_session != NULL && this->capture_is_enabled()) {
+        // Check to see that the source paths our both in our source directory.
+        if (m_session->is_prefix(full_old_path) && m_session->is_prefix(full_new_path)) {
+            // Get the new full paths of both backup/destination files.
+            full_old_destination_path = m_session->translate_prefix(full_old_path);
+            full_new_destination_path = m_session->translate_prefix(full_new_path);
+            // If the copier has already copied or is copying the
+            // file, this will succceed.  If the copier has not yet
+            // created the file this will fail, and it should find it
+            // in its todo list.  However, if we want to be sure that
+            // the new name is in its todo list, we must add it to the
+            // todo list ourselves, just to be sure that it is copied.
             //
-            // Rename the backup version, if it exists.
-            //
-            // If the copier has already copied or is copying the file, this
-            // will succceed.  If the copier has not yet created the file
-            // this will fail, and it should find it in its todo list.
-            // However, if we want to be sure that the new name is in its todo
-            // list, we must add it to the todo list ourselves, just to be sure
-            // that it is copied.
-            //
-            // NOTE: If the orignal file name is still in our todo list, the
-            // copier will attempt to copy it, but since it has already been
-            // renamed it will fail with ENOENT, which we ignore in COPY, and 
-            // move on to the next item in the todo list. 
-            //
-            r = call_real_rename(full_old_destination_path, full_new_destination_path);
+            // NOTE: If the orignal file name is still in our todo
+            // list, the copier will attempt to copy it, but since it
+            // has already been renamed it will fail with ENOENT,
+            // which we ignore in COPY, and move on to the next item
+            // in the todo list.
+            r = call_real_rename(full_old_destination_path, full_new_destination_path);         
             if (r != 0) {
                 error = errno;
+                // Ignore the error where the copier hasn't yet copied the
+                // original file.
                 if (error != ENOENT) {
-                    the_manager.backup_error(error, "rename() on backup copy failed.");
+                    this->backup_error(error, "rename() on backup copy failed.");
                 } else {
                     // Add to the copier's todo list.
                     m_session->add_to_copy_todo_list(full_new_destination_path);
                 }
             }
         }
-        
-
-    } else {
-        // Backup is not running.  Just call the syscall on the source file.
-        user_error = call_real_rename(oldpath, newpath);
     }
 
- session_unlock_out:
-    
     r = pthread_rwlock_unlock(&m_session_rwlock);
     if (r != 0) {
-        the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+        this->fatal_error(r, "Trying to unlock rwlock at %s:%d", __FILE__, __LINE__);
     }
 
-destination_free_out:
+    // Only bother to rename a source_file object if we have succeeded
+    // calling rename on the user's source files.
+    if (user_error == 0) {
+        // If we got to this point, we have called rename on 
+        // the source file.  So we must update our source_file
+        // object with the new name.
+        r = m_table.rename_locked(full_old_path, full_new_path);
+        if (r != 0) {
+            error = errno;
+            this->fatal_error(error, "pthread error. Coudl not rename().");
+        }
+    }
+
     if (full_old_destination_path != NULL) {
         free((void*)full_old_destination_path);
     }
