@@ -7,13 +7,9 @@
 #include <unistd.h>
 #include "backup_test_helpers.h"
 
-static char *src;
-static char *dst;
-
-
 int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
-    src = get_src();
-    dst = get_dst();
+    char *src = get_src();
+    char *dst = get_dst();
     setup_source();
     setup_destination();
     setup_dirs();
