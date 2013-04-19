@@ -359,59 +359,10 @@ void manager::disable_descriptions(void)
 int manager::create(int fd, const char *file) 
 {
     TRACE("entering create() with fd = ", fd);
-    description *description;
-    {
-        int r = m_map.put(fd, &description);
-        if (r != 0) return r; // The error has been reported.
-    }
-
-    char *full_source_file_path = realpath(file, NULL);
-    if (full_source_file_path == NULL) {
-        int error = errno;
-        return error;
-    }
-
-    // Add description to hash table.
-    {
-        int r = m_table.lock();
-        if (r!=0) {
-            free(full_source_file_path);
-            return r;
-        }
-    }
-
-    source_file *source = NULL;
-
-    {
-        source = m_table.get(full_source_file_path);
-        if (source == NULL) {
-            TRACE("Creating new source file in hash map ", fd);
-            source = new source_file();
-            source->add_reference();
-            int r = source->init(full_source_file_path);
-            if (r != 0) {
-                // The error has been reported.
-                source->remove_reference();
-                delete source;
-                ignore(m_table.unlock());
-                free(full_source_file_path);
-                return r;
-            }
-
-            m_table.put(source);
-        }
-    }
-
-    free(full_source_file_path);
-
-    source->add_reference();
-    description->set_source_file(source);
-    
-    {
-        int r = m_table.unlock();
-        if (r!=0) {
-            return r;
-        }
+    int result = this->setup_description_and_source_file(fd, file);
+    if (result != 0) {
+        // All errors in above function are fatal, just return, it's over.
+        return result;
     }
     
     {
@@ -421,9 +372,20 @@ int manager::create(int fd, const char *file)
             return r;
         }
     }
-            
     
-    if (m_session != NULL) {
+    if (m_session != NULL && this->capture_is_enabled()) {
+        // Get the source file object.
+        description * description;
+        {
+            int r = m_map.get(fd, &description);
+            if (r != 0) {
+                // fatal error encountered...
+                return r;
+            }
+        }
+
+        source_file * source = description->get_source_file();
+        // Should we add a reference here for the local variable?
         {
             int r = source->name_read_lock();
             if (r != 0) {
@@ -433,7 +395,7 @@ int manager::create(int fd, const char *file)
             }
         }
         
-        char *backup_file_name;
+        char *backup_file_name = NULL;
         {
             int r = m_session->capture_create(source->name(), &backup_file_name);
             if (r!=0) {
@@ -441,6 +403,7 @@ int manager::create(int fd, const char *file)
                 return r;
             }
         }
+
         if (backup_file_name != NULL) {
             description->prepare_for_backup(backup_file_name);
             int r = description->create(); // TODO. create is messy since it doens't report the error, and what constitues anerror may depend on context.  Clean this up.
@@ -452,6 +415,7 @@ int manager::create(int fd, const char *file)
             }
             free((void*)backup_file_name);
         }
+
         {
             int r = source->name_unlock();
             if (r != 0) {
@@ -461,6 +425,7 @@ int manager::create(int fd, const char *file)
             }
         }
     }
+
     {
         int r = pthread_rwlock_unlock(&m_session_rwlock);
         if (r!=0) {
@@ -487,75 +452,44 @@ int manager::create(int fd, const char *file)
 int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
 {
     TRACE("entering open() with fd = ", fd);
-    description *description;
-    {
-        int r = m_map.put(fd, &description);
-        if (r!=0) return r; // Unlike some of the other functions, we don't do the orignal open here.
-    }
-    
-    char *full_source_file_path = realpath(file, NULL);
-    if (full_source_file_path == NULL) {
-        int error = errno;
-        return error;
+    int result = this->setup_description_and_source_file(fd, file);
+    if (result != 0) {
+        // All errors in above function are fatal, just return, it's over.
+        return result;
     }
 
-    // Add description to hash table.
-    {
-        int r = m_table.lock();
-        if (r!=0) {
-            free(full_source_file_path);
-            return r;
-        }
-    }
-
-    source_file * source = NULL;
-
-    {
-        source = m_table.get(full_source_file_path);
-        if (source == NULL) {
-            TRACE("Creating new source file in hash map ", fd);
-            source = new source_file();
-            source->add_reference();
-            int r = source->init(full_source_file_path);
-            if (r != 0) {
-                // The error has been reported.
-                source->remove_reference();
-                delete source;
-                ignore(m_table.unlock());
-                free(full_source_file_path);
-                return r;
-            }
-            m_table.put(source);
-        }
-    }
-    
-    free(full_source_file_path);
-
-    source->add_reference();
-    description->set_source_file(source);
-    
-    {
-        int r = m_table.unlock();
-        if (r!=0) return r;
-    }
     {
         int r = pthread_rwlock_rdlock(&m_session_rwlock);
         if (r!=0) {
-            the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
+            this->fatal_error(r, "Failed to lock mutex at %s:%d", __FILE__, __LINE__);
             return r;
         }
     }
 
-    if(m_session != NULL) {
+    if(m_session != NULL && this->capture_is_enabled()) {
+        // Get the source file object.
+        description * description;
+        {
+            int r = m_map.get(fd, &description);
+            if (r != 0) {
+                // fatal error encountered...
+                return r;
+            }
+        }
+
+        source_file * source = description->get_source_file();
+        // Should we add a reference here for the local variable?
+
         {
             int r = source->name_read_lock();
             if (r != 0) {
                 ignore(pthread_rwlock_unlock(&m_session_rwlock));
-                the_manager.fatal_error(r, "pthread error.");
+                this->fatal_error(r, "pthread error.");
                 return r;
             }
         }
-        char *backup_file_name;
+
+        char *backup_file_name = NULL;
         {
             int r = m_session->capture_open(file, &backup_file_name);
             if (r!=0) {
@@ -563,7 +497,8 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
                 return r;
             }
         }
-        if(backup_file_name != NULL) {
+
+        if (backup_file_name != NULL) {
             description->prepare_for_backup(backup_file_name);
             int r = description->open(); // TODO: open is messy.  It ought to report the error, but I'm not sure if it can, since what constitutes an error may depend on the context.  Clean this up.
             if (r != 0) {
@@ -575,22 +510,25 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
             }
             free(backup_file_name);
         }
+
         {
             int r = source->name_unlock();
             if (r != 0) {
                 ignore(pthread_rwlock_unlock(&m_session_rwlock));
-                the_manager.fatal_error(r, "pthread error.");
+                this->fatal_error(r, "pthread error.");
                 return r;
             }
         }
     }
+
     {
         int r = pthread_rwlock_unlock(&m_session_rwlock);
         if (r!=0) {
-            the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
+            this->fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
             return r;
         }
     }
+
     return 0;
 }
 
