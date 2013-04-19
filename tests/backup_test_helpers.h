@@ -46,6 +46,9 @@ int simple_poll_fun(float progress, const char *progress_string, void *poll_extr
 
 void finish_backup_thread(pthread_t thread); // wait for backup to finish (pass the thread provided by start_backup_thread()
 
+bool backup_thread_is_done(void); // Tell me that finish_backup_thread is done.
+
+
 int systemf(const char *formatstring, ...) __attribute__((format (printf, 1, 2))); // Effect: run system() on the snprintf of the args.  Return the exit code.
 int openf(int flags, int mode, const char *formatstring, ...)  __attribute__((format(printf, 3, 4))); // Effect: run open(s, flags, mode) where s is gotten by formatting the string.
 

@@ -17,6 +17,7 @@ foreach(test
  open_prepare_race_6610
  open_write_close
  no_dest_dir_6317b
+ notinsource_6570
  null_dest_dir_6317
  nondir_dest_dir_6317
  readdirfails_dest_dir

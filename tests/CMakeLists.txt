@@ -24,6 +24,7 @@ set(blackboxtests
   read_and_seek
   test6128
   no_dest_dir_6317b
+  notinsource_6570
   null_dest_dir_6317
   nondir_dest_dir_6317
   readdirfails_dest_dir

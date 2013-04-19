@@ -104,6 +104,9 @@ struct backup_thread_extra_t {
     void*              error_extra;
     int                expect_return_result;
 };
+
+static volatile bool backup_is_done = false;
+
 static void* start_backup_thread_fun(void *backup_extra_v) {
     backup_thread_extra_t *backup_extra = (backup_thread_extra_t*)backup_extra_v;
     const char *srcs[1] = {backup_extra->src_dir};
@@ -117,7 +120,12 @@ static void* start_backup_thread_fun(void *backup_extra_v) {
     check(r==backup_extra->expect_return_result);
     if (backup_extra->src_dir) free(backup_extra->src_dir);
     if (backup_extra->dst_dir) free(backup_extra->dst_dir);
+    backup_is_done = true;
     return backup_extra_v;
+}
+
+bool backup_thread_is_done(void) {
+    return backup_is_done;
 }
 
 void start_backup_thread_with_funs(pthread_t *thread,
@@ -134,6 +142,8 @@ void start_backup_thread_with_funs(pthread_t *thread,
     p->error_fun = error_fun;
     p->error_extra = error_extra;
     p->expect_return_result = expect_return_result;
+    VALGRIND_HG_DISABLE_CHECKING(&backup_is_done, sizeof(backup_is_done));
+    backup_is_done = false;
     int r = pthread_create(thread, NULL, start_backup_thread_fun, p);
     check(r==0);
 }
