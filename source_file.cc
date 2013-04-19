@@ -16,16 +16,28 @@
 
 ////////////////////////////////////////////////////////
 //
-source_file::source_file(const char * const path) : m_full_path(strdup(path)), m_next(NULL), m_reference_count(0) 
+source_file::source_file()
+ : m_full_path(NULL),
+   m_next(NULL), 
+   m_reference_count(0) 
 {
 };
 
 source_file::~source_file(void) {
-    free(m_full_path);
+    if (m_full_path != NULL) {
+        free(m_full_path);
+    }
 }
 
-int source_file::init(void)
+int source_file::init(const char *path)
 {
+    m_full_path = strdup(path);
+    if (m_full_path == NULL) {
+        int r = errno;
+        the_manager.backup_error(r, "Could not allocate memory.");
+        return r;
+    }
+
     {
         int r = pthread_mutex_init(&m_mutex, NULL);
         if (r!=0) {

@@ -20,8 +20,10 @@ static void test_hash_collisions(void) {
 }
 
 static void test_add(void) {
-    source_file *first_file  = new source_file(FIRST_NAME );
-    source_file *second_file = new source_file(SECOND_NAME);
+    source_file *first_file  = new source_file();
+    source_file *second_file = new source_file();
+    first_file->init(FIRST_NAME);
+    second_file->init(SECOND_NAME);
 
     file_hash_table table;
     table.put(first_file);
@@ -46,8 +48,10 @@ static void test_add(void) {
 
 static void test_duplicates(void) {
     file_hash_table table;
-    source_file first_file(FIRST_NAME);
-    source_file second_file(SECOND_NAME);
+    source_file first_file;
+    source_file second_file;
+    first_file.init(FIRST_NAME);
+    second_file.init(SECOND_NAME);
 
     table.put(&first_file);
     check(table.size() == 1);
@@ -113,7 +117,8 @@ static void seriously_test_duplicates(void) {
         char str[100];
         snprintf(str, sizeof(str), "foo%d", i);
         fnames[i] = strdup(str);
-        files[i] = new source_file(fnames[i]);
+        files[i] = new source_file();
+        files[i]->init(fnames[i]);
         table.put(files[i]);
         check(table.size()==i+1);
     }
@@ -134,8 +139,10 @@ static void test_empty_hash_and_remove(void) {
         abort();
     }
 
-    source_file first_file(FIRST_NAME);
-    source_file second_file(SECOND_NAME);
+    source_file first_file;
+    source_file second_file;
+    first_file.init(FIRST_NAME);
+    second_file.init(SECOND_NAME);
 
     table.put(&first_file);
     table.put(&second_file);

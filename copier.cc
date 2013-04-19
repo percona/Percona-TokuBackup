@@ -348,8 +348,8 @@ int copier::copy_regular_file(const char *source, const char *dest, off_t source
     file = m_table->get(source);
     if (file == NULL) {
         TRACE("Creating new source file", source);
-        file = new source_file(source);
-        int r = file->init();
+        file = new source_file();
+        int r = file->init(source);
         if (r != 0) {
             // Already reported the error, so ignore these errors.
             ignore(m_table->unlock());

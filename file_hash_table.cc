@@ -48,8 +48,8 @@ source_file* file_hash_table::get_or_create_locked(const char * const file_name)
 
     file = this->get(file_name);
     if (file == NULL) {
-        file = new source_file(file_name);
-        r = file->init();
+        file = new source_file();
+        r = file->init(file_name);
         if (r != 0) {
             delete file;
             file = NULL;

@@ -386,9 +386,9 @@ int manager::create(int fd, const char *file)
         source = m_table.get(full_source_file_path);
         if (source == NULL) {
             TRACE("Creating new source file in hash map ", fd);
-            source = new source_file(full_source_file_path);
+            source = new source_file();
             source->add_reference();
-            int r = source->init();
+            int r = source->init(full_source_file_path);
             if (r != 0) {
                 // The error has been reported.
                 source->remove_reference();
@@ -514,9 +514,9 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
         source = m_table.get(full_source_file_path);
         if (source == NULL) {
             TRACE("Creating new source file in hash map ", fd);
-            source = new source_file(full_source_file_path);
+            source = new source_file();
             source->add_reference();
-            int r = source->init();
+            int r = source->init(full_source_file_path);
             if (r != 0) {
                 // The error has been reported.
                 source->remove_reference();
