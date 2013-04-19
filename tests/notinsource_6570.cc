@@ -55,6 +55,7 @@ void exercise(void) {
             assert(r==0);
         }
     }
+    // open, write, rename, close
     {
         char filea_name[nlen];
         char fileb_name[nlen];

@@ -18,6 +18,7 @@ foreach(test
  open_write_close
  no_dest_dir_6317b
  notinsource_6570
+ notinsource_6570b
  null_dest_dir_6317
  nondir_dest_dir_6317
  readdirfails_dest_dir
