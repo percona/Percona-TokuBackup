@@ -139,7 +139,7 @@ int main (int argc, const char *argv[]) {
             size_t len =  strlen(exename) + slen + 100;
             char cmd[len];
             snprintf(cmd, len, "nm %s | egrep \" %.*s($|@)\" > /dev/null", exename, (int)slen-2, sym);
-            if (1) printf("cmd=%s\n", cmd);
+            if (0) printf("cmd=%s\n", cmd);
             int r = system(cmd);
             assert(WIFEXITED(r));
             if (WEXITSTATUS(r)==0) {
