@@ -9,8 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <assert.h>
-
+#include "glassbox.h"
 #include "source_file.h"
 #include "manager.h"
 #include "mutex.h"
@@ -215,7 +214,7 @@ void source_file::add_reference(void)
 void source_file::remove_reference(void)
 {
     // TODO.  How can the code that decremented a reference count only if it was positive be right?  Under what conditions could someone be decrementing a refcount when they don't know that it's positive?
-    assert(m_reference_count>0);
+    glass_assert(m_reference_count>0);
     __sync_fetch_and_add(&m_reference_count, -1);
 }
 
