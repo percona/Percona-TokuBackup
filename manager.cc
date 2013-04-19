@@ -1268,6 +1268,88 @@ void manager::set_error_internal(int errnum, const char *format_string, va_list 
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//
+int manager::setup_description_and_source_file(int fd, const char *file)
+{
+    int error = 0;
+    int r = 0;
+    source_file * source = NULL;
+    description * description = NULL;
+    
+    // Resolve the given, possibly relative, file path to
+    // the full path. 
+    const char * full_source_file_path = realpath(file, NULL);
+    if (full_source_file_path == NULL) {
+        error = errno;
+        // This error is not recoverable, because we can't guarantee 
+        // that we can CAPTURE any calls on the given fd or file.
+        this->fatal_error(errno, "Could not allocate space for backup.");
+        goto error_out;
+    }
+    
+    // table.lock can be fatal...
+    r = m_table.lock();
+    if (r != 0) {
+        error = r;
+        free((void*)full_source_file_path);
+        goto error_out;
+    }
+
+    // Try to get the source_file.  If we can't, it needs
+    // to be created.  NOTE: This code assumes that only
+    // create() and open() call this function.
+    source = m_table.get(full_source_file_path);
+    if (file == NULL) {
+        TRACE("Creating new source file in hash map ", fd);
+        TRACE("With source name = ", full_source_file_path);
+        source = new source_file();
+        // init can be fatal...
+        r = source->init(full_source_file_path);
+        if (r != 0) {
+            error = r;
+            source->remove_reference();
+            delete file;
+            free((void*)full_source_file_path);
+            ignore(m_table.unlock());
+            goto error_out;
+        }
+        
+        m_table.put(source);
+    }
+    
+    free((void*)full_source_file_path);
+
+    // We are about to add this source_file object to the fd map,
+    // let's increment the refcount so it doesn't go away BEFORE
+    // we unlock the hash table lock.
+    source->add_reference();
+    
+    // table unlock can be fatal...
+    r = m_table.unlock();
+    if (r != 0) {
+        error = r;
+        m_table.try_to_remove(source);
+        goto error_out;
+    }
+    
+    // Now that we have the source file, regardless of whether we
+    // had to create it or not, we can now create the file
+    // description object that will track the offsets and map
+    // this fd with the source file object.
+    // NOTE: put() can be fatal...
+    r = m_map.put(fd, &description);
+    if (r != 0) {
+        error = r;
+        m_table.try_to_remove(source);
+        goto error_out;
+    }
+
+    description->set_source_file(source);
+
+ error_out:
+    return error;
+}
 
 #ifdef GLASSBOX
 // Test routines.

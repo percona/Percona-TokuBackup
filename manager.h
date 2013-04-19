@@ -98,11 +98,10 @@ public:
     // end of test interface
 
 private:
-    
     int prepare_directories_for_backup(backup_session *session);
     void disable_descriptions(void);
-
     void set_error_internal(int errnum, const char *format, va_list ap);
+    int setup_description_and_source_file(int fd, const char *file);
 };
 
 extern manager the_manager;
