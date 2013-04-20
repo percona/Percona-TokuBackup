@@ -32,9 +32,11 @@ public:
     // Implementation note: The array may need to be expanded.  Put a NULL pointer in each unused slot.
     // If an error occurs, report it to the backup manager and return the error code.
     // If an error occurs *result is not changed.
-
+    void put_unlocked(int fd, description *file);
+    // Effect: simply adds given description pointer to array, no locks held.
     description* get_unlocked(int fd); // use this one instead of get() when you already have the lock.
     int erase(int fd) __attribute__((warn_unused_result)); // returns 0 or an error number.
+    void erase_unlocked(int fd);
     int size(void);
 private:
     void grow_array(int fd);
