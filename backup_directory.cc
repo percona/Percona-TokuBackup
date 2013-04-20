@@ -59,6 +59,27 @@ backup_session::~backup_session()
 
 //////////////////////////////////////////////////////////////////////////////
 //
+int backup_session::init(const char* source, const char *dest)
+{
+    int r = 0;
+    m_source_dir = realpath(source, NULL);
+    if (m_source_dir == NULL) {
+        r = errno;
+        return r;
+    }
+
+    m_dest_dir   = realpath(dest,   NULL);
+    if (m_dest_dir == NULL) {
+        r = errno;
+        return r;
+    }
+
+    m_copier.set_directories(m_source_dir, m_dest_dir);
+    return r;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
 int backup_session::do_copy()
 {
     int r = m_copier.do_copy();
