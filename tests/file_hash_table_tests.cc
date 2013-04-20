@@ -44,28 +44,31 @@ static void test_add(void) {
         printf("Returned file in hash does not match SECOND input file.");
         abort();
     }
+
+    //    delete second_file;
+    //delete first_file;
 }
 
 static void test_duplicates(void) {
     file_hash_table table;
-    source_file first_file;
-    source_file second_file;
-    first_file.init(FIRST_NAME);
-    second_file.init(SECOND_NAME);
+    source_file * first_file = new source_file;
+    source_file * second_file = new source_file;
+    first_file->init(FIRST_NAME);
+    second_file->init(SECOND_NAME);
 
-    table.put(&first_file);
+    table.put(first_file);
     check(table.size() == 1);
 
-    table.put(&first_file);
+    table.put(first_file);
     check(table.size() == 1);
 
-    table.put(&second_file);
+    table.put(second_file);
     check(table.size() == 2);
 
-    table.put(&first_file);
+    table.put(first_file);
     check(table.size() == 2);
 
-    table.put(&second_file);
+    table.put(second_file);
     check(table.size() == 2);
 
     source_file * temp = table.get(FIRST_NAME);
@@ -81,7 +84,7 @@ static void test_duplicates(void) {
         abort();
     }
 
-    table.remove(&first_file);    check(table.size()==1);
+    table.remove(first_file);    check(table.size()==1);
     temp = table.get(FIRST_NAME);
     if (temp != NULL) {
         fail();
@@ -89,9 +92,9 @@ static void test_duplicates(void) {
         abort();
     }
 
-    table.remove(&first_file);    check(table.size()==1);
-    table.remove(&first_file);    check(table.size()==1);
-    table.remove(&first_file);    check(table.size()==1);
+    table.remove(first_file);    check(table.size()==1);
+    table.remove(first_file);    check(table.size()==1);
+    table.remove(first_file);    check(table.size()==1);
     temp = table.get(SECOND_NAME);
     if (temp == NULL) {
         fail();
@@ -99,7 +102,7 @@ static void test_duplicates(void) {
         abort();
     }
 
-    table.remove(&second_file);    check(table.size()==0);
+    table.remove(second_file);    check(table.size()==0);
     temp = table.get(SECOND_NAME);
     if (temp != NULL) {
         fail();
@@ -139,15 +142,15 @@ static void test_empty_hash_and_remove(void) {
         abort();
     }
 
-    source_file first_file;
-    source_file second_file;
-    first_file.init(FIRST_NAME);
-    second_file.init(SECOND_NAME);
+    source_file * first_file = new source_file();
+    source_file * second_file = new source_file();
+    first_file->init(FIRST_NAME);
+    second_file->init(SECOND_NAME);
 
-    table.put(&first_file);
-    table.put(&second_file);
+    table.put(first_file);
+    table.put(second_file);
 
-    table.remove(&second_file);
+    table.remove(second_file);
     temp = table.get(SECOND_NAME);
     if (temp != NULL) {
         fail();
@@ -155,7 +158,7 @@ static void test_empty_hash_and_remove(void) {
         abort();
     }
 
-    table.remove(&first_file);
+    table.remove(first_file);
     temp = table.get(FIRST_NAME);
     if (temp != NULL) {
         fail();
