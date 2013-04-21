@@ -109,6 +109,8 @@ static void test_duplicates(void) {
         printf("Should have gotten NULL back, but second file still in hash table.\n");
         abort();
     }
+    delete first_file;
+    delete second_file;
 }
 
 static void seriously_test_duplicates(void) {
@@ -165,6 +167,8 @@ static void test_empty_hash_and_remove(void) {
         fprintf(stderr, "Returned pointer that should have been null.");
         abort();
     }
+    delete first_file;
+    delete second_file;
 }
 
 static int test_concurrent_access(void)
