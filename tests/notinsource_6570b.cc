@@ -14,9 +14,9 @@
 
 #include "backup_test_helpers.h"
 
-char *not_src;
+static char *not_src;
 
-void fileops(int fd, const char *string) {
+static void fileops(int fd, const char *string) {
     assert(strlen(string)>30); // this test needs a certain amount of string...
     int len = strlen(string);
     {
@@ -87,7 +87,7 @@ void fileops(int fd, const char *string) {
     }
 }
 
-void exercise(void) {
+static void exercise(void) {
     size_t nlen = strlen(not_src)+10;
     // open, fileops(read,write, etc) close, unlink
     {

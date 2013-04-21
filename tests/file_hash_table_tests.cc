@@ -114,7 +114,7 @@ static void test_duplicates(void) {
 }
 
 static void seriously_test_duplicates(void) {
-    const int N = 2*file_hash_table::BUCKET_MAX;
+    const int N = 100;
     char *fnames[N];
     source_file *files[N];
     file_hash_table table;

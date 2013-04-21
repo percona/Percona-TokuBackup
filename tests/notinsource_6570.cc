@@ -13,9 +13,9 @@
 
 #include "backup_test_helpers.h"
 
-char *not_src;
+static char *not_src;
 
-void exercise(void) {
+static void exercise(void) {
     size_t nlen = strlen(not_src)+10;
     // open, write, close, unlink
     {
