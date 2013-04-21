@@ -16,16 +16,17 @@
 char *not_src;
 
 void exercise(void) {
-    int nlen = strlen(not_src)+10;
+    size_t nlen = strlen(not_src)+10;
     // open, write, close, unlink
     {
         char filea_name[nlen];
-        snprintf(filea_name, nlen, "%s/filea", not_src);
+        size_t slen = snprintf(filea_name, nlen, "%s/filea", not_src);
+        assert(slen<nlen);
         int fda = open(filea_name, O_RDWR|O_CREAT, 0777);
         assert(fda>=0);
         {
-            ssize_t r = write(fda, filea_name, nlen);
-            assert(r==nlen);
+            ssize_t r = write(fda, filea_name, slen);
+            assert(r==(ssize_t)slen);
         }
         {
             int r = close(fda);
@@ -39,7 +40,8 @@ void exercise(void) {
     // open, unlink, write, close
     {
         char filea_name[nlen];
-        snprintf(filea_name, nlen, "%s/filea", not_src);
+        size_t slen = snprintf(filea_name, nlen, "%s/filea", not_src);
+        assert(slen<nlen);
         int fda = open(filea_name, O_RDWR|O_CREAT, 0777);
         assert(fda>=0);
         {
@@ -47,25 +49,25 @@ void exercise(void) {
             assert(r==0);
         }
         {
-            ssize_t r = write(fda, filea_name, nlen);
-            assert(r==nlen);
+            ssize_t r = write(fda, filea_name, slen);
+            assert(r==(ssize_t)slen);
         }
         {
             int r = close(fda);
             assert(r==0);
         }
     }
-    // open, write, rename, close
+    // open, write, rename, close2
     {
         char filea_name[nlen];
         char fileb_name[nlen];
-        snprintf(filea_name, nlen, "%s/filea", not_src);
-        snprintf(fileb_name, nlen, "%s/fileb", not_src);
+        size_t alen = snprintf(filea_name, nlen, "%s/filea", not_src);  assert(alen<nlen);
+        size_t blen = snprintf(fileb_name, nlen, "%s/fileb", not_src);  assert(blen<nlen);
         int fda = open(filea_name, O_RDWR|O_CREAT, 0777);
         assert(fda>=0);
         {
-            ssize_t r = write(fda, filea_name, nlen);
-            assert(r==nlen);
+            ssize_t r = write(fda, filea_name, alen);
+            assert(r==(ssize_t)alen);
         }
         {
             int r = rename(filea_name, fileb_name);
@@ -126,5 +128,6 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     exercise();
     exercise();
     free(src);
+    free(not_src);
     return 0;
 }

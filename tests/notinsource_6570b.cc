@@ -210,5 +210,6 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     exercise();
     exercise();
     free(src);
+    free(not_src);
     return 0;
 }
