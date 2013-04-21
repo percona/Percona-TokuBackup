@@ -275,6 +275,7 @@ int copier::copy_full_path(const char *source,
                 m_calls->report_error(mkdir_errno, string);
                 free(string);
                 r = mkdir_errno;
+                closedir(dir); // ignore errors from this.
                 goto out;
             }
             
@@ -283,6 +284,7 @@ int copier::copy_full_path(const char *source,
 
         r = this->add_dir_entries_to_todo(dir, file);
         if (r != 0) {
+            closedir(dir); // ignore errors from this.
             goto out;
         }
 
