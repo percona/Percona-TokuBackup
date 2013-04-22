@@ -84,15 +84,19 @@ static void test_duplicates(void) {
         abort();
     }
 
+    assert(table.get(SECOND_NAME)!=NULL);
     table.remove(first_file);    check(table.size()==1);
     temp = table.get(FIRST_NAME);
+    assert(table.get(SECOND_NAME)!=NULL);
     if (temp != NULL) {
         fail();
         printf("Should not have returned a file after removing it once: %s\n", temp->name());
         abort();
     }
 
+    assert(table.get(SECOND_NAME)!=NULL);
     table.remove(first_file);    check(table.size()==1);
+    assert(table.get(SECOND_NAME)!=NULL);
     table.remove(first_file);    check(table.size()==1);
     table.remove(first_file);    check(table.size()==1);
     temp = table.get(SECOND_NAME);
@@ -114,7 +118,7 @@ static void test_duplicates(void) {
 }
 
 static void seriously_test_duplicates(void) {
-    const int N = 2*file_hash_table::BUCKET_MAX;
+    const int N = 100;
     char *fnames[N];
     source_file *files[N];
     file_hash_table table;

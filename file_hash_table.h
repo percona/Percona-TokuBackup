@@ -7,6 +7,7 @@
 #define FILE_HASH_TABLE_H
 
 #include <pthread.h>
+#include <vector>
 
 class source_file;
 
@@ -27,11 +28,12 @@ public:
     int size(void) const;
     int lock(void) __attribute__((warn_unused_result));   // Return 0 on success or an error number.  Reports the error to the backup manager.
     int unlock(void) __attribute__((warn_unused_result)); // Return 0 on success or an error number.  Reports the error to the backup manager.
-    static const int BUCKET_MAX = 1 << 14;
 private:
-    source_file *m_table[file_hash_table::BUCKET_MAX];
-    int m_count;
+    size_t m_count;
+    source_file **m_array;
+    size_t m_size;
     static pthread_mutex_t m_mutex;
+    void maybe_resize(void);
 };
 
 

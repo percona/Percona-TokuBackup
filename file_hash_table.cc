@@ -17,22 +17,23 @@ pthread_mutex_t file_hash_table::m_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 ////////////////////////////////////////////////////////
 //
-file_hash_table::file_hash_table() : m_count(0)
+file_hash_table::file_hash_table() : m_count(0),
+                                     m_array(new source_file*[1]),
+                                     m_size(1)
 {
-    for (int i = 0; i < BUCKET_MAX; ++i) {
-        m_table[i] = NULL;
-    }
+    m_array[0] = NULL;
 }
 
 ////////////////////////////////////////////////////////
 //
 file_hash_table::~file_hash_table() {
-    for (int i=0; i < BUCKET_MAX; i++) {
-        while (source_file *head = m_table[i]) {
-            m_table[i] = head->next();
+    for (size_t i=0; i < m_size; i++) {
+        while (source_file *head = m_array[i]) {
+            m_array[i] = head->next();
             delete head;
         }
     }
+    delete[] m_array;
 }
 
 ////////////////////////////////////////////////////////
@@ -80,7 +81,7 @@ final_out:
 source_file* file_hash_table::get(const char * const full_file_path) const
 {
     int hash_index = this->hash(full_file_path);
-    source_file *file_found = m_table[hash_index];
+    source_file *file_found = m_array[hash_index];
     while (file_found != NULL) {
         int result = strcmp(full_file_path, file_found->name());
         if (result == 0) {
@@ -111,7 +112,7 @@ int file_hash_table::hash(const char * const file) const
         sum += (unsigned int)file[i];
     }
 
-    int result = sum % file_hash_table::BUCKET_MAX;
+    int result = sum % m_size;
     return result;
 }
 
@@ -120,14 +121,38 @@ int file_hash_table::hash(const char * const file) const
 void file_hash_table::insert(source_file * const file, int hash_index)
         // It's OK to insert the same file repeatedly (in which case the table is not modified)
 {
-    source_file *current = m_table[hash_index];
+    source_file *current = m_array[hash_index];
     while (current) {
         if (current == file) return;
         current = current->next();
     }
-    file->set_next(m_table[hash_index]);
-    m_table[hash_index] = file;
+    file->set_next(m_array[hash_index]);
+    m_array[hash_index] = file;
     m_count++;
+    maybe_resize();
+}
+
+void file_hash_table::maybe_resize(void) {
+    if (m_size < m_count) {
+        source_file **old_array = m_array;
+        size_t old_size = m_size;
+        m_size = m_size + m_count;
+        m_array = new source_file*[m_size];
+        for (size_t i=0; i<m_size; i++) {
+            m_array[i] = NULL;
+        }
+        for (size_t i=0; i<old_size; i++) {
+            while (1) {
+                source_file *head = old_array[i];
+                if (head==NULL) break;
+                old_array[i] = head->next();
+                int hash_index = this->hash(head->name());
+                head->set_next(m_array[hash_index]);
+                m_array[hash_index] = head;
+            }
+        }
+        delete[] old_array;
+    }
 }
 
 ////////////////////////////////////////////////////////
@@ -135,7 +160,7 @@ void file_hash_table::insert(source_file * const file, int hash_index)
 void file_hash_table::remove(source_file * const file)
 {
     int hash_index = this->hash(file->name());
-    source_file *current = m_table[hash_index];
+    source_file *current = m_array[hash_index];
     source_file *previous = NULL;
     while (current != NULL) {
         int result = strcmp(current->name(), file->name());
@@ -145,7 +170,7 @@ void file_hash_table::remove(source_file * const file)
             if (previous != NULL) {
                 previous->set_next(next);                
             } else {
-                m_table[hash_index] = NULL;
+                m_array[hash_index] = next;
             }
 
             m_count--;
