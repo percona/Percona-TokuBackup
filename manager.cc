@@ -878,6 +878,7 @@ source_free_out:
 //
 int manager::unlink(const char *path)
 {
+    int r = 0;
     int user_error = 0;
     const char * full_path = realpath(path, NULL);
     if (full_path == NULL) {
@@ -890,7 +891,7 @@ int manager::unlink(const char *path)
     // Get file/dir from hash table.
     source_file * file = NULL;
     {
-        int r = m_table.lock();
+        r = m_table.lock();
         if (r != 0) {
             user_error = call_real_unlink(path);
             goto free_out;
@@ -900,33 +901,44 @@ int manager::unlink(const char *path)
     file = m_table.get(path);
     user_error = call_real_unlink(path);
     
+    r = prwlock_rdlock(&m_session_rwlock);
+    if (r != 0) {
+        goto unlock_out;
+    }
+
     if (m_session != NULL && this->capture_is_enabled()) {
         // If it does not exist, and if backup is running,
         // it may be in the todo list. Since we have the hash 
         // table lock, the copier can't add it, and rename() threads
         // can't alter the name and re-hash it till we are done.
         char * dest_name = m_session->translate_prefix_of_realpath(full_path);
-        int r = call_real_unlink(dest_name);
+        r = call_real_unlink(dest_name);
         int error = 0;
-        if (r!=0) error=errno;
+        if (r != 0) {
+            error = errno;
+        }
         free(dest_name);
         if (r != 0) {
             if (error != ENOENT) {
                 the_manager.backup_error(error, "Could not unlink backup copy.");
-                goto unlock_out;
+                goto session_unlock_out;
             }
         }
     }
-        
-    if (file) m_table.try_to_remove(file);
+
+    if (file) {
+        m_table.try_to_remove(file);
+    }
+
+session_unlock_out:
+
+    ignore(prwlock_unlock(&m_session_rwlock));
 
 unlock_out:
-    {
-        int r = m_table.unlock();
-        if (r != 0) {
-            // TODO.  If this fails, then we should do something.
-            goto free_out;
-        }
+
+    r = m_table.unlock();
+    if (r != 0) {
+        this->fatal_error(r, "pthread unlock failure.");
     }
 
 free_out:
