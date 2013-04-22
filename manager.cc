@@ -9,6 +9,7 @@
 #include "manager.h"
 #include "real_syscalls.h"
 #include "source_file.h"
+#include "rwlock.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -190,18 +191,16 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         }
     }
 
-    r = pthread_rwlock_wrlock(&m_session_rwlock);
+    r = prwlock_wrlock(&m_session_rwlock);
     if (r!=0) {
-        fatal_error(r, "Problem obtaining session lock at %s:%d", __FILE__, __LINE__);
         goto unlock_out;
     }
 
     m_session = new backup_session(source, dest, calls, &m_table, &r);
     print_time("Toku Hot Backup: Started:");    
 
-    r = pthread_rwlock_unlock(&m_session_rwlock);
+    r = prwlock_unlock(&m_session_rwlock);
     if (r!=0) {
-        fatal_error(r, "Problem releasing session lock at %s:%d", __FILE__, __LINE__);
         goto unlock_out;
     }
     
@@ -243,9 +242,8 @@ disable_out: // preserves r if r!=0
 unlock_out: // preserves r if r!0
 
     {
-        int r2 = pthread_rwlock_wrlock(&m_session_rwlock);
+        int r2 = prwlock_wrlock(&m_session_rwlock);
         if (r==0 && r2!=0) {
-            fatal_error(r2, "Problem obtaining session lock at %s:%d", __FILE__, __LINE__);
             r = r2;
         }
     }
@@ -255,9 +253,8 @@ unlock_out: // preserves r if r!0
     m_session = NULL;
 
     {
-        int r2 = pthread_rwlock_unlock(&m_session_rwlock);
+        int r2 = prwlock_unlock(&m_session_rwlock);
         if (r==0 && r2!=0) {
-            fatal_error(r2, "Problem releasing session lock at %s:%d", __FILE__, __LINE__);
             r = r2;
         }
     }
@@ -366,9 +363,8 @@ int manager::create(int fd, const char *file)
     }
     
     {
-        int r = pthread_rwlock_rdlock(&m_session_rwlock);
+        int r = prwlock_rdlock(&m_session_rwlock);
         if (r!=0) {
-            the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
             return r;
         }
     }
@@ -389,8 +385,7 @@ int manager::create(int fd, const char *file)
         {
             int r = source->name_read_lock();
             if (r != 0) {
-                ignore(pthread_rwlock_unlock(&m_session_rwlock));
-                the_manager.fatal_error(r, "pthread error.");
+                ignore(prwlock_unlock(&m_session_rwlock));
                 return r;
             }
         }
@@ -399,7 +394,7 @@ int manager::create(int fd, const char *file)
         {
             int r = m_session->capture_create(source->name(), &backup_file_name);
             if (r!=0) {
-                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                ignore(prwlock_unlock(&m_session_rwlock));
                 return r;
             }
         }
@@ -410,7 +405,7 @@ int manager::create(int fd, const char *file)
             if (r != 0) {
                 backup_error(r, "Could not create backup file %s", backup_file_name);
                 free(backup_file_name);
-                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                ignore(prwlock_unlock(&m_session_rwlock));
                 return r;
             }
             free((void*)backup_file_name);
@@ -419,7 +414,7 @@ int manager::create(int fd, const char *file)
         {
             int r = source->name_unlock();
             if (r != 0) {
-                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                ignore(prwlock_unlock(&m_session_rwlock));
                 the_manager.fatal_error(r, "pthread error.");
                 return r;
             }
@@ -427,9 +422,8 @@ int manager::create(int fd, const char *file)
     }
 
     {
-        int r = pthread_rwlock_unlock(&m_session_rwlock);
+        int r = prwlock_unlock(&m_session_rwlock);
         if (r!=0) {
-            the_manager.fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
             return r;
         }
     }
@@ -459,9 +453,8 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
     }
 
     {
-        int r = pthread_rwlock_rdlock(&m_session_rwlock);
+        int r = prwlock_rdlock(&m_session_rwlock);
         if (r!=0) {
-            this->fatal_error(r, "Failed to lock mutex at %s:%d", __FILE__, __LINE__);
             return r;
         }
     }
@@ -483,7 +476,7 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
         {
             int r = source->name_read_lock();
             if (r != 0) {
-                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                ignore(prwlock_unlock(&m_session_rwlock));
                 this->fatal_error(r, "pthread error.");
                 return r;
             }
@@ -493,7 +486,7 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
         {
             int r = m_session->capture_open(file, &backup_file_name);
             if (r!=0) {
-                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                ignore(prwlock_unlock(&m_session_rwlock));
                 return r;
             }
         }
@@ -505,7 +498,7 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
                 backup_error(r, "Could not open backup file %s", backup_file_name);
                 free(backup_file_name);
                 source->name_unlock();
-                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                ignore(prwlock_unlock(&m_session_rwlock));
                 return r;
             }
             free(backup_file_name);
@@ -514,7 +507,7 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
         {
             int r = source->name_unlock();
             if (r != 0) {
-                ignore(pthread_rwlock_unlock(&m_session_rwlock));
+                ignore(prwlock_unlock(&m_session_rwlock));
                 this->fatal_error(r, "pthread error.");
                 return r;
             }
@@ -522,9 +515,8 @@ int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
     }
 
     {
-        int r = pthread_rwlock_unlock(&m_session_rwlock);
+        int r = prwlock_unlock(&m_session_rwlock);
         if (r!=0) {
-            this->fatal_error(r, "Trying to unlock mutex at %s:%d", __FILE__, __LINE__);
             return r;
         }
     }
@@ -806,9 +798,8 @@ int manager::rename(const char *oldpath, const char *newpath)
      }
     
     // Grab the session lock.
-     r = pthread_rwlock_rdlock(&m_session_rwlock);
+     r = prwlock_rdlock(&m_session_rwlock);
      if (r!=0) {
-         this->fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
          user_error = call_real_rename(oldpath, newpath);
          goto source_free_out;
      }
@@ -847,9 +838,9 @@ int manager::rename(const char *oldpath, const char *newpath)
         }
     }
 
-    r = pthread_rwlock_unlock(&m_session_rwlock);
+    r = prwlock_unlock(&m_session_rwlock);
     if (r != 0) {
-        this->fatal_error(r, "Trying to unlock rwlock at %s:%d", __FILE__, __LINE__);
+        goto destination_free_out;
     }
 
     // Only bother to rename a source_file object if we have succeeded
@@ -864,6 +855,8 @@ int manager::rename(const char *oldpath, const char *newpath)
             this->fatal_error(error, "pthread error. Coudl not rename().");
         }
     }
+
+ destination_free_out:
 
     if (full_old_destination_path != NULL) {
         free((void*)full_old_destination_path);
@@ -1010,9 +1003,8 @@ int manager::truncate(const char *path, off_t length)
         return call_real_truncate(path, length);
     }
 
-    int r = pthread_rwlock_rdlock(&m_session_rwlock);
+    int r = prwlock_rdlock(&m_session_rwlock);
     if (r != 0) {
-        the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
         user_error = call_real_truncate(path, length);
         goto free_out;
     }
@@ -1071,10 +1063,7 @@ int manager::truncate(const char *path, off_t length)
         }
     }
 
-    r = pthread_rwlock_unlock(&m_session_rwlock);
-    if (r != 0) {
-        the_manager.fatal_error(r, "Trying to lock mutex at %s:%d", __FILE__, __LINE__);
-    }
+    ignore(prwlock_unlock(&m_session_rwlock));
     
 free_out:
     free((void*) full_path);
@@ -1092,29 +1081,20 @@ free_out:
 //
 void manager::mkdir(const char *pathname)
 {
-    {
-        int r = pthread_rwlock_rdlock(&m_session_rwlock);
-        if (r!=0) {
-            the_manager.fatal_error(r, "failed releasing rwlock at %s:%d", __FILE__, __LINE__);
-            return; // don't try to do any more once the lock failed.
-        }
+    int r = prwlock_rdlock(&m_session_rwlock);
+    if (r!=0) {
+        return; // don't try to do any more once the lock failed.
     }
 
     if(m_session != NULL) {
-        int r = m_session->capture_mkdir(pathname);
+        r = m_session->capture_mkdir(pathname);
         if (r != 0) {
             the_manager.backup_error(r, "failed mkdir creating %s", pathname);
             // proceed to unlocking below
         }
     }
 
-    {
-        int r = pthread_rwlock_unlock(&m_session_rwlock);
-        if (r!=0) {
-            the_manager.fatal_error(r, "failed releasing rwlock at %s:%d", __FILE__, __LINE__);
-        }
-    }
-            
+    ignore(prwlock_unlock(&m_session_rwlock));
 }
 
 
