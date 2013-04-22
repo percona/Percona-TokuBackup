@@ -1,12 +1,8 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(HotBackup)
 
-# MySQL compiles with -fno-implicit-templates, but we want implicit templates, so we can use std::unordered_map.
-# set(CMAKE_CXX_FLAGS "-fno-implicit-templates  ${CMAKE_CXX_FLAGS}")
-
-# need c++11 to use std::map
-set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
-
+# No implicit templates, since that's how mysql compiles.
+set(CMAKE_CXX_FLAGS "-fno-implicit-templates  ${CMAKE_CXX_FLAGS}")
 
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS 
   _FILE_OFFSET_BITS=64 

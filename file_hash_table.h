@@ -8,9 +8,6 @@
 
 #include <pthread.h>
 
-#include <unordered_map>
-#include <string>
-
 class source_file;
 
 class file_hash_table {
@@ -20,6 +17,8 @@ public:
     source_file * get_or_create_locked(const char * const file_name);
     source_file* get(const char *full_file_path) const;
     void put(source_file * const file);
+    int hash(const char * const file) const;
+    void insert(source_file * const file, int hash_index); // you may insert the same file more than once.
     void remove(source_file * const file);
     int try_to_remove_locked(source_file * const file);
     void try_to_remove(source_file * const file);
@@ -28,8 +27,10 @@ public:
     int size(void) const;
     int lock(void) __attribute__((warn_unused_result));   // Return 0 on success or an error number.  Reports the error to the backup manager.
     int unlock(void) __attribute__((warn_unused_result)); // Return 0 on success or an error number.  Reports the error to the backup manager.
+    static const int BUCKET_MAX = 1 << 14;
 private:
-    std::unordered_map<std::string, source_file *> m_map;
+    source_file *m_table[file_hash_table::BUCKET_MAX];
+    int m_count;
     static pthread_mutex_t m_mutex;
 };
 
