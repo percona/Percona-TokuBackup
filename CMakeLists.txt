@@ -21,6 +21,7 @@ set(BACKUP_SOURCES
 	manager_state.cc
 	mutex.cc
 	real_syscalls.cc
+	rwlock.cc
 	source_file.cc
 	backup.cc
 	backup_callbacks.cc
