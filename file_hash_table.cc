@@ -10,6 +10,7 @@
 #include "file_hash_table.h"
 #include "manager.h"
 #include "mutex.h"
+#include "MurmurHash3.h"
 
 ////////////////////////////////////////////////////////
 //
@@ -107,13 +108,9 @@ void file_hash_table::put(source_file * const file)
 int file_hash_table::hash(const char * const file) const
 {
     int length = strlen(file);
-    unsigned int sum = 0;
-    for (int i = 0; i < length; ++i) {
-        sum += (unsigned int)file[i];
-    }
-
-    int result = sum % m_size;
-    return result;
+    uint64_t the_hash[2];
+    MurmurHash3_x64_128(file, length, 0, the_hash);
+    return (the_hash[0]+the_hash[1])%m_size;
 }
 
 ////////////////////////////////////////////////////////

@@ -25,6 +25,7 @@ set(BACKUP_SOURCES
 	source_file.cc
 	backup.cc
 	backup_callbacks.cc
+        MurmurHash3.cc
 )
 
 add_library(HotBackup          SHARED ${BACKUP_SOURCES})
