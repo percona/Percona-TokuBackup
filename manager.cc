@@ -290,23 +290,40 @@ int manager::prepare_directories_for_backup(backup_session *session) {
             continue;
         }
         
-        const char * source_path = file->get_full_source_name();
-        if (!session->is_prefix(source_path)) {
+        source_file * source = file->get_source_file();
+        r = source->name_read_lock();
+        if (r != 0) {
+            goto out;
+        }
+
+        if (!session->is_prefix(source->name())) {
+            r = source->name_unlock();
+            if (r != 0) {
+                goto out;
+            }
+
             continue;
         }
 
-        char * file_name = session->translate_prefix(source_path);
+        char * file_name = session->translate_prefix(source->name());
         file->prepare_for_backup(file_name);
         r = open_path(file_name);
         free(file_name);
         if (r != 0) {
             backup_error(r, "Failed to open path");
+            ignore(source->name_unlock());
             goto out;
         }
 
         r = file->create();
         if (r != 0) {
             backup_error(r, "Could not create backup file.");
+            ignore(source->name_unlock());
+            goto out;
+        }
+
+        r = source->name_unlock();
+        if (r != 0) {
             goto out;
         }
     }
@@ -581,33 +598,23 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
         if (r!=0) ok = false;
         else      have_description_lock = true;
     }
-    source_file *file = 0;
+    source_file *file = NULL;
     bool have_range_lock = false;
     uint64_t lock_start=0, lock_end=0;
     if (ok && description) {
-        {
-            int r = m_table.lock();
-            if (r!=0) ok = false;
-        }
-        if (ok) {
-            file = m_table.get(description->get_full_source_name());
-            int r = m_table.unlock();
-            if (r!=0) ok = false;
-        }
-        if (ok) {
-          // We need the range lock before calling real lock so that the write into the source and backup are atomic wrt other writes.
-          TRACE("Grabbing file range lock() with fd = ", fd);
-          lock_start = description->get_offset();
-          lock_end   = lock_start + nbyte;
+        file = description->get_source_file();
+        // We need the range lock before calling real lock so that the write into the source and backup are atomic wrt other writes.
+        TRACE("Grabbing file range lock() with fd = ", fd);
+        lock_start = description->get_offset();
+        lock_end   = lock_start + nbyte;
 
-          // We want to release the description->lock ASAP, since it's limiting other writes.
-          // We cannot release it before the real write since the real write determines the new m_offset.
-          {
-              int r = file->lock_range(lock_start, lock_end);
-              if (r!=0) ok = false;
-              else      have_range_lock = true;
-          }
-       }
+        // We want to release the description->lock ASAP, since it's limiting other writes.
+        // We cannot release it before the real write since the real write determines the new m_offset.
+        {
+            int r = file->lock_range(lock_start, lock_end);
+            if (r!=0) ok = false;
+            else      have_range_lock = true;
+        }
     }
     ssize_t n_wrote = call_real_write(fd, buf, nbyte);
     if (n_wrote>0 && description) { // Don't need OK, just need description
@@ -698,15 +705,8 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
         }
     }
 
-    {
-        int r = m_table.lock();
-        if (r!=0) return call_real_pwrite(fd, buf, nbyte, offset);
-    }
-    source_file * file = m_table.get(description->get_full_source_name());
-    {
-        int r = m_table.unlock();
-        if (r!=0) return call_real_pwrite(fd, buf, nbyte, offset);
-    }
+    source_file * file = description->get_source_file();
+
     {
         int r = file->lock_range(offset, offset+nbyte);
         if (r!=0) return call_real_pwrite(fd, buf, nbyte, offset);
@@ -967,15 +967,8 @@ int manager::ftruncate(int fd, off_t length)
         }
     }
 
-    {
-        int r = m_table.lock();
-        if (r!=0) return call_real_ftruncate(fd, length);
-    }
-    source_file * file = m_table.get(description->get_full_source_name());
-    {
-        int r = m_table.unlock();
-        if (r!=0) return call_real_ftruncate(fd, length);
-    }
+    source_file * file = description->get_source_file();
+
     {
         int r = file->lock_range(length, LLONG_MAX);
         if (r!=0) return call_real_ftruncate(fd, length);

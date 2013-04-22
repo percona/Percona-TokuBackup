@@ -31,7 +31,6 @@ public:
     source_file * get_source_file(void) const;
     void prepare_for_backup(const char *name);
     void disable_from_backup(void);
-    const char * get_full_source_name(void);
     int get_destination_fd(void) const;
     int lock(void) __attribute__((warn_unused_result));
     int unlock(void) __attribute__((warn_unused_result));

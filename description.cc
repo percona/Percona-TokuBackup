@@ -17,7 +17,6 @@
 #include "real_syscalls.h"
 #include "source_file.h"
 
-
 const int DEST_FD_INIT = -1;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -91,24 +90,6 @@ void description::disable_from_backup(void)
     // __sync_lock_release(&m_in_source_dir); // this is a way to write a zero atomically.  drd won't keep quiet here either.
     __sync_bool_compare_and_swap(&m_in_source_dir, true, false);
     //bool new_false = false; __atomic_store(&m_in_source_dir, &new_false, __ATOMIC_SEQ_CST);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//
-//const char * description::set_full_source_name(void)
-//{
-
-
-///////////////////////////////////////////////////////////////////////////////
-//
-const char * description::get_full_source_name(void)
-{
-    const char * result = NULL;
-    if (m_source_file != NULL) {
-        result = m_source_file->name();
-    }
-
-    return result;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
