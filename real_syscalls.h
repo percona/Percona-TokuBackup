@@ -41,6 +41,12 @@ lseek_fun_t register_lseek(lseek_fun_t new_lseek);
 typedef int (*ftruncate_fun_t)(int, off_t);
 ftruncate_fun_t register_ftruncate(ftruncate_fun_t new_ftruncate);
 
+typedef int (*unlink_fun_t)(const char *);
+unlink_fun_t register_unlink(unlink_fun_t new_unlink);
+
+typedef int (*rename_fun_t)(const char *, const char *);
+rename_fun_t register_rename(rename_fun_t new_rename);
+
 typedef int (*mkdir_fun_t)(const char *, mode_t);
 mkdir_fun_t register_mkdir(mkdir_fun_t new_mkdir);
 

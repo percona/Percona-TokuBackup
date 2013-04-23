@@ -151,16 +151,30 @@ int call_real_truncate(const char *path, off_t length) throw() {
     return real_truncate(path, length);
 }
 
+static unlink_fun_t real_unlink = NULL;
 int call_real_unlink(const char *path) throw() {
-    static int (*real_unlink)(const char* path) = NULL;
     dlsym_set(&real_unlink, "unlink");
     return real_unlink(path);
 }
 
+unlink_fun_t register_unlink(unlink_fun_t f) {
+    dlsym_set(&real_unlink, "unlink");
+    unlink_fun_t r = real_unlink;
+    real_unlink = f;
+    return r;
+}
+
+static rename_fun_t real_rename = NULL;
 int call_real_rename(const char* oldpath, const char* newpath) {
-    static int (*real_rename)(const char *oldpath, const char *newpath) = NULL;
     dlsym_set(&real_rename, "rename");
     return real_rename(oldpath, newpath);
+}
+
+rename_fun_t register_rename(rename_fun_t f) {
+    dlsym_set(&real_rename, "rename");
+    rename_fun_t r = real_rename;
+    real_rename = f;
+    return r;
 }
 
 static mkdir_fun_t real_mkdir = NULL;
