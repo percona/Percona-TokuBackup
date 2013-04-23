@@ -27,6 +27,7 @@ public:
     int do_copy() __attribute__((warn_unused_result)); // returns the error code (not in errno)
     int directories_set(backup_callbacks*);
     bool is_prefix(const char *file);
+    bool is_prefix_of_realpath(const char *absfile);
 
     char* translate_prefix(const char *file);
     // Effect: Returns a malloc'd string which is the realpath of the filename translated from source directory to destination.

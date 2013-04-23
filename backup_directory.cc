@@ -100,9 +100,16 @@ bool backup_session::is_prefix(const char *file)
     // mallocing this to make memcheck happy.  I don't like the extra malloc, but I'm more worried about testability than speed right now. -Bradley
     char *absfile = realpath(file, NULL);
     if (absfile==NULL) return false;
-    bool result = strncmp(m_source_dir, absfile, strlen(m_source_dir))==0;
+    bool result = this->is_prefix_of_realpath(absfile);
     free(absfile);
     return result;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+bool backup_session::is_prefix_of_realpath(const char *absfile)
+{
+    return strncmp(m_source_dir, absfile, strlen(m_source_dir)) == 0;
 }
 
 static int does_file_exist(const char*);
