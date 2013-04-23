@@ -53,6 +53,7 @@ set(glassboxtests
   test6483_mkdir_injection
   open_injection_6476
   rename
+  rename_injection
   unlink
   unlink_during_copy_test6515c
   write_race

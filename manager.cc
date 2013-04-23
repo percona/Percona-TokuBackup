@@ -807,12 +807,12 @@ int manager::rename(const char *oldpath, const char *newpath)
      }
     
     // If the rename succeeded and backup is running...
-    if (user_error != 0 && m_session != NULL && this->capture_is_enabled()) {
-        // Check to see that the source paths our both in our source directory.
-        if (m_session->is_prefix(full_old_path) && m_session->is_prefix(full_new_path)) {
+    if (user_error == 0 && m_session != NULL && this->capture_is_enabled()) {
+        // Check to see that the source paths are both in our source directory.
+        if (m_session->is_prefix_of_realpath(full_old_path) && m_session->is_prefix_of_realpath(full_new_path)) {
             // Get the new full paths of both backup/destination files.
-            full_old_destination_path = m_session->translate_prefix(full_old_path);
-            full_new_destination_path = m_session->translate_prefix(full_new_path);
+            full_old_destination_path = m_session->translate_prefix_of_realpath(full_old_path);
+            full_new_destination_path = m_session->translate_prefix_of_realpath(full_new_path);
             // If the copier has already copied or is copying the
             // file, this will succceed.  If the copier has not yet
             // created the file this will fail, and it should find it
