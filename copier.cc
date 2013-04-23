@@ -326,7 +326,9 @@ int copier::copy_regular_file(const char *source, const char *dest, off_t source
         // Ignore errors about the source file not existing, 
         // because we someone must have deleted the source name
         // since we discovered it and stat'd it.
-        if (r != ENOENT) {
+        if (r == ENOENT) {
+            return 0;
+        } else {
             the_manager.backup_error(r, "Couldn't open source file %s at %s:%d", source, __FILE__, __LINE__);
             return r;
         }
@@ -335,8 +337,17 @@ int copier::copy_regular_file(const char *source, const char *dest, off_t source
     destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
     if (destfd < 0) {
         int r = errno;
-        if(r != EEXIST) {
-            the_manager.backup_error(r, "Couldn't open dest file %s at %s:%d", dest, __FILE__, __LINE__);
+        if (r == EEXIST) {
+            // Some other CAPTURE call has already created the
+            // directory, just open it.
+            destfd = call_real_open(dest, O_WRONLY);
+            if (destfd < 0) {
+                r = errno;
+                the_manager.backup_error(r, "Couldn't open destination file %s at %s:%d", dest, __FILE__, __LINE__);
+                return r;
+            }
+        } else {
+            the_manager.backup_error(r, "Couldn't create destintaion file %s at %s:%d", dest, __FILE__, __LINE__);
             ignore(call_real_close(srcfd)); // ignore any errors here.
             return r;
         }

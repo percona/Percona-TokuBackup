@@ -117,6 +117,7 @@ static int multiple_backups(void) {
     int result = 0;
 
     pthread_t thread;
+    tokubackup_throttle_backup(1L << 22);
     for (int i = 0; i < TRIES; ++i) {
         setup_directory(dirs[i]);
         start_backup_thread(&thread, dirs[i]);

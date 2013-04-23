@@ -795,6 +795,8 @@ int manager::rename(const char *oldpath, const char *newpath)
              this->fatal_error(error, "Could not complete rename().");
              goto source_free_out;
          }
+     } else {
+         return user_error;
      }
     
     // Grab the session lock.
@@ -1165,7 +1167,7 @@ int manager::setup_description_and_source_file(int fd, const char *file)
     int error = 0;
     int r = 0;
     source_file * source = NULL;
-    description * description = NULL;
+    description * file_description = NULL;
     
     // Resolve the given, possibly relative, file path to
     // the full path. 
@@ -1223,19 +1225,16 @@ int manager::setup_description_and_source_file(int fd, const char *file)
         goto error_out;
     }
     
-    // Now that we have the source file, regardless of whether we
-    // had to create it or not, we can now create the file
-    // description object that will track the offsets and map
-    // this fd with the source file object.
-    // NOTE: put() can be fatal...
-    r = m_map.put(fd, &description);
-    if (r != 0) {
-        error = r;
-        m_table.try_to_remove(source);
-        goto error_out;
-    }
-
-    description->set_source_file(source);
+    // Now that we have the source file, regardless of whether we had
+    // to create it or not, we can now create the file description
+    // object that will track the offsets and map this fd with the
+    // source file object.
+    file_description = new description();
+    ignore(file_description->init());
+    file_description->set_source_file(source);
+    ignore(lock_fmap());
+    m_map.put_unlocked(fd, file_description);
+    ignore(unlock_fmap());
 
  error_out:
     return error;
