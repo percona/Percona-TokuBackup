@@ -101,15 +101,14 @@ void copier::set_directories(const char *source, const char *dest)
 //
 int copier::do_copy(void) {
     int r = 0;
-
-    // Start with "."
-    m_todo.push_back(strdup("."));
     char *fname = 0;
     uint64_t total_bytes_backed_up = 0;
     uint64_t total_files_backed_up = 0;
     size_t n_known = 0;
     r = pmutex_lock(&m_todo_mutex);
     if (r != 0) goto out;
+    // Start with "."
+    m_todo.push_back(strdup("."));
     n_known = m_todo.size();
     r = pmutex_unlock(&m_todo_mutex);
     if (r != 0) goto out;

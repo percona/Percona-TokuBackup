@@ -56,6 +56,7 @@ set(glassboxtests
   rename_injection
   unlink
   unlink_during_copy_test6515c
+  unlink_injection
   write_race
   )
 
