@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include "manager.h"
 #include "mutex.h"
+#include "rwlock.h"
 
 static void handle_error(int r) {
   the_manager.fatal_error(r, "pthread rwlock failure");
