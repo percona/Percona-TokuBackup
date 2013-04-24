@@ -119,7 +119,7 @@ int copier::do_copy(void) {
         fname = m_todo.back();
         TRACE("Copying: ", fname);
         
-        char *msg = malloc_snprintf(strlen(fname)+100, "Backup progress %ld bytes, %ld files.  %ld files known of. Copying file %s",  total_bytes_backed_up, total_files_backed_up, n_known, fname);
+        char *msg = malloc_snprintf(strlen(fname)+100, "Backup progress %ld bytes, %ld files.  %ld files known of. Copying file %s",  m_total_bytes_backed_up, m_total_files_backed_up, n_known, fname);
         // Use n_done/n_files.   We need to do a better estimate involving n_bytes_copied/n_bytes_total
         // This one is very wrongu
         r = m_calls->poll(0, msg);
@@ -545,7 +545,7 @@ int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const
             {
                 char string[1000];
                 snprintf(string, sizeof(string), "Backup progress %ld bytes, %ld files.  Throttled: copied %ld/%ld bytes of %s to %s. Sleeping %.2fs for throttling.",
-                         *total_bytes_backed_up, total_files_backed_up,
+                         m_total_bytes_backed_up, m_total_files_backed_up,
                          total_written_this_file, source_file_size, source_path, dest_path, sleep_time);
                 r = m_calls->poll(0, string);
             }
