@@ -72,7 +72,9 @@ copier::copier(backup_callbacks *calls, file_hash_table * const table)
     : m_source(NULL), 
       m_dest(NULL), 
       m_calls(calls), 
-      m_table(table)
+      m_table(table),
+      m_total_bytes_backed_up(0),
+      m_total_files_backed_up(0)
 {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,8 +104,6 @@ void copier::set_directories(const char *source, const char *dest)
 int copier::do_copy(void) {
     int r = 0;
     char *fname = 0;
-    uint64_t total_bytes_backed_up = 0;
-    uint64_t total_files_backed_up = 0;
     size_t n_known = 0;
     r = pmutex_lock(&m_todo_mutex);
     if (r != 0) goto out;
@@ -135,13 +135,13 @@ int copier::do_copy(void) {
         r = pmutex_unlock(&m_todo_mutex);
         if (r != 0) goto out;
         
-        r = this->copy_stripped_file(fname, &total_bytes_backed_up, total_files_backed_up);
+        r = this->copy_stripped_file(fname);
         free((void*)fname);
         fname = NULL;
         if(r != 0) {
             goto out;
         }
-        total_files_backed_up++;
+        m_total_files_backed_up++;
         
         r = pmutex_lock(&m_todo_mutex);
         if (r != 0) goto out;
@@ -181,12 +181,12 @@ static void pathcat(char *dest, size_t destlen, const char *a, int alen, const c
 // destination directory members to determine the exact location
 // of the file in both the original and backup locations.
 //
-int copier::copy_stripped_file(const char *file, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
+int copier::copy_stripped_file(const char *file) {
     int r = 0;
     bool is_dot = (strcmp(file, ".") == 0);
     if (is_dot) {
         // Just copy the root of the backup tree.
-        r = this->copy_full_path(m_source, m_dest, "", total_bytes_backed_up, total_files_backed_up);
+        r = this->copy_full_path(m_source, m_dest, "");
         if (r != 0) {
             goto out;
         }
@@ -203,7 +203,7 @@ int copier::copy_stripped_file(const char *file, uint64_t *total_bytes_backed_up
         char full_dest_file_path[dlen];
         pathcat(full_dest_file_path, dlen, m_dest, m_dest_len, file);
         
-        r = this->copy_full_path(full_source_file_path, full_dest_file_path, file, total_bytes_backed_up, total_files_backed_up);
+        r = this->copy_full_path(full_source_file_path, full_dest_file_path, file);
         if(r != 0) {
             goto out;
         }
@@ -225,10 +225,7 @@ out:
 // determine the relative location of the file in the directory
 // heirarchy.
 //
-int copier::copy_full_path(const char *source,
-                                  const char* dest,
-                                  const char *file,
-                                  uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
+int copier::copy_full_path(const char *source, const char* dest, const char *file) {
     int r = 0;
     struct stat sbuf;
     r = stat(source, &sbuf);
@@ -249,7 +246,7 @@ int copier::copy_full_path(const char *source,
     
     // See if the source path is a directory or a real file.
     if (S_ISREG(sbuf.st_mode)) {
-        r = this->copy_regular_file(source, dest, sbuf.st_size, total_bytes_backed_up, total_files_backed_up);
+        r = this->copy_regular_file(source, dest, sbuf.st_size);
         if (r != 0) {
             // The error should already have been reported, so we simply return r.
             goto out;
@@ -315,41 +312,14 @@ out:
 // function creates the new file, then copies all the bytes from
 // one to the other.
 //
-int copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up)
+int copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size)
 {
     source_file * file = NULL;
     int destfd = 0;
-    int srcfd = call_real_open(source, O_RDONLY);
-    if (srcfd < 0) {
-        int r = errno;
-        // Ignore errors about the source file not existing, 
-        // because we someone must have deleted the source name
-        // since we discovered it and stat'd it.
-        if (r == ENOENT) {
-            return 0;
-        } else {
-            the_manager.backup_error(r, "Couldn't open source file %s at %s:%d", source, __FILE__, __LINE__);
-            return r;
-        }
-    }
-
-    destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
-    if (destfd < 0) {
-        int r = errno;
-        if (r == EEXIST) {
-            // Some other CAPTURE call has already created the
-            // directory, just open it.
-            destfd = call_real_open(dest, O_WRONLY);
-            if (destfd < 0) {
-                r = errno;
-                the_manager.backup_error(r, "Couldn't open destination file %s at %s:%d", dest, __FILE__, __LINE__);
-                return r;
-            }
-        } else {
-            the_manager.backup_error(r, "Couldn't create destintaion file %s at %s:%d", dest, __FILE__, __LINE__);
-            ignore(call_real_close(srcfd)); // ignore any errors here.
-            return r;
-        }
+    int srcfd = 0;
+    int open_r = this->open_both_files(source, dest, &srcfd, &destfd);
+    if (open_r != 0) {
+        return open_r;
     }
 
     // Get a handle on the source file so we can lock ranges as we copy.
@@ -379,7 +349,7 @@ int copier::copy_regular_file(const char *source, const char *dest, off_t source
     }
     
     {
-        int r = copy_file_data(srcfd, destfd, source, dest, file, source_file_size, total_bytes_backed_up, total_files_backed_up);
+        int r = copy_file_data(srcfd, destfd, source, dest, file, source_file_size);
         if (r!=0) {
             // Already reported the error, so ignore these errors.
             ignore(call_real_close(destfd));
@@ -420,6 +390,47 @@ int copier::copy_regular_file(const char *source, const char *dest, off_t source
     return 0;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+int copier::open_both_files(const char *source, const char *dest, int *srcfd, int *destfd)
+{
+    *destfd = 0;
+    *srcfd = call_real_open(source, O_RDONLY);
+    if (*srcfd < 0) {
+        int r = errno;
+        // Ignore errors about the source file not existing, 
+        // because we someone must have deleted the source name
+        // since we discovered it and stat'd it.
+        if (r == ENOENT) {
+            return 0;
+        } else {
+            the_manager.backup_error(r, "Couldn't open source file %s at %s:%d", source, __FILE__, __LINE__);
+            return r;
+        }
+    }
+
+    *destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
+    if (*destfd < 0) {
+        int r = errno;
+        if (r == EEXIST) {
+            // Some other CAPTURE call has already created the
+            // directory, just open it.
+            *destfd = call_real_open(dest, O_WRONLY);
+            if (*destfd < 0) {
+                r = errno;
+                the_manager.backup_error(r, "Couldn't open destination file %s at %s:%d", dest, __FILE__, __LINE__);
+                return r;
+            }
+        } else {
+            the_manager.backup_error(r, "Couldn't create destintaion file %s at %s:%d", dest, __FILE__, __LINE__);
+            ignore(call_real_close(*srcfd)); // ignore any errors here.
+            return r;
+        }
+    }
+    
+    return 0;
+}
+
 
 static int gettime_reporting_error(struct timespec *ts, backup_callbacks *calls) {
     int r = clock_gettime(CLOCK_MONOTONIC, ts);
@@ -453,7 +464,7 @@ static double tdiff(struct timespec a, struct timespec b)
 //     This section actually copies all the bytes from the source
 // file to our newly created backup copy.
 //
-int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, source_file * const file, off_t source_file_size, uint64_t *total_bytes_backed_up, const uint64_t total_files_backed_up) {
+int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, source_file * const file, off_t source_file_size) {
     int r = 0;
 
     const size_t buf_size = 1024 * 1024;
@@ -492,7 +503,7 @@ int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const
         ssize_t n_wrote_this_buf = 0;
         while (n_wrote_this_buf < n_read) {
             snprintf(poll_string, poll_string_size, "Backup progress %ld bytes, %ld files.  Copying file: %ld/%ld bytes done of %s to %s.",
-                     *total_bytes_backed_up, total_files_backed_up, total_written_this_file, source_file_size, source_path, dest_path);
+                     m_total_bytes_backed_up, m_total_files_backed_up, total_written_this_file, source_file_size, source_path, dest_path);
             r = m_calls->poll(0, poll_string);
             if (r!=0) {
                 m_calls->report_error(r, "User aborted backup");
@@ -512,7 +523,7 @@ int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const
             }
             n_wrote_this_buf        += n_wrote_now;
             total_written_this_file += n_wrote_now;
-            *total_bytes_backed_up  += n_wrote_now;
+            m_total_bytes_backed_up += n_wrote_now;
         }
 
         r = file->unlock_range(lock_start, lock_end);
