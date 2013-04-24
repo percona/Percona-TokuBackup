@@ -9,6 +9,7 @@ foreach(test
  copy_files
  disable_race
  empty_dest
+ end_race_6668
  file_hash_table_tests
  ftruncate
  ftruncate_injection_6480
