@@ -1162,6 +1162,30 @@ void manager::set_error_internal(int errnum, const char *format_string, va_list 
 
 ///////////////////////////////////////////////////////////////////////////////
 //
+bool manager::try_to_enter_session_and_lock(void)
+{
+    int r = prwlock_rdlock(&m_session_rwlock);
+    if (r != 0) {
+        // Any error in locking code is fata, just return, it's over.
+        return false;
+    }
+
+    if (m_session == NULL) {
+        return false;
+    }
+
+    return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+void manager::exit_session_and_unlock_or_die(void)
+{
+    ignore(prwlock_unlock(&m_session_rwlock));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
 int manager::setup_description_and_source_file(int fd, const char *file)
 {
     int error = 0;

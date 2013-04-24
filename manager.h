@@ -98,6 +98,9 @@ public:
     // end of test interface
 
 private:
+    // Backup session control methods.
+    bool try_to_enter_session_and_lock(void);
+    void exit_session_and_unlock_or_die(void);
     int prepare_directories_for_backup(backup_session *session);
     void disable_descriptions(void);
     void set_error_internal(int errnum, const char *format, va_list ap);
