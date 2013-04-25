@@ -296,7 +296,7 @@ int manager::prepare_directories_for_backup(backup_session *session) {
             goto out;
         }
 
-        if (!session->is_prefix(source->name())) {
+        if (!session->is_prefix_of_realpath(source->name())) {
             r = source->name_unlock();
             if (r != 0) {
                 goto out;
@@ -305,7 +305,7 @@ int manager::prepare_directories_for_backup(backup_session *session) {
             continue;
         }
 
-        char * file_name = session->translate_prefix(source->name());
+        char * file_name = session->translate_prefix_of_realpath(source->name());
         file->prepare_for_backup(file_name);
         r = open_path(file_name);
         free(file_name);
@@ -996,9 +996,9 @@ int manager::truncate(const char *path, off_t length)
     }
 
     
-    if (m_session != NULL && m_session->is_prefix(full_path)) {
+    if (m_session != NULL && m_session->is_prefix_of_realpath(full_path)) {
         const char * destination_file = NULL;
-        destination_file = m_session->translate_prefix(full_path);
+        destination_file = m_session->translate_prefix_of_realpath(full_path);
         // Find and lock the associated source file.
         r = m_table.lock();
         if (r != 0) {
