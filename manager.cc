@@ -802,7 +802,6 @@ int manager::rename(const char *oldpath, const char *newpath)
     // Grab the session lock.
      r = prwlock_rdlock(&m_session_rwlock);
      if (r!=0) {
-         user_error = call_real_rename(oldpath, newpath);
          goto source_free_out;
      }
     
