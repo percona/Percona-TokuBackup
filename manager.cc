@@ -1171,6 +1171,7 @@ bool manager::try_to_enter_session_and_lock(void)
     }
 
     if (m_session == NULL) {
+        ignore(prwlock_unlock(&m_session_rwlock));
         return false;
     }
 
