@@ -41,6 +41,7 @@ foreach(test
  unlink_during_copy_test6515
  unlink_during_copy_test6515b
  unlink_during_copy_test6515c
+ unlink_injection
  write_race
 )
     list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE

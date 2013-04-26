@@ -65,6 +65,8 @@ static void* do_rename(void* ignore) {
     while(!backup_done_copying()) sched_yield();
     int r = rename(oldpath, newpath);
     assert(r==0);
+    free(oldpath);
+    free(newpath);
     return ignore;
 }
 
