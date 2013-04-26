@@ -259,7 +259,6 @@ extern "C" int rename(const char *oldpath, const char *newpath) {
     TRACE("-> newpath = ", newpath);
     
     if (the_manager.is_alive()) {
-        printf("%s:%d %s\n", __FILE__, __LINE__, __FUNCTION__);
         r = the_manager.rename(oldpath, newpath);
     } else {
         r = call_real_rename(oldpath, newpath);

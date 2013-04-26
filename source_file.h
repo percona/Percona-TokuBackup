@@ -47,11 +47,11 @@ public:
 private:
     char * m_full_path; // the source_file owns this.
     source_file *m_next;
-    pthread_rwlock_t m_name_rwlock;
+    pthread_rwlock_t *m_name_rwlock;
     unsigned int m_reference_count;
 
-    pthread_mutex_t m_mutex;
-    pthread_cond_t  m_cond;
+    pthread_mutex_t *m_mutex;
+    pthread_cond_t  *m_cond;
     std::vector<struct range> m_locked_ranges;
 };
 
