@@ -19,7 +19,7 @@ private:
     int m_fd_in_dest_space;    // What is the fd in the destination space?
     char *m_backup_name;       // These two strings would be const except for the destructor which calls free().  We'll be getting rid of names in file descriptions soon anyway.
     source_file *m_source_file;
-    pthread_mutex_t m_mutex; // A mutex used to make m_offset move atomically when we perform a write (or read).
+    pthread_mutex_t *m_mutex; // A mutex used to make m_offset move atomically when we perform a write (or read).
 
 public:
     description();

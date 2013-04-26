@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "backup_debug.h"
+#include "glassbox.h"
 #include "manager.h"
 #include "mutex.h"
 #include "description.h"
@@ -32,6 +33,7 @@ description::description()
   m_fd_in_dest_space(DEST_FD_INIT), 
   m_backup_name(NULL),
   m_source_file(NULL),
+  m_mutex(NULL),
   m_in_source_dir(false)
 {
 }
@@ -42,13 +44,20 @@ description::~description(void)
         free(m_backup_name);
         m_backup_name = NULL;
     }
+    if (m_mutex) {
+        int r = pthread_mutex_destroy(m_mutex); // ignore any errors...
+        glass_assert(r==0);
+        delete m_mutex;
+        m_mutex = NULL;
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // See description.h for specification.
 int description::init(void)
 {
-    int r = pthread_mutex_init(&m_mutex, NULL);
+    m_mutex = new pthread_mutex_t;
+    int r = pthread_mutex_init(m_mutex, NULL);
     if (r != 0) {
         the_manager.fatal_error(r, "Failed to initialize mutex: %s:%d\n", __FILE__, __LINE__);
     }
@@ -96,14 +105,14 @@ void description::disable_from_backup(void)
 //
 int description::lock(void)
 {
-    return pmutex_lock(&m_mutex);
+    return pmutex_lock(m_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 int description::unlock(void)
 {
-    return pmutex_unlock(&m_mutex);
+    return pmutex_unlock(m_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

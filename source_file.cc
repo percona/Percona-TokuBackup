@@ -32,19 +32,19 @@ source_file::~source_file(void) {
     }
     if (m_mutex) {
         int r = pthread_mutex_destroy(m_mutex);
-        if (r!=0) abort(); // TODO: What can we do about this?
+        glass_assert(r==0);
         delete m_mutex;
         m_mutex = NULL;
     }
     if (m_cond) {
         int r = pthread_cond_destroy(m_cond);
-        if (r!=0) abort(); // TODO: What can we do about this?
+        glass_assert(r==0);
         delete m_cond;
         m_cond = NULL;
     }
     if (m_name_rwlock) {
         int r = pthread_rwlock_destroy(m_name_rwlock);
-        if (r!=0) abort();
+        glass_assert(r==0);
         delete m_name_rwlock;
         m_name_rwlock = NULL;
     }
