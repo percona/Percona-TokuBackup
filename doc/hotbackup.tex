@@ -1,10 +1,158 @@
 \documentclass[10pt]{article}
 \usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{graphicx}
+\newcommand{\figref}[1]{Figure~\ref{fig:#1}}
 \title{Implementation of Tokutek Hot Backup}
 \author{Bradley C. Kuszmaul}
 \date{$Date$  $Rev$}
 \begin{document}
 \maketitle
+
+An example of the state of the hotbackup system is shown in
+\figref{overview} which shows fmap, a mapping from file descriptors to
+descriptions.  In this figure, file descriptor~3 points to a
+description.  The description contains an offset, 7, which indicates
+that the next read or write will start at the 7th byte of the file.
+The description also contains a pointer to an sfile.  The description
+contains a reference count (1 in this case) indicating that there is
+one reference to the description in the fmap.  The sfile has a set of
+range locks (bytes 3 inclusive through 5 exclusive are locked, and
+bytes 18 inclusive through 21 exclusive are locked).  The sfile has a
+set of file names (one name is shown), a refcount which indicates how
+many descriptions refer to the sfile (one in this case), and a file
+identifier, which comprises a device number (idev) and inode number
+(inode).  The directory provides a way to find an sfile given a name,
+and the imap provides a way to find an sfile given a file identifier.
+
+\begin{figure}
+\begin{center}
+\includegraphics{overview.pdf}
+\end{center}
+\caption{A typical state of the hot backup system.  The fmap is shown
+  with file descriptor 3 pointing to a DESCRIPTION.  That description
+  has an offset (7) and points to an SFILE.  The directory shows a
+  file name being mapped to the SFILE.  The imap shows a file
+  identifier being mapped to the SFILE.  The SFILE contains range
+  locks (with two ranges locked), the set of names in the directory
+  that point at the SFILE, a reference count, and the file identifier
+  of the underlying file.}
+\label{fig:overview}
+\end{figure}
+
+In general the hotbackup system has the following state:
+\begin{itemize}
+\item A file identifier comprises a pair of numbers, the device
+  identifier and the inode number.  On Unix file systems, this pair of
+  numbers uniquely identifies a file.  On Unix, the device identifer
+  and inode number can be obtained using the \texttt{fstat()} system
+  call.  Other file systems, such as windows, provide different kinds
+  of file identifiers, which the system would use to identify a file.
+  The file identifiers are kept in main memory by the system, and so
+  depending on the situation, an transient file identifier could be
+  used.  The transient file identifier of a file may be different if
+  the machine reboots, for example.
+\item A file descriptor is an integer that the application receives
+  when it calls the \texttt{open()} library function.
+\item The fmap maps the file descriptor to a description.
+\item A description comprises
+ \begin{itemize}
+  \item an offset indicating where the next read or write operation will modify the file,
+  \item a pointer to an sfile, and
+  \item a refcount integer that keeps track of how many fmap entries refer to the description.
+ \end{itemize}
+\item The directory maps file name strings to sfiles.  The directory is an unordered map implmented by a hash table.
+\item The imap maps file identifiers to sfiles.  The imap is an unordered map implemented by a hash table.
+\item An sfile comprises the following:
+ \begin{itemize}
+   \item Rangelocks, a set of ranges that are locked.  A range is a
+     pair of offsets, $(l,h)$, in a file.  The locked range includes
+     byte number $l$ inclusive through byte number $h$ exclusive.  To
+     look the entire file the system may lock the range $(0, \infty)$,
+     where $\infty$ is a value that is considered to be larger than
+     any offset in a file.  For example, our system uses
+     $\infty=2^{64}-1$ which fits into a 64-bit unsigned value.  The
+     rangelocks are be kept in an ordered map which facilities
+     determining whether a given range intersects any range in the
+     rangelocks.
+   \item Names, a set of strings.  A string appears in the names of an
+     sfile if and only if, in the directory, the string maps to the
+     sfile.
+   \item Refcount, an integer.  This is a count of the number of descriptions that point at the sfile.
+   \item A file identifier (device number and inode number).   In the imap, the file identifier of an sfile maps to the sfile.
+ \end{itemize}
+\end{itemize}
+
+Here are some invariants that system maintains.   If $S$ is a string, $F$ is an sfile, integer $I$  is an open
+file descriptor pointing at a regular file, and $D$ is an description then:
+\begin{enumerate}
+\item  $S$ is in $F.\mbox{names}$ if and only if $\mbox{directory}[S]=F$.
+\item  $\mbox{fmap}[I]$ is populated (points to a description) and the
+description points to an sfile.
+\item  The number of descriptions that refer to $F$ equals $F.\mbox{refcount}$.
+\item  The number of fmap entries that point to $D$ equals $D.\mbox{refcount}$.
+(One way for the refcount of $D$ to become greater than 1 is to use the \texttt{dup()} or \texttt{dup2()} unix system calls.)
+\item $\mbox{imap}[F.\mbox{fileid}] = F$.
+\item The directory contains exactly the names of files that were
+  opened (but if those names change with rename() or unlink() we
+  update the directory). Recall that when the directory is updated, so
+  must the corresponding names set in the relevant sfile.
+\end{enumerate}
+
+The system operates as follows:
+
+The manipulation of $F.\mbox{names}$ and $\mbox{directory}[S]$ is done
+atomically, and is affected by \texttt{open()}, \texttt{creat()},
+\texttt{rename()}, and \texttt{unlink()}.  The system employs a lock,
+called the directory lock, which is held while updating
+$F.\mbox{names}[S]$ and $\mbox{directory}[S]$.
+
+The system also employs a lock, called the fmap lock, to protect the
+fmap from concurrent operations.
+
+The system also employs a lock, called the imap lock, to protect the imap from concurrent operations.
+
+During backup of a file, we go ahead and create a description just as
+if the user had opened() the file.  Thus, the refcount of an sfile
+will be incremented while the underlying file is being copied during
+backup.
+
+
+\subsection*{Not Doing Backup}
+
+\typeout{Need a picture of an application with backup and describe interposition}.
+
+When we are not doing a backup the system interposes the system calls
+performed by the application and operates as follows:
+
+When the user opens a file with $\texttt{open}(S,...)$:
+ \begin{enumerate}
+ \item The system finds the sfile.  After opening the file, the system
+   performs a \texttt{fstat()} on the file, yielding a file identifier.
+
+   Then the system looks in the imap to determine if there is an existing sfile with that file identifier.  If yes, then the refcount is incremented, otherwise an sfile is created with refcount equal to 1.
+
+   The system checks to see if $\mbox{directory}[\mbox{realpath}(S)]$ points at the sfile, if it does not, then the directory is updated as well as the names of the sfile.
+   The system creates a description, updates the fmap, and returns the file descriptor to the user.
+
+   \end{enumerate}   
+\iffalse
+We then look
+This is done by looking in the
+imap for the inode_info from the result of doing stat on the
+opened file descriptor
+     that will be returned to the user.    If no such source_file
+exists, then create it (it will have a refcount of zero to start with)
+             b) Make sure that directory[realpath(S)] points at
+source_file.  If it doesn't then make it so.  (Be sure to get the
+directory lock for this)
+             c) Create a description that points at source_file (now
+source_file's reference count is incremented.  Must still hold the
+directory lock for this)
+             d) Put the description in fmap.  (Probably need only the
+fmap_lock for this)
+\fi
+
+ \hrule
 
 The hot backup library maintains a ghostly mirror of the file system.  We have several things that mirror the unix file system:
 \begin{itemize}
@@ -31,4 +179,77 @@ What must happen:
 \end{itemize}
 
 
+\iffalse
+\begin{itemize}
+
+
+  close(i)   decrement fmap[i]->description->source_file->refcount
+                    [If the count goes to zero, then remove the names
+from the directory, and destroy the source_file.  Don't forget to
+update the inode_map.  Remember, when fiddling with names we must
+obtain the directory lock.]
+                decrement fmap[i]->description->refcount [If it goes
+to zero, which is always the case without dup(), then destroy the
+description)
+                set fmap[i]=NULL.
+
+ rename(S):  Get the directory lock.
+                     If directory[S] exists then
+                       update the directory and the source_file.names
+to the new name.
+                     If the file exists in the backup directory, rename it
+                     release the directory lock.
+
+ unlink(S):   Get the directory lock.
+                    If directory[S] exists then
+                      update the directory and the source_file.names
+to not have S in it any more.
+                    If the file exists in the backup directory, unlink it.
+
+
+prepare_descriptions() should create the source file with all the
+relevant names.  For example if there are 3 names in
+description->source_file->names, and all 3 names are in the source
+directory, then open the file, and create the corresponding other two
+names names with link(2).  If there are 0 names in
+description->source_file->names then we must do something special.
+For now we can simply arrange not to write anything to the backup for
+that prepared description.  Something like your "is_deleted" flag, but
+it's on the description.
+
+One thing to worry about:  But maybe not needed for v1:  (Need a
+ticket for this).  User could do
+ 1  fd1 = creat(name1)
+ 2  link(name1, name2)
+ 3  close(fd1)
+
+ 4  fd1 = open(name1)
+ 5  unlink(name1)
+ 6  write(fd1)
+ 7  fd2 = open(name2)
+ 8  write(fd2)
+ 9  write(fd1)
+
+So at step 4 when fd1 is opened, we don't know anything about name2
+(step 2 may have been done a long long time ago in another process).
+  So when we unlink name1, we are not capturing the writes at step 6
+or 9.  But we need to capture those writes.
+
+  To make those work, we need to create a file on the same filesystem
+with a name that won't conflict with the backups.  Something like
+$(DST)/.backup.23 might work.  We may take the position that we don't
+backup files with names like $(SRC)/.backup.*
+
+  So when we unlink a file that has an open file descriptor, instead
+of unlinking it in our internal data structures and in the destination
+directory we rename it to a new backup name.  At the end of the
+backup, we go and unlink all the $(DST)/.backup.* files
+
+
+You may also want to review the man pages for openat() and linkat().
+We may be able to use them for something, but I don't see what.
+
+I think that covers all the cases...  What do you think?
+
+\fi
 \end{document}
