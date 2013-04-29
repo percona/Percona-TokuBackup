@@ -590,7 +590,7 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
     description *description;
     if (ok) {
         int r = m_map.get(fd, &description);
-        if (r!=0) ok = false;
+        if (r!=0 || description == NULL) ok = false;
     }
     bool have_description_lock = false;
     if (ok && description) {
