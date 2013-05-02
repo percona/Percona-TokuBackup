@@ -20,9 +20,10 @@ range locks (bytes 3 inclusive through 5 exclusive are locked, and
 bytes 18 inclusive through 21 exclusive are locked).  The sfile has a
 set of file names (one name is shown), a refcount which indicates how
 many descriptions refer to the sfile (one in this case), and a file
-identifier, which comprises a device number (idev) and inode number
-(inode).  The directory provides a way to find an sfile given a name,
-and the imap provides a way to find an sfile given a file identifier.
+identifier, which comprises a device number (13 in this case) and
+inode number (1431 in this case).  The directory provides a way to
+find an sfile given a name, and the imap provides a way to find an
+sfile given a file identifier.
 
 \begin{figure}
 \begin{center}
@@ -39,63 +40,79 @@ and the imap provides a way to find an sfile given a file identifier.
 \label{fig:overview}
 \end{figure}
 
-In general the hotbackup system has the following state:
+In general the hotbackup system is represented by the following state.
 \begin{itemize}
-\item A file identifier comprises a pair of numbers, the device
-  identifier and the inode number.  On Unix file systems, this pair of
-  numbers uniquely identifies a file.  On Unix, the device identifer
-  and inode number can be obtained using the \texttt{fstat()} system
-  call.  Other file systems, such as windows, provide different kinds
-  of file identifiers, which the system would use to identify a file.
-  The file identifiers are kept in main memory by the system, and so
-  depending on the situation, an transient file identifier could be
-  used.  The transient file identifier of a file may be different if
-  the machine reboots, for example.
-\item A file descriptor is an integer that the application receives
-  when it calls the \texttt{open()} library function.
-\item The fmap maps the file descriptor to a description.
-\item A description comprises
+\item A file identifier, or \textit{FILEID}, comprises a pair of
+  numbers, a device identifier and an inode number.  On many Unix file
+  systems, this pair of numbers uniquely identifies a file.  On Unix,
+  the device identifer and inode number can be obtained using the
+  \texttt{fstat()} system call.  Other file systems, such as windows,
+  provide different kinds of FILEIDs, which the system can use to
+  identify a file.  It is not necessary for the FILEID to be
+  persistent across machine restarts.  For example, in many unix
+  systems, the device number might change when the machine restarts
+\item A \textit{file descriptor} is an nonnegative integer that the
+  application receives when it calls the \texttt{open()} library
+  function.  Typically these integers are relatively small, since in
+  many operating systems, the integer that's returned is the smallest
+  unused file descriptor.
+\item An \textit{fmap} maps the file descriptor to a DESCRIPTION.  The
+  system employs a growable vector of pointers to DESCRIPTIONs.
+\item A \textit{DESCRIPTION} comprises
  \begin{itemize}
-  \item an offset indicating where the next read or write operation will modify the file,
-  \item a pointer to an sfile, and
+  \item an offset indicating where the next read or write operation will take place in the file,
+  \item a pointer to an SFILE, and
   \item a refcount integer that keeps track of how many fmap entries refer to the description.
  \end{itemize}
-\item The directory maps file name strings to sfiles.  The directory is an unordered map implmented by a hash table.
-\item The imap maps file identifiers to sfiles.  The imap is an unordered map implemented by a hash table.
-\item An sfile comprises the following:
+\item A \textit{directory} maps file name strings to SFILEs.  The
+  directory is an unordered map implmented by a hash table.
+\item An \textit{imap} maps FILEIDs to SFILEs.  The imap is an unordered map implemented by a hash table.
+\item An \textit{sfile} comprises the following:
  \begin{itemize}
    \item Rangelocks, a set of ranges that are locked.  A range is a
      pair of offsets, $(l,h)$, in a file.  The locked range includes
      byte number $l$ inclusive through byte number $h$ exclusive.  To
-     look the entire file the system may lock the range $(0, \infty)$,
+     lock the entire file the system may lock the range $(0, \infty)$,
      where $\infty$ is a value that is considered to be larger than
      any offset in a file.  For example, our system uses
-     $\infty=2^{64}-1$ which fits into a 64-bit unsigned value.  The
-     rangelocks are be kept in an ordered map which facilities
-     determining whether a given range intersects any range in the
-     rangelocks.
+     $\infty=2^{64}-1$ which is the largest value that fits in a
+     64-bit unsigned value.  The system keeps the locked ranges in an
+     ordered map which facilities determining whether a given range
+     intersects any range in the rangelocks.  An alternative would be
+     for the system to keep the ranges in an unordered vector, which
+     could work well, for example, if there were typically relatively
+     few locked ranges at any given time.
    \item Names, a set of strings.  A string appears in the names of an
      sfile if and only if, in the directory, the string maps to the
-     sfile.
-   \item Refcount, an integer.  This is a count of the number of descriptions that point at the sfile.
-   \item A file identifier (device number and inode number).   In the imap, the file identifier of an sfile maps to the sfile.
+     sfile.  The Names sets is implemented using a hash table.
+   \item Refcount, an integer.  This is a count of the number of DESCRIPTIONs that point at the SFILE\@.
+   \item A FILEID called fileid, comprising a device number and inode
+     number.  If $s$ is an SFILE then
+     $\texttt{imap}[s->\mbox{fileid}]=s$, that is in the imap, the file
+     identifier of an sfile maps to the sfile.
  \end{itemize}
 \end{itemize}
 
-Here are some invariants that system maintains.   If $S$ is a string, $F$ is an sfile, integer $I$  is an open
-file descriptor pointing at a regular file, and $D$ is an description then:
+The system maintains several invariants, including the following.  If
+$S$ is a string, $F$ is an sfile, integer $I$ is an open file
+descriptor pointing at a regular file, and $D$ is an description then:
 \begin{enumerate}
 \item  $S$ is in $F.\mbox{names}$ if and only if $\mbox{directory}[S]=F$.
 \item  $\mbox{fmap}[I]$ is populated (points to a description) and the
 description points to an sfile.
-\item  The number of descriptions that refer to $F$ equals $F.\mbox{refcount}$.
-\item  The number of fmap entries that point to $D$ equals $D.\mbox{refcount}$.
-(One way for the refcount of $D$ to become greater than 1 is to use the \texttt{dup()} or \texttt{dup2()} unix system calls.)
+\item The number of descriptions that refer to $F$ equals
+  $F.\mbox{refcount}$.  (One way for the refcount of $F$ to become
+  greater than one is to open the same file twice.)
+\item The number of fmap entries that refer to $D$ equals
+  $D.\mbox{refcount}$.  (One way for the refcount of $D$ to become
+  greater than 1 is to use the \texttt{dup()} or \texttt{dup2()} unix
+  system calls.)
 \item $\mbox{imap}[F.\mbox{fileid}] = F$.
-\item The directory contains exactly the names of files that were
-  opened (but if those names change with rename() or unlink() we
-  update the directory). Recall that when the directory is updated, so
-  must the corresponding names set in the relevant sfile.
+\item The directory contains exactly the names of files that are open,
+  under the names that they were opened through.  But if those names
+  change with, e.g., \texttt{rename()} or \texttt{unlink()} we update
+  the directory). Recall that when the directory is updated, so must
+  the corresponding names set in the relevant sfile.
 \end{enumerate}
 
 The system operates as follows:
