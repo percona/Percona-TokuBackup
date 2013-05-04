@@ -1,0 +1,62 @@
+package backup;
+
+message Backup {
+	repeated Action action = 1;
+}
+
+message Action {
+  enum ActionType {
+    CREATE = 0;
+    RENAME = 1;
+    UNLINK = 2;
+    LINK   = 3;
+    OPEN   = 4;
+    CLOSE  = 5;
+    PWRITE  = 6;
+  };
+  required ActionType action = 1;
+
+  message Create {
+    required string name = 1;
+    optional int32  mode = 2; // protection and so forth.
+  }
+  optional Create create = 2;
+
+  message Rename {
+    required string oldname = 1;
+    required string newname = 2;
+  }
+  optional Rename rename = 3;
+
+  message Unlink {
+    required string name = 1;
+  }
+  optional Unlink unlink = 4;
+
+  message Link {
+    required string oldname = 1;
+    required string newname = 2;
+  }
+  optional Link link = 5;
+
+  message Open {
+    required string name = 1;
+    required uint32 fd   = 2;
+  }
+  optional Open open = 6;
+
+  message Close {
+    required uint32 fd = 1;
+  }
+  optional Close close = 7;
+
+  message Pwrite {
+    required uint32 fd = 1;
+    required bytes  data = 2;
+    required uint64 off = 3;
+  }
+  optional Pwrite pwrite = 8;
+}
+
+  
+   
