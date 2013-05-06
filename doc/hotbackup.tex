@@ -4,60 +4,95 @@
 \newcommand{\figref}[1]{Figure~\ref{fig:#1}}
 \title{Implementation of Tokutek Hot Backup}
 \author{Bradley C. Kuszmaul}
-\date{$Date$  $Rev$}
+
+\input{master-ipe.tex}
 \begin{document}
 \maketitle
 
+The Tokutek Hot Backup System can back up the file-resident data of an
+application, such as MySQL, that runs as a single process.
+Applications such as PostgreSQL that operate as multiple processes
+could be backed up using a similar scheme with some adaptation.  The
+application makes calls to operating system functions such as
+\texttt{open()}, \texttt{close()}, \texttt{dup()}, \texttt{unlink()},
+\texttt{link()}, \texttt{rename()}, \texttt{read()}, \texttt{write()},
+and \texttt{pwrite()}.  The backup system makes a copy of the data of
+the application, and as it makes the copy, the backup system
+interposes itself in the system functions so that it observes those
+calls, and updates the backup copy accordingly.
+
+For example, if there were a 100GB file that the backup system was
+backing up, it might take something like 15~minutes to copy the file
+to the backup.  If while that copy operates, the application writes
+into the file, then the backup system observes the write and arranges
+for the newly written data to appear in the backup copy.
+
+The backup system maintains a representation of the underlying file
+system, by keeping track of, for example,
+\begin{itemize}
+\item which open file descriptors (integers) refer to which file description,
+\item the read/write offset for each file description,
+\item which file name refer to which file in the directory, and
+\item which blocks in which files are being written.
+\end{itemize}
+
 An example of the state of the hotbackup system is shown in
-\figref{overview} which shows fmap, a mapping from file descriptors to
-descriptions.  In this figure, file descriptor~3 points to a
-description.  The description contains an offset, 7, which indicates
-that the next read or write will start at the 7th byte of the file.
-The description also contains a pointer to an sfile.  The description
-contains a reference count (1 in this case) indicating that there is
-one reference to the description in the fmap.  The sfile has a set of
-range locks (bytes 3 inclusive through 5 exclusive are locked, and
-bytes 18 inclusive through 21 exclusive are locked).  The sfile has a
-set of file names (one name is shown), a refcount which indicates how
-many descriptions refer to the sfile (one in this case), and a file
-identifier, which comprises a device number (13 in this case) and
-inode number (1431 in this case).  The directory provides a way to
-find an sfile given a name, and the imap provides a way to find an
-sfile given a file identifier.
+\figref{overview}, which shows a mapping \citefmap, called fmap,
+mapping from file descriptors to DESCRIPTIONs.  In \figref{overview},
+file descriptor number~3 points to a DESCRIPTION.
+
+A DESCRIPTION \citedescr comprises an offset \citeoffset, which in
+this case is 7. The offset indicates where the next read or write will
+occur in the file.  A DESCRIPTION further comprises a pointer
+\citesfileptr to an sfile \citesfile.  A DESCRIPTION further contains
+a reference count (refcount) \citedrefcount (which equals 1 in this case)
+indicating that there is one reference to the description in the fmap.
+
+An SFILE \citesfile comprises rangelocks \citeranges, a set of ranges
+that are currently locked.  In this case there are two ranges.  The
+first range covers bytes 3--5.  (In our notation, all ranges include
+the first value and don't include the last value.  So range 3--5
+includes bytes 3 and 4, but not byte 5, for example.)  The second
+range covers bytes 18--21.
+
+An SFILE further comprises a set \citefilenames of file names (one
+name is shown in this example); a reference count \citesrefcount which
+indicates how many descriptions refer to the sfile (one in this case);
+and a file identifier (fileid) \citefileid, which comprises a device
+number \citedevnum (13 in this case) and inode number \citeinodenum
+(1431 in this case).
+
+The system further comprises a directory \citedirectory which maps
+from names to SFILES, and an mapping structure called the imap \citeimap that
+maps from fileids to SFILES.  The directory provides a way to find an
+sfile given a name, and the imap provides a way to find an sfile given
+a file identifier.
 
 \begin{figure}
 \begin{center}
-\includegraphics{overview.pdf}
+\includegraphics{figures/overview.pdf}
 \end{center}
-\caption{A typical state of the hot backup system.  The fmap is shown
-  with file descriptor 3 pointing to a DESCRIPTION.  That description
-  has an offset (7) and points to an SFILE.  The directory shows a
-  file name being mapped to the SFILE.  The imap shows a file
-  identifier being mapped to the SFILE.  The SFILE contains range
-  locks (with two ranges locked), the set of names in the directory
-  that point at the SFILE, a reference count, and the file identifier
-  of the underlying file.}
+\caption{A typical state of the hot backup system.}
 \label{fig:overview}
 \end{figure}
 
-In general the hotbackup system is represented by the following state.
+In general the hotbackup system is employs the following structures.
 \begin{itemize}
 \item A file identifier, or \textit{FILEID}, comprises a pair of
   numbers, a device identifier and an inode number.  On many Unix file
   systems, this pair of numbers uniquely identifies a file.  On Unix,
-  the device identifer and inode number can be obtained using the
-  \texttt{fstat()} system call.  Other file systems, such as windows,
-  provide different kinds of FILEIDs, which the system can use to
-  identify a file.  It is not necessary for the FILEID to be
-  persistent across machine restarts.  For example, in many unix
-  systems, the device number might change when the machine restarts
+  the device identifer and inode number of a file can be obtained
+  using the \texttt{fstat()} system call.  Other file systems, such as
+  windows, provide different kinds of FILEIDs, which the system can
+  use to identify a file.  In many unix systems, the device number
+  might change when the machine restarts.
 \item A \textit{file descriptor} is an nonnegative integer that the
   application receives when it calls the \texttt{open()} library
   function.  Typically these integers are relatively small, since in
   many operating systems, the integer that's returned is the smallest
   unused file descriptor.
 \item An \textit{fmap} maps the file descriptor to a DESCRIPTION.  The
-  system employs a growable vector of pointers to DESCRIPTIONs.
+  system employs a growable vector of pointers to DESCRIPTIONs to implement the fmap.
 \item A \textit{DESCRIPTION} comprises
  \begin{itemize}
   \item an offset indicating where the next read or write operation will take place in the file,
@@ -195,6 +230,7 @@ What must happen:
 
 \end{itemize}
 
+Direct-IO
 
 \iffalse
 \begin{itemize}
