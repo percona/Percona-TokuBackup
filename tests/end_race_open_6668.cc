@@ -47,9 +47,9 @@ static void* do_open(void* ignore) {
     while(!backup_is_capturing()) sched_yield();
     while(!backup_done_copying()) sched_yield();
     int fd = openf(O_RDWR | O_CREAT, 0777, "%s/foo.data", src);
-    assert(fd>=0);
+    check(fd>=0);
     int r = close(fd);
-    assert(r==0);
+    check(r==0);
     return ignore;
 }
 
@@ -63,7 +63,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         size_t l = strlen(absdst) + 10;
         delay_this_open = (char*)malloc(l);
         size_t r = snprintf(delay_this_open, l, "%s/foo.data", absdst);
-        assert(r<l);
+        check(r<l);
         free(absdst);
     }
     original_open = register_open(my_open);
@@ -73,14 +73,14 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     start_backup_thread(&thread);
     {
         int r = pthread_create(&open_th, NULL, do_open, NULL);
-        assert(r==0);
+        check(r==0);
     }
     finish_backup_thread(thread);
     cleanup_dirs(); // try to delete things out from under the running open.
     {
         void *result;
         int r = pthread_join(open_th, &result);
-        assert(r==0 && result==NULL);
+        check(r==0 && result==NULL);
     }
     free(src);
     free(dst);

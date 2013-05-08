@@ -8,6 +8,7 @@
 #include "glassbox.h"
 #include "manager.h"
 #include "mutex.h"
+#include "source_file.h"
 
 #include <cstdlib>
 #include <pthread.h>
@@ -85,37 +86,6 @@ description* fmap::get_unlocked(int fd) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Description:  See fmap.h.
-int fmap::put(int fd, description**result) {
-    if (HotBackup::MAP_DBG) { 
-        printf("put() called with fd = %d \n", fd);
-    }
-    
-    description *desc = new description();
-    {
-        int r = desc->init();
-        if (r != 0) {
-            *result = NULL;
-            return r; // the error has been reported.
-        }
-    }
-    
-    {
-        int r = lock_fmap();
-        if (r!=0) return r;
-    }
-    this->grow_array(fd);
-    glass_assert(m_map[fd]==NULL);
-    m_map[fd] = desc;
-    {
-        int r = unlock_fmap();
-        if (r!=0) return r;
-    }
-    *result = desc;
-    return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 void fmap::put_unlocked(int fd, description *file)
 {
     this->grow_array(fd);
@@ -135,10 +105,6 @@ void fmap::put_unlocked(int fd, description *file)
 // Requires: the fd is something currently mapped.
 
 int fmap::erase(int fd) {
-    if (HotBackup::MAP_DBG) { 
-        printf("erase() called with fd = %d \n", fd);
-    }
-
     {
         int r = lock_fmap();
         if (r!=0) return r;
@@ -153,7 +119,10 @@ int fmap::erase(int fd) {
             int r2 = 0;
             if (description) {
                 // Do this after releasing the lock
-                r2 = description->close();
+                //                source_file * src_file = description->get_source_file();
+                //if (src_file != NULL) {
+                //  src_file->remove_reference();
+                //}
                 delete description;
             }
             if (r) return r;

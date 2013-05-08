@@ -5,6 +5,7 @@
 
 #include <string.h>
 #include <pthread.h>
+#include <malloc.h>
 
 #include "source_file.h"
 #include "file_hash_table.h"
@@ -39,42 +40,43 @@ file_hash_table::~file_hash_table() {
 
 ////////////////////////////////////////////////////////
 //
-source_file* file_hash_table::get_or_create_locked(const char * const file_name)
+int file_hash_table::get_or_create_locked(const char * const file_name, source_file **file)
 {
-    source_file * file = NULL;
+    source_file * source = NULL;
     int unlock_r = 0;
     int r = this->lock();
     if (r != 0) {
         goto final_out;
     }
 
-    file = this->get(file_name);
-    if (file == NULL) {
-        file = new source_file();
-        r = file->init(file_name);
+    source = this->get(file_name);
+    if (source == NULL) {
+        source = new source_file();
+        r = source->init(file_name);
         if (r != 0) {
-            delete file;
-            file = NULL;
+            delete source;
+            source = NULL;
             goto unlock_out;
         }
         
-        this->put(file);
+        this->put(source);
     }
     
-    file->add_reference();
+    source->add_reference();
 
 unlock_out:
     unlock_r = this->unlock();
     if (unlock_r != 0) {
         if (r != 0) {
-            delete file;
+            delete source;
         }
 
-        file = NULL;
+        source = NULL;
     }
 
 final_out:
-    return file;
+    *file = source;
+    return unlock_r | r;
 }
 
 ////////////////////////////////////////////////////////
@@ -200,6 +202,7 @@ void file_hash_table::try_to_remove(source_file * const file)
 {
     file->remove_reference();
     if (file->get_reference_count() == 0) {
+        file->try_to_remove_destination();
         this->remove(file);
         delete file;
     }
@@ -207,23 +210,19 @@ void file_hash_table::try_to_remove(source_file * const file)
 
 ////////////////////////////////////////////////////////
 //
-// This must do a number of things:
-// 1. It must grab some kind of write lock, this will wait until all other capture manipulations are complete.
-// 2. Then it must remove it from the hash table.
-// 3. It must change its name (free old name, use new name);
-//
-int file_hash_table::rename_locked(const char *original_name, const char *new_name)
+int file_hash_table::rename_locked(const char *old_path, const char *new_path, const char *dest_path)
 {
     source_file * target = NULL;
     int r = this->lock();
     if (r != 0) {
         // Fatal pthread error.
+        free((void*)dest_path);
         goto final_out;
     }
 
-    target = this->get(original_name);
+    target = this->get(old_path);
     if (target != NULL) {
-        r = this->rename(target, new_name);
+        r = this->rename(target, new_path, dest_path);
         if (r != 0) {
             goto unlock_table_out;
         }
@@ -231,7 +230,7 @@ int file_hash_table::rename_locked(const char *original_name, const char *new_na
 
 unlock_table_out:
 
-    r = this->unlock();
+    ignore(this->unlock());
 
 final_out:    
     return r;
@@ -239,22 +238,41 @@ final_out:
 
 ////////////////////////////////////////////////////////
 //
-int file_hash_table::rename(source_file * target, const char *new_name)
+int file_hash_table::rename(source_file * target, const char *new_source_name, const char *dest)
 {
+    destination_file * dest_file = NULL;
     int r = target->name_write_lock();
     if (r != 0) {
         goto out;
     }
     
     this->remove(target);
-    r = target->rename(new_name);
+    r = target->rename(new_source_name);
     if (r != 0) {
-        goto out;
+        goto unlock_out;
     }
-    
+
+    // If the destination file is NOT NULL, then there is an active
+    // backup session in progress.  The session, or a session-enabled
+    // open()/create() call, will have allocated the destination_file
+    // object in the source_file object already.  If this
+    // destination_file object reference is NULL, we do not need to
+    // update the destination file; no backup session is in progress,
+    // so there is no need to rename a file that does not yet exist.
+    dest_file = target->get_destination();
+    if (dest_file != NULL) {
+        r = dest_file->rename(dest);
+        if (r != 0) {
+            goto unlock_out;
+        }
+    } else {
+    }
+
     this->put(target);
-    
-    r = target->name_unlock();
+
+unlock_out:
+    ignore(target->name_unlock());
+
 out:
     return r;
 }

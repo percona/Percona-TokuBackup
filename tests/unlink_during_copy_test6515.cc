@@ -47,6 +47,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         int status = systemf("diff -r %s %s", src, dst);
         check(status!=-1);
         check(WIFEXITED(status));
+        printf("status=%d\n", status);
         check(WEXITSTATUS(status)==0);
     }
     free(src);

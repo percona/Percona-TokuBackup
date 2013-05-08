@@ -105,7 +105,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     src = get_src();
     original_close = register_close(my_close);
 
-    const int N = 5;
+    const int N = 1;
     for (int i=0; i<N; i++) {
         printf("TEST %d\n", i);
         injection_pattern.resize(0);

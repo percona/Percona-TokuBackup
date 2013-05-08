@@ -116,7 +116,11 @@ int copier::do_copy(void) {
 
         if (!the_manager.copy_is_enabled()) goto out;
         
+        r = pmutex_lock(&m_todo_mutex);
+        if (r != 0) goto out;
         fname = m_todo.back();
+        r = pmutex_unlock(&m_todo_mutex);
+        if (r != 0) goto out;
         TRACE("Copying: ", fname);
         
         char *msg = malloc_snprintf(strlen(fname)+100, "Backup progress %ld bytes, %ld files.  %ld files known of. Copying file %s",  m_total_bytes_backed_up, m_total_files_backed_up, n_known, fname);
@@ -130,7 +134,6 @@ int copier::do_copy(void) {
 
         r = pmutex_lock(&m_todo_mutex);
         if (r != 0) goto out;
-
         m_todo.pop_back();
         r = pmutex_unlock(&m_todo_mutex);
         if (r != 0) goto out;
@@ -145,7 +148,6 @@ int copier::do_copy(void) {
         
         r = pmutex_lock(&m_todo_mutex);
         if (r != 0) goto out;
-
         n_known = m_todo.size();
         r = pmutex_unlock(&m_todo_mutex);
         if (r != 0) goto out;
@@ -228,16 +230,17 @@ out:
 int copier::copy_full_path(const char *source, const char* dest, const char *file) {
     int r = 0;
     struct stat sbuf;
-    r = stat(source, &sbuf);
-    if (r!=0) {
-        r = errno;
+    int stat_r = stat(source, &sbuf);
+    if (stat_r != 0) {
+        stat_r = errno;
         // Ignore errors about file not existing, 
         // because we have not yet opened the file with open(), 
         // which would prevent it from disappearing.
-        if (r == ENOENT) {
+        if (stat_r == ENOENT) {
             goto out;
         }
 
+        r = stat_r;
         char *string = malloc_snprintf(strlen(dest)+100, "error stat(\"%s\"), errno=%d (%s) at %s:%d", dest, r, strerror(r), __FILE__, __LINE__);
         m_calls->report_error(errno, string);
         free(string);
@@ -314,77 +317,102 @@ out:
 //
 int copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size)
 {
+    int srcfd = call_real_open(source, O_RDONLY);
+    if (srcfd < 0) {
+        int error = errno;
+        if (error == ENOENT) {
+            return 0;
+        } else {
+            the_manager.backup_error(error, "Could not open source file: %s", source);
+            return error;
+        }
+    }
+
+    source_info src_info = {srcfd, source, source_file_size, NULL};
+    int result = this->copy_using_source_info(src_info, dest);
+    
+    int r = call_real_close(srcfd);
+    if (r != 0) {
+        r = errno;
+        the_manager.backup_error(r, "Could not close %s at %s:%d", source, __FILE__, __LINE__);
+        return r;
+    }
+
+    return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+int copier::copy_using_source_info(source_info src_info, const char *path)
+{
     source_file * file = NULL;
-    int destfd = 0;
-    int srcfd = 0;
-    int open_r = this->open_both_files(source, dest, &srcfd, &destfd);
-    if (open_r != 0) {
-        return open_r;
+    TRACE("Creating new source file", path);
+    int result = m_table->get_or_create_locked(src_info.m_path, &file);
+    if (result != 0) {
+        return result;
     }
 
-    // Get a handle on the source file so we can lock ranges as we copy.
+    src_info.m_file = file;
+    result = this->create_destination_and_copy(src_info, path);
+
+    int r = m_table->try_to_remove_locked(file);
+    return r | result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+int copier::create_destination_and_copy(source_info src_info,  const char *path)
+{
+    char * dest_path = strdup(path);
+    if (dest_path == NULL) {
+        int r = errno;
+        return r;
+    }
+
+    // Try to create the destination file, using the file hash table
+    // lock to help serialize access.
     {
         int r = m_table->lock();
         if (r!=0) return r;
     }
-    file = m_table->get(source);
-    if (file == NULL) {
-        TRACE("Creating new source file", source);
-        file = new source_file();
-        int r = file->init(source);
-        if (r != 0) {
-            // Already reported the error, so ignore these errors.
-            ignore(m_table->unlock());
-            ignore(call_real_close(destfd));
-            ignore(call_real_close(srcfd));
-            return r;
-        }
-        m_table->put(file);
+
+    {
+        int r = src_info.m_file->name_write_lock();
+        if (r != 0) return r;
     }
 
-    file->add_reference();
+    int result = src_info.m_file->try_to_create_destination_file(dest_path);
+
+    {
+        int r = src_info.m_file->name_unlock();
+        if (r != 0) return r;
+    }
+
     {
         int r = m_table->unlock();
+        if (result != 0) { return result; }
         if (r!=0) return r;
     }
     
+    // Actually perform the copy.
     {
-        int r = copy_file_data(srcfd, destfd, source, dest, file, source_file_size);
+        int r = this->copy_file_data(src_info);
         if (r!=0) {
-            // Already reported the error, so ignore these errors.
-            ignore(call_real_close(destfd));
-            ignore(call_real_close(srcfd));
             return r;
         }
     }
 
+    // Try to destroy the destination file.
     {
         int r = m_table->lock();
         if (r!=0) return r;
     }
-    m_table->try_to_remove(file);
+
+    src_info.m_file->try_to_remove_destination();
+
     {
         int r = m_table->unlock();
         if (r!=0) return r;
-    }
-
-    {
-        int r = call_real_close(destfd);
-        if (r != 0) {
-            r = errno;
-            the_manager.backup_error(r, "Could not close %s at %s:%d", dest, __FILE__, __LINE__);
-            ignore(call_real_close(srcfd));
-            return r;
-        }
-    }
-    
-    {
-        int r = call_real_close(srcfd);
-        if (r != 0) {
-            r = errno;
-            the_manager.backup_error(r, "Could not close %s at %s:%d", source, __FILE__, __LINE__);
-            return r;
-        }
     }
 
     return 0;
@@ -392,46 +420,6 @@ int copier::copy_regular_file(const char *source, const char *dest, off_t source
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-int copier::open_both_files(const char *source, const char *dest, int *srcfd, int *destfd)
-{
-    *destfd = 0;
-    *srcfd = call_real_open(source, O_RDONLY);
-    if (*srcfd < 0) {
-        int r = errno;
-        // Ignore errors about the source file not existing, 
-        // because we someone must have deleted the source name
-        // since we discovered it and stat'd it.
-        if (r == ENOENT) {
-            return 0;
-        } else {
-            the_manager.backup_error(r, "Couldn't open source file %s at %s:%d", source, __FILE__, __LINE__);
-            return r;
-        }
-    }
-
-    *destfd = call_real_open(dest, O_WRONLY | O_CREAT, 0700);
-    if (*destfd < 0) {
-        int r = errno;
-        if (r == EEXIST) {
-            // Some other CAPTURE call has already created the
-            // directory, just open it.
-            *destfd = call_real_open(dest, O_WRONLY);
-            if (*destfd < 0) {
-                r = errno;
-                the_manager.backup_error(r, "Couldn't open destination file %s at %s:%d", dest, __FILE__, __LINE__);
-                return r;
-            }
-        } else {
-            the_manager.backup_error(r, "Couldn't create destintaion file %s at %s:%d", dest, __FILE__, __LINE__);
-            ignore(call_real_close(*srcfd)); // ignore any errors here.
-            return r;
-        }
-    }
-    
-    return 0;
-}
-
-
 static int gettime_reporting_error(struct timespec *ts, backup_callbacks *calls) {
     int r = clock_gettime(CLOCK_MONOTONIC, ts);
     if (r!=0) {
@@ -450,6 +438,8 @@ static int gettime_reporting_error(struct timespec *ts, backup_callbacks *calls)
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
 static double tdiff(struct timespec a, struct timespec b)
 // Effect: Return a-b in seconds.
 {
@@ -464,8 +454,10 @@ static double tdiff(struct timespec a, struct timespec b)
 //     This section actually copies all the bytes from the source
 // file to our newly created backup copy.
 //
-int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, source_file * const file, off_t source_file_size) {
+int copier::copy_file_data(source_info src_info) {
     int r = 0;
+    source_file * file = src_info.m_file;
+    destination_file * dest = file->get_destination();
 
     const size_t buf_size = 1024 * 1024;
     char *buf = new char[buf_size]; // this cannot be on the stack.
@@ -488,7 +480,7 @@ int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const
         if (r!=0) {
             goto out;
         }
-        ssize_t n_read = call_real_read(srcfd, buf, buf_size);
+        ssize_t n_read = call_real_read(src_info.m_fd, buf, buf_size);
         if (n_read == 0) {
             r = file->unlock_range(lock_start, lock_end);
             if (r!=0) goto out;
@@ -502,8 +494,15 @@ int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const
         PAUSE(HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);
         ssize_t n_wrote_this_buf = 0;
         while (n_wrote_this_buf < n_read) {
-            snprintf(poll_string, poll_string_size, "Backup progress %ld bytes, %ld files.  Copying file: %ld/%ld bytes done of %s to %s.",
-                     m_total_bytes_backed_up, m_total_files_backed_up, total_written_this_file, source_file_size, source_path, dest_path);
+            snprintf(poll_string, 
+                     poll_string_size, 
+                     "Backup progress %ld bytes, %ld files.  Copying file: %ld/%ld bytes done of %s to %s.",
+                     m_total_bytes_backed_up, 
+                     m_total_files_backed_up, 
+                     total_written_this_file, 
+                     src_info.m_size,
+                     src_info.m_path,
+                     dest->get_path());
             r = m_calls->poll(0, poll_string);
             if (r!=0) {
                 m_calls->report_error(r, "User aborted backup");
@@ -511,12 +510,12 @@ int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const
                 goto out;
             }
 
-            n_wrote_now = call_real_write(destfd,
+            n_wrote_now = call_real_write(dest->get_fd(),
                                           buf + n_wrote_this_buf,
                                           n_read - n_wrote_this_buf);
             if(n_wrote_now < 0) {
                 r = errno;
-                snprintf(poll_string, poll_string_size, "error write to %s, errno=%d (%s) at %s:%d", dest_path, r, strerror(r), __FILE__, __LINE__);
+                snprintf(poll_string, poll_string_size, "error write to %s, errno=%d (%s) at %s:%d", dest->get_path(), r, strerror(r), __FILE__, __LINE__);
                 m_calls->report_error(r, poll_string);
                 int rr __attribute__((unused)) = file->unlock_range(lock_start, lock_end); // ignore any errors from this since we already have a problem
                 goto out;
@@ -544,9 +543,16 @@ int copier::copy_file_data(int srcfd, int destfd, const char *source_path, const
             double sleep_time = budgeted_time - actual_time;  // if we were supposed to copy 10MB at 2MB/s, then our budget was 5s.  If we took 1s, then sleep 4s.
             {
                 char string[1000];
-                snprintf(string, sizeof(string), "Backup progress %ld bytes, %ld files.  Throttled: copied %ld/%ld bytes of %s to %s. Sleeping %.2fs for throttling.",
-                         m_total_bytes_backed_up, m_total_files_backed_up,
-                         total_written_this_file, source_file_size, source_path, dest_path, sleep_time);
+                snprintf(string, 
+                         sizeof(string),
+                         "Backup progress %ld bytes, %ld files.  Throttled: copied %ld/%ld bytes of %s to %s. Sleeping %.2fs for throttling.",
+                         m_total_bytes_backed_up,
+                         m_total_files_backed_up,
+                         total_written_this_file, 
+                         src_info.m_size, 
+                         src_info.m_path, 
+                         dest->get_path(), 
+                         sleep_time);
                 r = m_calls->poll(0, string);
             }
             if (r!=0) {
@@ -651,6 +657,7 @@ void copier::add_file_to_todo(const char *file)
 //     This should only be called if there is no future copy work.
 //
 void copier::cleanup(void) {
+    ignore(pmutex_lock(&m_todo_mutex));   
     for(std::vector<char *>::size_type i = 0; i < m_todo.size(); ++i) {
         char *file = m_todo[i];
         if (file == NULL) {
@@ -660,4 +667,6 @@ void copier::cleanup(void) {
         free((void*)file);
         m_todo[i] = NULL;
     }
+    ignore(pmutex_unlock(&m_todo_mutex));   
+
 }

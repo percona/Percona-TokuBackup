@@ -15,7 +15,7 @@ class file_hash_table {
 public:
     file_hash_table();
     ~file_hash_table();
-    source_file * get_or_create_locked(const char * const file_name);
+    int get_or_create_locked(const char * const file_name, source_file **file);
     source_file* get(const char *full_file_path) const;
     void put(source_file * const file);
     int hash(const char * const file) const;
@@ -23,8 +23,13 @@ public:
     void remove(source_file * const file);
     int try_to_remove_locked(source_file * const file);
     void try_to_remove(source_file * const file);
-    int rename_locked(const char *original_name, const char *new_name);
-    int rename(source_file * const target, const char *new_name);
+
+    // These methods rename at least the source_file object and
+    // reinsert it into our hash table.  If there is a
+    // destination_file object, that file is also renamed.
+    int rename_locked(const char *old_name, const char *new_name, const char *dest);
+    int rename(source_file * const target, const char *new_name, const char *dest);
+
     int size(void) const;
     int lock(void) __attribute__((warn_unused_result));   // Return 0 on success or an error number.  Reports the error to the backup manager.
     int unlock(void) __attribute__((warn_unused_result)); // Return 0 on success or an error number.  Reports the error to the backup manager.

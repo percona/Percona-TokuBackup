@@ -8,11 +8,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "glassbox.h"
 #include "source_file.h"
 #include "manager.h"
 #include "mutex.h"
+#include "real_syscalls.h"
 
 ////////////////////////////////////////////////////////
 //
@@ -22,7 +24,9 @@ source_file::source_file()
    m_name_rwlock(NULL),
    m_reference_count(0),
    m_mutex(NULL),
-   m_cond(NULL)
+   m_cond(NULL),
+   m_unlinked(false),
+   m_destination_file(NULL)
 {
 };
 
@@ -238,7 +242,7 @@ int source_file::rename(const char * new_name)
     free(m_full_path);
     m_full_path = realpath(new_name, NULL);
     if (m_full_path == NULL) {
-        r = -1;
+        r = errno;
     }
 
     return r;
@@ -265,6 +269,84 @@ void source_file::remove_reference(void)
 unsigned int source_file::get_reference_count(void)
 {
     return m_reference_count;
+}
+
+////////////////////////////////////////////////////////
+//
+void source_file::unlink()
+{
+    m_unlinked = true;
+}
+
+////////////////////////////////////////////////////////
+//
+destination_file * source_file::get_destination(void) const
+{
+    return m_destination_file;
+}
+
+////////////////////////////////////////////////////////
+//
+void source_file::set_destination(destination_file *destination)
+{
+    m_destination_file = destination;
+}
+
+////////////////////////////////////////////////////////
+//
+void source_file::try_to_remove_destination(void)
+{
+    // The only way this function could be called when this
+    // source_file object's destination_file reference is NULL is
+    // when it was created by the COPY object.
+    if (m_destination_file == NULL) {
+        return;
+    }
+
+    if (m_reference_count > 1) {
+        return;
+    }
+
+    ignore(m_destination_file->close());
+    delete m_destination_file;
+    m_destination_file = NULL;
+}
+
+////////////////////////////////////////////////////////
+//
+int source_file::try_to_create_destination_file(char * full_path)
+{
+    int r = 0;
+    if (m_unlinked == true) {
+        free((void*)full_path);
+        return r;
+    }
+
+    if (m_destination_file != NULL) {
+        free((void*)full_path);
+        return r;
+    }
+
+    // Create the file on disk using the given path, though it may
+    // already exist.
+    int fd = call_real_open(full_path, O_RDWR | O_CREAT, 0777);
+    if (fd < 0) {
+        r = errno;
+        if (r != EEXIST) {
+            free((void*)full_path);
+            return r;
+        }
+
+        fd = call_real_open(full_path, O_RDWR, 0777);
+        if (fd < 0) {
+            r = errno;
+            free((void*)full_path);
+            return r;
+        }
+    }
+
+    m_destination_file = new destination_file(fd, full_path);
+    return r;
 }
 
 // Instantiate the templates we need

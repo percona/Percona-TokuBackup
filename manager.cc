@@ -199,11 +199,6 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
     m_session = new backup_session(source, dest, calls, &m_table, &r);
     print_time("Toku Hot Backup: Started:");    
 
-    r = prwlock_unlock(&m_session_rwlock);
-    if (r!=0) {
-        goto unlock_out;
-    }
-    
     r = this->prepare_directories_for_backup(m_session);
     if (r != 0) {
         goto disable_out;
@@ -211,6 +206,11 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
 
     this->enable_capture();
     this->enable_copy();
+
+    r = prwlock_unlock(&m_session_rwlock);
+    if (r!=0) {
+        goto disable_out;
+    }
 
     WHEN_GLASSBOX( ({
                 m_is_capturing = true;
@@ -220,26 +220,18 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
 
     r = m_session->do_copy();
     if (r != 0) {
+        this->backup_error(r, "COPY phase returned an error: %d", r);
         // This means we couldn't start the copy thread (ex: pthread error).
         goto disable_out;
     }
 
 disable_out: // preserves r if r!=0
+
     WHEN_GLASSBOX( ({
         m_done_copying = true;
         // If the client asked us to keep capturing till they tell us to stop, then do what they said.
         while (m_keep_capturing) sched_yield();
             }) );
-
-    m_backup_is_running = false;
-
-    this->disable_capture();
-
-    this->disable_descriptions();
-
-    WHEN_GLASSBOX(m_is_capturing = false);
-
-unlock_out: // preserves r if r!0
 
     {
         int r2 = prwlock_wrlock(&m_session_rwlock);
@@ -248,7 +240,14 @@ unlock_out: // preserves r if r!0
         }
     }
 
+    m_backup_is_running = false;
+    this->disable_capture();
+    this->disable_descriptions();
+    WHEN_GLASSBOX(m_is_capturing = false);
     print_time("Toku Hot Backup: Finished:");
+    // We need to remove any extra renamed files that may have made it
+    // to the backup session just after copy finished.
+    m_session->cleanup();
     delete m_session;
     m_session = NULL;
 
@@ -258,6 +257,9 @@ unlock_out: // preserves r if r!0
             r = r2;
         }
     }
+
+unlock_out: // preserves r if r!0
+
     {
         int r2 = pthread_mutex_unlock(&m_mutex);
         if (r==0 && r2!=0) {
@@ -306,19 +308,19 @@ int manager::prepare_directories_for_backup(backup_session *session) {
         }
 
         char * file_name = session->translate_prefix_of_realpath(source->name());
-        file->prepare_for_backup(file_name);
         r = open_path(file_name);
-        free(file_name);
         if (r != 0) {
             backup_error(r, "Failed to open path");
             ignore(source->name_unlock());
+            free(file_name);
             goto out;
         }
 
-        r = file->create();
+        r = source->try_to_create_destination_file(file_name);
         if (r != 0) {
             backup_error(r, "Could not create backup file.");
             ignore(source->name_unlock());
+            free(file_name);
             goto out;
         }
 
@@ -337,7 +339,6 @@ out:
 //
 void manager::disable_descriptions(void)
 {
-    printf("disabling\n");
     lock_fmap();
     const int size = m_map.size();
     const int middle __attribute__((unused)) = size / 2; // used only in glassbox mode.
@@ -353,100 +354,15 @@ void manager::disable_descriptions(void)
         if (file == NULL) {
             continue;
         }
-        
-        file->disable_from_backup();
-        //printf("sleeping\n"); usleep(1000);
+
+        source_file * source = file->get_source_file();
+        if (source != NULL) {
+            source->try_to_remove_destination();
+        }
     }
+
     unlock_fmap();
 }
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// create() -
-//
-// Description:
-//
-//     TBD: How is create different from open?  Is the only
-// difference that we KNOW the file doesn't yet exist (from
-// copy) for the create case?
-//
-int manager::create(int fd, const char *file) 
-{
-    TRACE("entering create() with fd = ", fd);
-    int result = this->setup_description_and_source_file(fd, file);
-    if (result != 0) {
-        // All errors in above function are fatal, just return, it's over.
-        return result;
-    }
-    
-    {
-        int r = prwlock_rdlock(&m_session_rwlock);
-        if (r!=0) {
-            return r;
-        }
-    }
-    
-    if (m_session != NULL && this->capture_is_enabled()) {
-        // Get the source file object.
-        description * description;
-        {
-            int r = m_map.get(fd, &description);
-            if (r != 0) {
-                // fatal error encountered...
-                return r;
-            }
-        }
-
-        source_file * source = description->get_source_file();
-        // Should we add a reference here for the local variable?
-        {
-            int r = source->name_read_lock();
-            if (r != 0) {
-                ignore(prwlock_unlock(&m_session_rwlock));
-                return r;
-            }
-        }
-        
-        char *backup_file_name = NULL;
-        {
-            int r = m_session->capture_create(source->name(), &backup_file_name);
-            if (r!=0) {
-                ignore(prwlock_unlock(&m_session_rwlock));
-                return r;
-            }
-        }
-
-        if (backup_file_name != NULL) {
-            description->prepare_for_backup(backup_file_name);
-            int r = description->create(); // TODO. create is messy since it doens't report the error, and what constitues anerror may depend on context.  Clean this up.
-            if (r != 0) {
-                backup_error(r, "Could not create backup file %s", backup_file_name);
-                free(backup_file_name);
-                ignore(prwlock_unlock(&m_session_rwlock));
-                return r;
-            }
-            free((void*)backup_file_name);
-        }
-
-        {
-            int r = source->name_unlock();
-            if (r != 0) {
-                ignore(prwlock_unlock(&m_session_rwlock));
-                the_manager.fatal_error(r, "pthread error.");
-                return r;
-            }
-        }
-    }
-
-    {
-        int r = prwlock_unlock(&m_session_rwlock);
-        if (r!=0) {
-            return r;
-        }
-    }
-    return 0;
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -460,85 +376,82 @@ int manager::create(int fd, const char *file)
 // it may be updated if and when the user updates the original/source
 // copy of the file.
 //
-int manager::open(int fd, const char *file, int oflag __attribute__((unused)))
+int manager::open(int fd, const char *file)
 {
     TRACE("entering open() with fd = ", fd);
+    // Skip the given 'file' if it is not a regular file.
+    struct stat buf;
+    int stat_r = fstat(fd, &buf);
+    if (stat_r != 0) {
+        stat_r = errno;
+        this->backup_error(stat_r, "Could not stat incoming file %s", file);
+    } else if (!S_ISREG(buf.st_mode)){
+        // We don't care about tracking non-regular files, just return.
+        return 0;
+    }
+
+    // Create the description and source file objects.  This happens
+    // whether we a backup session is in progress or not.
     int result = this->setup_description_and_source_file(fd, file);
     if (result != 0) {
         // All errors in above function are fatal, just return, it's over.
         return result;
     }
 
-    {
-        int r = prwlock_rdlock(&m_session_rwlock);
-        if (r!=0) {
-            return r;
-        }
+    // If there is no session, or we can't lock it, just return.
+    if (this->try_to_enter_session_and_lock() == false) {
+        return 0;
     }
 
-    if(m_session != NULL && this->capture_is_enabled()) {
-        // Get the source file object.
-        description * description;
-        {
-            int r = m_map.get(fd, &description);
-            if (r != 0) {
-                // fatal error encountered...
-                return r;
-            }
-        }
+    // Since there is an active backup session, we need to create the
+    // destination file object.  This will also create the actual
+    // backup copy of the corresponding file in the user's source
+    // directory.
+    description * description = NULL;
+    source_file * source = NULL;
+    char * backup_file_name = NULL;
+    // First, get the description and source_file objects associated
+    // with the given fd.
+    result = m_map.get(fd, &description);
+    if (result != 0) {
+        // fatal error encountered...
+        goto out;
+    }
+    
+    source = description->get_source_file();
+    result = source->name_read_lock();
+    if (result != 0) {
+        this->fatal_error(result, "pthread error grabbing source file lock.");
+    }
 
-        source_file * source = description->get_source_file();
-        // Should we add a reference here for the local variable?
-
-        {
-            int r = source->name_read_lock();
-            if (r != 0) {
-                ignore(prwlock_unlock(&m_session_rwlock));
-                this->fatal_error(r, "pthread error.");
-                return r;
-            }
-        }
-
-        char *backup_file_name = NULL;
-        {
-            int r = m_session->capture_open(file, &backup_file_name);
-            if (r!=0) {
-                ignore(prwlock_unlock(&m_session_rwlock));
-                return r;
-            }
-        }
-
-        if (backup_file_name != NULL) {
-            description->prepare_for_backup(backup_file_name);
-            int r = description->open(); // TODO: open is messy.  It ought to report the error, but I'm not sure if it can, since what constitutes an error may depend on the context.  Clean this up.
-            if (r != 0) {
-                backup_error(r, "Could not open backup file %s", backup_file_name);
-                free(backup_file_name);
-                source->name_unlock();
-                ignore(prwlock_unlock(&m_session_rwlock));
-                return r;
-            }
+    // Next, determine the full path of the backup file.
+    result = m_session->capture_open(file, &backup_file_name);
+    if (result != 0) {
+        goto out;
+    }
+    
+    // Finally, create the backup file and destination_file object.
+    if (backup_file_name != NULL) {
+        result = source->try_to_create_destination_file(backup_file_name);
+        if (result != 0) {
+            backup_error(result, "Could not open backup file %s", backup_file_name);
+            // TODO: Refactor this free().  This string should be
+            // freed by the owner: the destination file object.
             free(backup_file_name);
-        }
-
-        {
-            int r = source->name_unlock();
-            if (r != 0) {
-                ignore(prwlock_unlock(&m_session_rwlock));
-                this->fatal_error(r, "pthread error.");
-                return r;
-            }
+            ignore(source->name_unlock());
+            goto out;
         }
     }
 
-    {
-        int r = prwlock_unlock(&m_session_rwlock);
-        if (r!=0) {
-            return r;
-        }
+    result = source->name_unlock();
+    if (result != 0) {
+        this->fatal_error(result, "pthread error.");
+        goto out;
     }
 
-    return 0;
+out:
+    this->exit_session_and_unlock_or_die();
+    return result;
 }
 
 
@@ -559,11 +472,21 @@ void manager::close(int fd) {
         return;
     }
     
-    if (file != NULL) {
-        source_file * source = file->get_source_file();
-        ignore(m_table.try_to_remove_locked(source));
-        file->set_source_file(NULL);
+    if (file == NULL) {
+        return;
     }
+    
+    source_file * source = file->get_source_file();
+    if (this->try_to_enter_session_and_lock()) {
+        ignore(m_table.lock());
+        source->try_to_remove_destination();
+        ignore(m_table.unlock());
+        this->exit_session_and_unlock_or_die();
+    }
+
+    // This will remove both the source file and destination file
+    // objects, if they exist.
+    ignore(m_table.try_to_remove_locked(source));
     
     int r1 = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
     if (r1!=0) {
@@ -628,14 +551,20 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
     }
 
     // We still have the lock range, with which we do the pwrite.
-    if (ok && capture_is_enabled()) {
+    if (ok && this->try_to_enter_session_and_lock()) {
         TRACE("write() captured with fd = ", fd);
-        int r = description->pwrite(buf, nbyte, lock_start);
-        if (r!=0) {
-            // The error has been reported.
-            ok = false;
+        destination_file * dest_file = file->get_destination();
+        if (dest_file != NULL) {
+            int r = dest_file->pwrite(buf, nbyte, lock_start);
+            if (r!=0) {
+                // The error has been reported.
+                ok = false;
+            }
         }
+
+        this->exit_session_and_unlock_or_die();
     }
+
     if (have_range_lock) { // Release the range lock if if not OK.
         TRACE("Releasing file range lock() with fd = ", fd);
         int r = file->unlock_range(lock_start, lock_end);
@@ -714,16 +643,23 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
     ssize_t nbytes_written = call_real_pwrite(fd, buf, nbyte, offset);
     int e = 0;
     if (nbytes_written>0) {
-        if (this->capture_is_enabled()) {
-            ignore(description->pwrite(buf, nbyte, offset)); // nothing more to do.  It's been reported.
+        if (this->try_to_enter_session_and_lock()) {
+            destination_file * dest_file = file->get_destination();
+            if (dest_file != NULL) {
+                ignore(dest_file->pwrite(buf, nbyte, offset)); // nothing more to do.  It's been reported.
+            }
+
+            this->exit_session_and_unlock_or_die();
         }
     } else if (nbytes_written<0) {
         e = errno; // save the errno
     }
+
     ignore(file->unlock_range(offset, offset+nbyte)); // nothing more to do.  It's been reported.
     if (nbytes_written<0) {
         errno = e; // restore errno
     }
+
     return nbytes_written;
 }
 
@@ -771,97 +707,98 @@ int manager::rename(const char *oldpath, const char *newpath)
     int r = 0;
     int user_error = 0;
     int error = 0;
-    const char * full_old_destination_path = NULL;
     const char * full_new_destination_path = NULL;
     const char * full_new_path = NULL;
     const char * full_old_path = realpath(oldpath, NULL);
     if (full_old_path == NULL) {
         error = errno;
-        the_manager.fatal_error(error, "Could not rename file.");
+        the_manager.backup_error(error, "Could not rename file.");
         return call_real_rename(oldpath, newpath);
     }
 
-     // We need the newpath to exist to finish our own rename work.
-     // So just call it now, regardless of CAPTURE state.
-     user_error = call_real_rename(oldpath, newpath);
-     if (user_error == 0) {
-        // Get the full path of the recently renanmed file.
-        // We could not call this earlier, since the new file path
-        // did not exist till AFTER we called the real rename on 
-        // the original source file.
-         full_new_path = realpath(newpath, NULL);
-         if (full_new_path == NULL) {
-             error = errno;
-             this->fatal_error(error, "Could not complete rename().");
-             goto source_free_out;
-         }
-     } else {
-         return user_error;
-     }
+    // We need the newpath to exist to finish our own rename work.
+    // So just call it now, regardless of CAPTURE state.
+    user_error = call_real_rename(oldpath, newpath);
+    if (user_error != 0) {
+        error = errno;
+        the_manager.backup_error(error, "Could not rename user file: %s", oldpath);
+        goto source_free_out;
+    }
+
+    // Get the full path of the recently renanmed file.
+    // We could not call this earlier, since the new file path
+    // did not exist till AFTER we called the real rename on 
+    // the original source file.
+    full_new_path = realpath(newpath, NULL);
+    if (full_new_path == NULL) {
+        error = errno;
+        this->backup_error(error, "Could not complete rename().");
+        goto source_free_out;
+    }
     
     // Grab the session lock.
-     r = prwlock_rdlock(&m_session_rwlock);
-     if (r!=0) {
-         goto source_free_out;
-     }
+    r = prwlock_rdlock(&m_session_rwlock);
+    if (r!=0) {
+        goto source_free_out;
+    }
     
     // If the rename succeeded and backup is running...
-    if (user_error == 0 && m_session != NULL && this->capture_is_enabled()) {
-        // Check to see that the source paths are both in our source directory.
-        if (m_session->is_prefix_of_realpath(full_old_path) && m_session->is_prefix_of_realpath(full_new_path)) {
-            // Get the new full paths of both backup/destination files.
-            full_old_destination_path = m_session->translate_prefix_of_realpath(full_old_path);
+    if (m_session != NULL && this->capture_is_enabled()) {
+
+        bool original_present = m_session->is_prefix_of_realpath(full_old_path);
+        bool new_present = m_session->is_prefix_of_realpath(full_new_path);
+
+        // Four cases:
+        if ((original_present == false) && (new_present == false)) { 
+            // 1. If neither file is in the directory we just bail.
+
+        } else if (original_present == true && new_present == false) {
+            // 2. If only original path in directory: We need to
+            // REMOVE the file from the backup if it has been created.
+            // We also need try to REMOVE the source file from the
+            // todo list in the copier.
+            
+        } else if (original_present == false && new_present == true) {
+            // 3. Only new path: we have to ADD the new file using the
+            // create path.  We also need to add it to the copier's
+            // toto list.
+            
+        } else {
+            // 4. Both in source directory.
+            // Get the new full paths of the destination file.
+            // NOTE: This string will be owned by the destination file object.
             full_new_destination_path = m_session->translate_prefix_of_realpath(full_new_path);
-            // If the copier has already copied or is copying the
-            // file, this will succceed.  If the copier has not yet
-            // created the file this will fail, and it should find it
-            // in its todo list.  However, if we want to be sure that
-            // the new name is in its todo list, we must add it to the
-            // todo list ourselves, just to be sure that it is copied.
-            //
-            // NOTE: If the orignal file name is still in our todo
-            // list, the copier will attempt to copy it, but since it
-            // has already been renamed it will fail with ENOENT,
-            // which we ignore in COPY, and move on to the next item
-            // in the todo list.
-            r = call_real_rename(full_old_destination_path, full_new_destination_path);         
+
+            // If we got to this point, we have called rename on the
+            // source file itself.  So we must update our source_file
+            // object with the new name.  We must also update the
+            // destination_file object because we are inside of a
+            // session.
+            r = m_table.rename_locked(full_old_path, full_new_path, full_new_destination_path);
             if (r != 0) {
                 error = errno;
-                // Ignore the error where the copier hasn't yet copied the
-                // original file.
-                if (error != ENOENT) {
-                    this->backup_error(error, "rename() on backup copy failed.");
-                } else {
-                    // Add to the copier's todo list.
-                    m_session->add_to_copy_todo_list(full_new_destination_path);
-                }
+                this->backup_error(error, "pthread error. Coudl not rename().");
+            } else {
+                // If the copier has already copied or is copying the
+                // file, this will succceed.  If the copier has not yet
+                // created the file this will fail, and it should find it
+                // in its todo list.  However, if we want to be sure that
+                // the new name is in its todo list, we must add it to the
+                // todo list ourselves, just to be sure that it is copied.
+
+                // NOTE: If the orignal file name is still in our todo
+                // list, the copier will attempt to copy it, but since
+                // it has already been renamed it will fail with
+                // ENOENT, which we ignore in COPY, and move on to the
+                // next item in the todo list.  Add to the copier's
+                // todo list.
+                m_session->add_to_copy_todo_list(full_new_destination_path);
             }
         }
     }
 
-    r = prwlock_unlock(&m_session_rwlock);
-    if (r != 0) {
-        goto destination_free_out;
-    }
+    ignore(prwlock_unlock(&m_session_rwlock));
 
-    // Only bother to rename a source_file object if we have succeeded
-    // calling rename on the user's source files.
-    if (user_error == 0) {
-        // If we got to this point, we have called rename on 
-        // the source file.  So we must update our source_file
-        // object with the new name.
-        r = m_table.rename_locked(full_old_path, full_new_path);
-        if (r != 0) {
-            error = errno;
-            this->fatal_error(error, "pthread error. Coudl not rename().");
-        }
-    }
-
- destination_free_out:
-
-    if (full_old_destination_path != NULL) {
-        free((void*)full_old_destination_path);
-    }
     if (full_new_destination_path != NULL) {
         free((void*)full_new_destination_path);
     }
@@ -882,6 +819,7 @@ int manager::unlink(const char *path)
     TRACE("entering unlink with path = ", path);
     int r = 0;
     int user_error = 0;
+    source_file * source = NULL;
     const char * full_path = realpath(path, NULL);
     if (full_path == NULL) {
         int error = errno;
@@ -893,32 +831,65 @@ int manager::unlink(const char *path)
     // We have to call unlink on the source file AFTER we have
     // resolved the given path to the full path.  Otherwise,
     // realpath will fail saying it cannot find the path.
-    user_error = call_real_unlink(path);
-    
+    user_error = call_real_unlink(full_path);
+
+    r = m_table.get_or_create_locked(full_path, &source);
+    if (r != 0) {
+        goto free_out; 
+    }
+
     r = prwlock_rdlock(&m_session_rwlock);
     if (r != 0) {
         goto free_out;
     }
 
+    r = m_table.lock();
+    if (r != 0) { 
+        goto free_out;
+    }
+
     if (m_session != NULL && this->capture_is_enabled() && m_session->is_prefix_of_realpath(full_path)) {
+        // 1. Find source file, unlink it.
+        // 2. Get destination file from source file.
+        destination_file * dest = source->get_destination();
+        if (dest == NULL) {
+            // The destination object may not exist in one of three cases:
+            // 1.  The copier hasn't yet gotten to copying the file.
+            // 2.  The copier has finished copying the file.
+            // 3.  There is no open fd associated with this file.
+            char *dest_path = m_session->translate_prefix_of_realpath(full_path);
+            r = source->try_to_create_destination_file(dest_path);
+            if (r != 0) {
+                free((void*)dest_path);
+                goto free_out;
+            }
+
+            dest = source->get_destination();
+        }
+
+        // 3. Unlink the destination file.
+        r = dest->unlink();
+        if (r != 0) {
+            int error = errno;
+            this->backup_error(error, "Could not unlink backup copy.");
+        }
+        
         // If it does not exist, and if backup is running,
         // it may be in the todo list. Since we have the hash 
         // table lock, the copier can't add it, and rename() threads
         // can't alter the name and re-hash it till we are done.
-        char * dest_name = m_session->translate_prefix_of_realpath(full_path);
-        r = call_real_unlink(dest_name);
-        int error = 0;
-        if (r != 0) {
-            error = errno;
-        }
-        free(dest_name);
-        if (r != 0) {
-            if (error != ENOENT) {
-                the_manager.backup_error(error, "Could not unlink backup copy.");
-            }
-        }
     }
 
+    // We have to unlink the source file, regardless of whether ther
+    // is a backup session in progress or not.
+    ignore(source->name_write_lock());
+    source->unlink();
+    source->try_to_remove_destination();
+    ignore(source->name_unlock());
+
+    r = m_table.unlock();
+    if (r != 0) {}
+    ignore(m_table.try_to_remove_locked(source));
     ignore(prwlock_unlock(&m_session_rwlock));
 
 free_out:
@@ -956,8 +927,16 @@ int manager::ftruncate(int fd, off_t length)
     int user_result = call_real_ftruncate(fd, length);
     int e = 0;
     if (user_result==0) {
-        if (this->capture_is_enabled()) {
-            ignore(description->truncate(length)); // it's been reported, so there's nothing we can do about that error except to try to unlock the range.
+        if (this->try_to_enter_session_and_lock()) {
+            destination_file * dest_file = file->get_destination();
+            if (dest_file != NULL) {
+                 // the error from truncate been reported, so there's
+                 // nothing we can do about that error except to try
+                 // to unlock the range.
+                ignore(dest_file->truncate(length));
+            }
+
+            this->exit_session_and_unlock_or_die();
         }
     } else {
         e = errno; // save errno
@@ -1203,49 +1182,11 @@ int manager::setup_description_and_source_file(int fd, const char *file)
         this->fatal_error(errno, "Could not allocate space for backup.");
         goto error_out;
     }
-    
-    // table.lock can be fatal...
-    r = m_table.lock();
-    if (r != 0) {
-        error = r;
-        free((void*)full_source_file_path);
-        goto error_out;
-    }
 
-    // Try to get the source_file.  If we can't, it needs
-    // to be created.  NOTE: This code assumes that only
-    // create() and open() call this function.
-    source = m_table.get(full_source_file_path);
-    if (source == NULL) {
-        TRACE("Creating new source file in hash map ", fd);
-        TRACE("With source name = ", full_source_file_path);
-        source = new source_file();
-        // init can be fatal...
-        r = source->init(full_source_file_path);
-        if (r != 0) {
-            error = r;
-            source->remove_reference();
-            delete file;
-            free((void*)full_source_file_path);
-            ignore(m_table.unlock());
-            goto error_out;
-        }
-        
-        m_table.put(source);
-    }
-    
+    r = m_table.get_or_create_locked(full_source_file_path, &source);
     free((void*)full_source_file_path);
-
-    // We are about to add this source_file object to the fd map,
-    // let's increment the refcount so it doesn't go away BEFORE
-    // we unlock the hash table lock.
-    source->add_reference();
-    
-    // table unlock can be fatal...
-    r = m_table.unlock();
     if (r != 0) {
         error = r;
-        m_table.try_to_remove(source);
         goto error_out;
     }
     

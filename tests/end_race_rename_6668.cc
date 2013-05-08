@@ -42,9 +42,9 @@ static int my_rename(const char *oldpath, const char *newpath) {
 static void* do_rename(void* ignore) {
     {
         int fd = openf(O_RDWR | O_CREAT, 0777, "%s/old.data", src);
-        assert(fd>=0);
+        check(fd>=0);
         int r = close(fd);
-        assert(r==0);
+        check(r==0);
     }
 
     size_t len = strlen(src) + 10; 
@@ -52,19 +52,20 @@ static void* do_rename(void* ignore) {
     char *newpath = (char*)malloc(len);
     {
         size_t r = snprintf(oldpath, len, "%s/old.data", src);
-        assert(r<len);
+        check(r<len);
     }
     {
         size_t r = snprintf(newpath, len, "%s/new.data", src);
-        assert(r<len);
+        check(r<len);
     }
 
     backup_set_start_copying(true);
     backup_set_keep_capturing(true);
-    while(!backup_is_capturing()) sched_yield();
     while(!backup_done_copying()) sched_yield();
+    backup_set_keep_capturing(false);
+    while(!backup_is_capturing()) sched_yield();
     int r = rename(oldpath, newpath);
-    assert(r==0);
+    check(r==0);
     free(oldpath);
     free(newpath);
     return ignore;
@@ -80,7 +81,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         size_t l = strlen(absdst) + 10;
         delay_this_old = (char*)malloc(l);
         size_t r = snprintf(delay_this_old, l, "%s/old.data", absdst);
-        assert(r<l);
+        check(r<l);
         free(absdst);
     }
     original_rename = register_rename(my_rename);
@@ -90,14 +91,14 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     start_backup_thread(&thread);
     {
         int r = pthread_create(&open_th, NULL, do_rename, NULL);
-        assert(r==0);
+        check(r==0);
     }
     finish_backup_thread(thread);
     cleanup_dirs(); // try to delete things out from under the running open.
     {
         void *result;
         int r = pthread_join(open_th, &result);
-        assert(r==0 && result==NULL);
+        check(r==0 && result==NULL);
     }
     free(src);
     free(dst);

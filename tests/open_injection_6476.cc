@@ -19,28 +19,6 @@
 
 static const int ERRORS_TO_CHECK = 1;
 
-enum open_errors {
-    NO_ACCESS             = EACCES,
-    ALREADY_EXISTS        = EEXIST,
-    OUTSIDE_SPACE         = EFAULT,
-    DIR_WRITE_ACCESS      = EISDIR,
-    LOOP                  = ELOOP, // Too many symbolic links.
-    MAX_PROC_FILES        = EMFILE,
-    TOO_LONG              = ENAMETOOLONG,
-    MAX_SYS_FILES         = ENFILE,
-    NO_DEVICE             = ENODEV,
-    NO_ENTRY              = ENOENT,
-    NO_MEMORY             = ENOMEM,
-    NO_SPACE              = ENOSPC,
-    NOT_A_DIR             = ENOTDIR,
-    WTF                   = ENXIO,
-    TOO_LARGE             = EOVERFLOW,
-    NO_PERMISSION         = EPERM,
-    READ_ONLY_FILE        = EROFS,
-    FILE_IS_EXECUTING     = ETXTBSY,
-    CONTENTION            = EWOULDBLOCK
-};
-
 static volatile int iteration = 0;
 
 static open_fun_t original_open;
@@ -50,10 +28,9 @@ static int test_create(const char *file, int oflag, mode_t mode)
     return original_open(file, oflag, mode);
 }
 
-static int test_open(const char *file, int oflag)
+static int test_open(const char *file, int oflag, int it)
 {
     int result = 0;
-    int it = __sync_fetch_and_add(&iteration, 1);
     switch (it) {
     case 2:
         errno = ENOSPC;
@@ -70,6 +47,7 @@ static int test_open(const char *file, int oflag)
 
 static int my_open(const char *file, int oflag, ...)
 {
+    int it = __sync_fetch_and_add(&iteration, 1);
     int result = 0;
     if (oflag & O_CREAT) {
         va_list ap;
@@ -78,7 +56,7 @@ static int my_open(const char *file, int oflag, ...)
         va_end(ap);
         result = test_create(file, oflag, mode);
     } else {
-        result = test_open(file, oflag);
+        result = test_open(file, oflag, it);
     }
 
     return result;
@@ -101,11 +79,11 @@ static int test_open_failures(void)
     char buf[SIZE] = {0};
     int write_r = write(fd, buf, SIZE);
     check(write_r == SIZE);
-    int close_r = close(fd);
-    check(close_r == 0);
 
     // 2.  Set backup to pause.
     backup_set_keep_capturing(true);
+
+    expect_error = ENOSPC;
 
     // 3.  Start backup.
     pthread_t backup_thread;
@@ -122,7 +100,7 @@ static int test_open_failures(void)
     sleep(2);
 
     // 4.  Try to open the created file (to get a different fd).
-    expect_error = ENOSPC;
+    printf("calling open for the second time\n");
     int fd2 = openf(O_RDWR, 0777, "%s/my.data", src);
     check(fd2 >= 0);
 
@@ -133,6 +111,9 @@ static int test_open_failures(void)
     backup_set_keep_capturing(false);
     finish_backup_thread(backup_thread);
     free((void*) src);
+    close(fd2);
+    int close_r = close(fd);
+    check(close_r == 0);
 
     return result;
 }

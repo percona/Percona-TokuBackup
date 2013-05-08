@@ -281,13 +281,6 @@ int backup_session::capture_open(const char *file, char **result)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int backup_session::capture_create(const char *file, char **result)
-{
-    return this->capture_open(file, result);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//
 int backup_session::capture_mkdir(const char *pathname)
 {
     if(!this->is_prefix(pathname)) {
@@ -305,4 +298,11 @@ int backup_session::capture_mkdir(const char *pathname)
 void backup_session::add_to_copy_todo_list(const char *file_path)
 {
      m_copier.add_file_to_todo(file_path);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+void backup_session::cleanup(void)
+{
+    m_copier.cleanup();
 }

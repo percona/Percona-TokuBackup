@@ -68,8 +68,6 @@ static int test_rename_failures(void)
     char buf[SIZE] = {0};
     int write_r = write(fd, buf, SIZE);
     check(write_r == SIZE);
-    int close_r = close(fd);
-    check(close_r == 0);
 
     // 2.  Set backup to pause.
     backup_set_keep_capturing(true);
@@ -93,11 +91,14 @@ static int test_rename_failures(void)
     char new_file[FILE_NAME_SIZE] = {0};
     snprintf(new_file, FILE_NAME_SIZE, "%s/renamed.data", src);
     int rename_r = rename(old_file, new_file);
-    assert(rename_r == 0);
+    check(rename_r == 0);
 
     // 5. Cleanup
     backup_set_keep_capturing(false);
     finish_backup_thread(backup_thread);
+    int close_r = close(fd);
+    check(close_r == 0);
+
     free((void*) src);
     return result;
 }

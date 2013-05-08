@@ -1,3 +1,10 @@
-set(MEMORYCHECK_COMMAND /usr/bin/valgrind)
-# set(MEMORYCHECK_SUPRESSIONS_FILE "${PROJECT_SOURCE_DIR}/valgrind.suppressions")
-set(MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --soname-synonyms=somalloc=*tokuportability* --suppressions=${PROJECT_SOURCE_DIR}/valgrind.suppressions --gen-suppressions=no --quiet --num-callers=20 --leak-check=full --show-reachable=yes" CACHE INTERNAL "options for valgrind")
+if(BUILD_TESTING)
+  if (NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
+    # Valgrind on OSX 10.8 generally works but outputs some warning junk
+    # that is hard to parse out, so we'll just let it run alone
+    set(MEMORYCHECK_COMMAND "${PROJECT_SOURCE_DIR}/scripts/tokuvalgrind")
+  endif ()
+  set(MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --soname-synonyms=somalloc=*tokuportability* --gen-suppressions=no --quiet --num-callers=20 --leak-check=full --show-reachable=yes --trace-children=yes --trace-children-skip=sh,*/sh,basename,*/basename,dirname,*/dirname,rm,*/rm,cp,*/cp,mv,*/mv,cat,*/cat,diff,*/diff,grep,*/grep,date,*/date,test,*/tokudb_dump,*/tdb-recover --trace-children-skip-by-arg=--only_create,--test,--no-shutdown,novalgrind" CACHE INTERNAL "options for valgrind")
+  set(MEMORYCHECK_SUPPRESSIONS_FILE "${PROJECT_SOURCE_DIR}/valgrind.suppressions" CACHE INTERNAL "suppressions file for valgrind")
+  set(UPDATE_COMMAND "svn")
+endif()

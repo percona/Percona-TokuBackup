@@ -15,6 +15,7 @@ set(BACKUP_SOURCES
 	backup_directory.cc
 	copier.cc
 	description.cc
+	destination_file.cc
 	file_hash_table.cc
 	fmap.cc
 	manager.cc
@@ -65,6 +66,13 @@ add_space_separated_property(TARGET HotBackup LINK_FLAGS "${OPTFLAGS}")
 configure_file(CTestCustom.cmake . COPYONLY)
 
 # INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/../tokudb
+
+option(USE_GCOV "Use gcov for test coverage." OFF)
+if (USE_GCOV)
+  set(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+  set(CMAKE_C_FLAGS   "--coverage ${CMAKE_C_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "--coverage ${CMAKE_EXE_LINKER_FLAGS}")
+endif (USE_GCOV)
 
 ##add_subdirectory(db-benchmark-test)
 

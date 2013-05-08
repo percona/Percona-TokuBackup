@@ -1,13 +1,15 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
-#ifndef SOURCE_FILE_H
-#define SOURCE_FILE_H
-
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include "description.h"
+#ifndef SOURCE_FILE_H
+#define SOURCE_FILE_H
+
 #include <stdint.h>
+
+#include "destination_file.h"
+#include "description.h"
 
 struct range {
     uint64_t lo, hi;
@@ -32,7 +34,6 @@ public:
     // Effect: Return true if lock_range() would block because [lo,hi) intersects some locked range.
     //  This function does not acquire any locks.  We expose it for testing purposes (it should not be used by production code).x
 
-
     // Name locking and associated rename call.
     int name_write_lock(void) __attribute__((warn_unused_result));
     int name_read_lock(void)  __attribute__((warn_unused_result));
@@ -44,6 +45,18 @@ public:
     void add_reference(void);
     void remove_reference(void);
     unsigned int get_reference_count(void);
+
+    void unlink(void);
+
+    // Methods to manage the lifetime of the destination file
+    // corresponding to this source file object.  The lifetime of the
+    // destination file should be scoped to a particular backup
+    // session object lifetime.
+    destination_file * get_destination(void) const;
+    void set_destination(destination_file * destination);
+    void try_to_remove_destination(void);
+    int try_to_create_destination_file(char*);
+
 private:
     char * m_full_path; // the source_file owns this.
     source_file *m_next;
@@ -53,6 +66,9 @@ private:
     pthread_mutex_t *m_mutex;
     pthread_cond_t  *m_cond;
     std::vector<struct range> m_locked_ranges;
+
+    bool m_unlinked;
+    destination_file * m_destination_file;
 };
 
 #endif // End of header guardian.

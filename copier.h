@@ -19,6 +19,25 @@
 class file_hash_table;
 class source_file;
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// source_info:
+//
+// Description:
+//
+//     This is a container struct to simplify passing necessary source
+//     and destination information through the copier class' copy
+//     paths.
+//
+struct source_info {
+    int m_fd;
+    const char *m_path;
+    off_t m_size;
+    source_file * m_file;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
 class copier {
 private:
     const char *m_source;
@@ -30,8 +49,9 @@ private:
     uint64_t m_total_bytes_backed_up;
     uint64_t m_total_files_backed_up;
     int copy_regular_file(const char *source, const char *dest, off_t file_size)  __attribute__((warn_unused_result));
+    int copy_using_source_info(source_info src_info, const char *dest);
+    int create_destination_and_copy(source_info src_info, const char *dest);
     int add_dir_entries_to_todo(DIR *dir, const char *file)  __attribute__((warn_unused_result));
-    void cleanup(void);
 public:
     copier(backup_callbacks *calls, file_hash_table * const table);
     void set_directories(const char *source, const char *dest);
@@ -39,9 +59,10 @@ public:
     int do_copy(void) __attribute__((warn_unused_result)) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
     int copy_stripped_file(const char *file) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
     int copy_full_path(const char *source, const char* dest, const char *file) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
-    int copy_file_data(int srcfd, int destfd, const char *source_path, const char *dest_path, source_file * const file, off_t source_file_size)  __attribute__((warn_unused_result)); // Returns the error code (not in errno)
+    int copy_file_data(source_info src_info)  __attribute__((warn_unused_result)); // Returns the error code (not in errno)
     void add_file_to_todo(const char *file);
     int open_both_files(const char *source, const char *dest, int *srcfd, int *destfd);
+    void cleanup(void);
 };
 
 #endif // End of header guardian.

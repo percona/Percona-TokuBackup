@@ -37,9 +37,9 @@ public:
 
     // Capture interface.
     int capture_open(const char *file, char **result) __attribute__((warn_unused_result)); // if any errors occur, report them, and return the error code.  Otherwise return 0 and store the malloc'd name of the dest file  in *result.  If the file isn't in the destspace return 0 and set *result=NULL.
-    int capture_create(const char *file, char **result) __attribute__((warn_unused_result)); // This is just an alias for capture_open.
     int capture_mkdir(const char *pathname) __attribute__((warn_unused_result)); // return 0 on success, error otherwise.
     void add_to_copy_todo_list(const char *file_path);
+    void cleanup(void);
 private:
     const char *m_source_dir;
     const char *m_dest_dir;

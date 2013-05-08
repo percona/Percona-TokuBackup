@@ -59,8 +59,7 @@ public:
     int do_backup(const char *source, const char *dest, backup_callbacks *calls);
 
     // Methods used during interposition:
-    int create(int fd, const char *file) __attribute__((warn_unused_result)); // returns 0 on success, error number on failure and it has reported the error to the backup manager.
-    int open(int fd, const char *file, int oflag) __attribute__((warn_unused_result)); // returns 0 on success, error number on failure and it has reported the error to the backup manager.
+    int open(int fd, const char *file) __attribute__((warn_unused_result)); // returns 0 on success, error number on failure and it has reported the error to the backup manager.
     void close(int fd); // It has reported the error to the backup manager, and the application doesn't care.
     ssize_t write(int fd, const void *buf, size_t nbyte); // Actually performs the write on fd (so that a lock can be obtained).
     ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset); // Actually performs the write on fd (so that a lock can be obtained).

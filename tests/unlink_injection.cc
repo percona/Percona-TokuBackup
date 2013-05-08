@@ -91,7 +91,7 @@ static int test_unlink_failures(void)
     // 4.  Try to rename the created file.
     expect_error = EIO;
     int unlink_r = unlink(file);
-    assert(unlink_r == 0);
+    check(unlink_r == 0);
 
     // 5. Cleanup
     backup_set_keep_capturing(false);
