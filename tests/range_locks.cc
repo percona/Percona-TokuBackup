@@ -18,7 +18,7 @@ volatile int stepc = 0;
 static const uint64_t doit_lo = 5, doit_hi = 10;
 static void* doit(void* ignore) {
 
-    { int r = sf.lock_range(doit_lo, doit_hi);   check(r==0);  }
+    sf.lock_range(doit_lo, doit_hi);
     stepa = 1;
 
 
@@ -44,7 +44,7 @@ static void thread_test_block(void) {
     while (!stepa); // wait for stepa to finish.
     // Now 5,10 is blocked
     stepc = 1; // let him go ahead and run
-    { int r = sf.lock_range(9,12);           check(r==0); }
+    sf.lock_range(9,12);
     check(stepb==1); // must have gotten to stepb in the doit function.(
     
     {
@@ -73,7 +73,7 @@ static void thread_test_noblock(void) {
     while (!stepa); // wait for stepa to finish
     // Now 5,10 is blocked.
     // this will deadlock of the lock blocks.
-    { int r = sf.lock_range(12,15);             check(r==0); }
+    sf.lock_range(12,15);
     
     stepc = 1;
     
@@ -94,7 +94,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
 
     // test a single range that covers everything
     {   int r = sf.init("hello");                   check(r==0); }
-    {   int r = sf.lock_range(0, LLONG_MAX);        check(r==0); }
+    sf.lock_range(0, LLONG_MAX);
     check( sf.lock_range_would_block_unlocked(0, 1));
     check(!sf.lock_range_would_block_unlocked(0, 0));
     check( sf.lock_range_would_block_unlocked(10, 100));
@@ -105,8 +105,8 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
 
 
     // Test two ranges that are adjacent.
-    {   int r = sf.lock_range(10, 20);              check(r==0); }
-    {   int r = sf.lock_range(20, 30);              check(r==0); }
+    sf.lock_range(10, 20);
+    sf.lock_range(20, 30);
     check(!sf.lock_range_would_block_unlocked(0, 10));
     for (int i=10; i<30; i++) {
         for (int j=i+1; j<=30; j++) {
@@ -118,8 +118,8 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     {   int r = sf.unlock_range(20, 30);            check(r==0); }
 
     // test two ranges with a gap in between.
-    {   int r = sf.lock_range(10, 20);              check(r==0); }
-    {   int r = sf.lock_range(30, 40);              check(r==0); }
+    sf.lock_range(10, 20);
+    sf.lock_range(30, 40);
     for (int i=0; i<50; i++) {
         for (int j=i; j<50; j++) {
             bool expect_block =

@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 #include "backup_debug.h"
-#include "glassbox.h"
+#include "check.h"
 #include "manager.h"
 #include "mutex.h"
 #include "description.h"
@@ -32,8 +32,7 @@ description::description()
 description::~description(void)
 {
     if (m_mutex) {
-        int r = pthread_mutex_destroy(m_mutex); // ignore any errors...
-        glass_assert(r==0);
+        pthread_mutex_destroy(m_mutex); // ignore any errors...
         delete m_mutex;
         m_mutex = NULL;
     }
@@ -45,9 +44,7 @@ int description::init(void)
 {
     m_mutex = new pthread_mutex_t;
     int r = pthread_mutex_init(m_mutex, NULL);
-    if (r != 0) {
-        the_manager.fatal_error(r, "Failed to initialize mutex: %s:%d\n", __FILE__, __LINE__);
-    }
+    check(r==0);
     return r;
 }
 

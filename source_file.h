@@ -24,8 +24,8 @@ public:
     source_file *next(void);
     void set_next(source_file *next);
 
-    int lock_range(uint64_t lo, uint64_t  hi) __attribute__((warn_unused_result));
-    // Effect: Lock the range specified by [lo,hi) (that is lo inclusive to hi exclusive).   Blocks until no locked range intersects [lo,hi).  Use hi==LLONG_MAX to specify the whole file.  Return 0 or an error number (if error then report it to backup manager)
+    void lock_range(uint64_t lo, uint64_t  hi);
+    // Effect: Lock the range specified by [lo,hi) (that is lo inclusive to hi exclusive).   Blocks until no locked range intersects [lo,hi).  Use hi==LLONG_MAX to specify the whole file.  No errors can happen (the only possible errors are pthread mutex errors or memory allcoation errors, in which case it's better just to abort).
 
     int unlock_range(uint64_t lo, uint64_t hi) __attribute__((warn_unused_result));
     // Effect: Unlock the specified range.  Requires that the range is locked (if we notice a problem we'll return EINVAL).  Return 0 or an error number.

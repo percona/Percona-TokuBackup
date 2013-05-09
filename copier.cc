@@ -456,10 +456,7 @@ int copier::copy_file_data(source_info src_info) {
         PAUSE(HotBackup::COPIER_BEFORE_READ);
         const ssize_t lock_start = total_written_this_file;
         const ssize_t lock_end   = total_written_this_file + buf_size;
-        r = file->lock_range(lock_start, lock_end);
-        if (r!=0) {
-            goto out;
-        }
+        file->lock_range(lock_start, lock_end);
         ssize_t n_read = call_real_read(src_info.m_fd, buf, buf_size);
         if (n_read == 0) {
             r = file->unlock_range(lock_start, lock_end);

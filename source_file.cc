@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "glassbox.h"
+#include "check.h"
 #include "source_file.h"
 #include "manager.h"
 #include "mutex.h"
@@ -36,19 +36,19 @@ source_file::~source_file(void) {
     }
     if (m_mutex) {
         int r = pthread_mutex_destroy(m_mutex);
-        glass_assert(r==0);
+        check(r==0);
         delete m_mutex;
         m_mutex = NULL;
     }
     if (m_cond) {
         int r = pthread_cond_destroy(m_cond);
-        glass_assert(r==0);
+        check(r==0);
         delete m_cond;
         m_cond = NULL;
     }
     if (m_name_rwlock) {
         int r = pthread_rwlock_destroy(m_name_rwlock);
-        glass_assert(r==0);
+        check(r==0);
         delete m_name_rwlock;
         m_name_rwlock = NULL;
     }
@@ -66,35 +66,17 @@ int source_file::init(const char *path)
     {
         m_mutex = new pthread_mutex_t;
         int r = pthread_mutex_init(m_mutex, NULL);
-        if (r!=0) {
-            the_manager.fatal_error(r, "mutex_init at %s:%d", __FILE__, __LINE__);
-            delete m_mutex; m_mutex = NULL;
-            return r;
-        }
+        check(r==0);
     }
     {
         m_cond = new pthread_cond_t;
         int r = pthread_cond_init(m_cond, NULL);
-        if (r!=0) {
-            the_manager.fatal_error(r, "cond_init at %s:%d", __FILE__, __LINE__);
-            ignore(pthread_mutex_destroy(m_mutex));
-            delete m_mutex;  m_mutex = NULL;
-            delete m_cond;   m_cond  = NULL;
-            return r;
-        }
+        check(r==0);
     }
     {
         m_name_rwlock = new pthread_rwlock_t;
         int r = pthread_rwlock_init(m_name_rwlock, NULL);
-        if (r!=0) {
-            ignore(pthread_mutex_destroy(m_mutex));
-            ignore(pthread_cond_destroy(m_cond));
-            delete m_mutex;       m_mutex       = NULL;
-            delete m_cond;        m_cond        = NULL;
-            delete m_name_rwlock; m_name_rwlock = NULL;
-            return r;
-        }
-                                  
+        check(r==0);
     }
     return 0;
 }
@@ -143,22 +125,17 @@ bool source_file::lock_range_would_block_unlocked(uint64_t lo, uint64_t hi) {
 
 ////////////////////////////////////////////////////////
 //
-int source_file::lock_range(uint64_t lo, uint64_t hi)
+void source_file::lock_range(uint64_t lo, uint64_t hi)
 {
     pmutex_lock(m_mutex);
     while (this->lock_range_would_block_unlocked(lo, hi)) {
         int r = pthread_cond_wait(m_cond, m_mutex);
-        if (r!=0) {
-            the_manager.fatal_error(r, "Trying to cond_wait at %s:%d", __FILE__, __LINE__);
-            pmutex_unlock(m_mutex);
-            return r;
-        }
+        check(r==0);
     }
     // Got here, we don't intersect any of the ranges.
     struct range new_range = {lo,hi};
     m_locked_ranges.push_back((struct range)new_range);
     pmutex_unlock(m_mutex);
-    return 0;
 }
 
 
@@ -175,11 +152,7 @@ int source_file::unlock_range(uint64_t lo, uint64_t hi)
             m_locked_ranges.pop_back();
             {
                 int r = pthread_cond_broadcast(m_cond);
-                if (r!=0) {
-                    the_manager.fatal_error(r, "Trying to cond_broadcast at %s:%d", __FILE__, __LINE__);
-                    pmutex_unlock(m_mutex);
-                    return r;
-                }
+                check(r==0);
             }
             pmutex_unlock(m_mutex);
             return 0;
@@ -250,7 +223,7 @@ void source_file::add_reference(void)
 void source_file::remove_reference(void)
 {
     // TODO.  How can the code that decremented a reference count only if it was positive be right?  Under what conditions could someone be decrementing a refcount when they don't know that it's positive?
-    glass_assert(m_reference_count>0);
+    check(m_reference_count>0);
     __sync_fetch_and_add(&m_reference_count, -1);
 }
 

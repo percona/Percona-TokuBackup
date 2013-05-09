@@ -7,9 +7,10 @@
 #include "file_hash_table.h"
 #include "glassbox.h"
 #include "manager.h"
+#include "mutex.h"
 #include "real_syscalls.h"
-#include "source_file.h"
 #include "rwlock.h"
+#include "source_file.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -144,13 +145,13 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         if (r!=0) {
             r = errno;
             backup_error(r, "Problem stat()ing backup directory %s", dest);
-            ignore(pthread_mutex_unlock(&m_mutex)); // don't worry about errors here.
+            pmutex_unlock(&m_mutex);
             goto error_out;
         }
         if (!S_ISDIR(sbuf.st_mode)) {
             r = EINVAL;
             backup_error(EINVAL,"Backup destination %s is not a directory", dest);
-            ignore(pthread_mutex_unlock(&m_mutex)); // don't worry about errors here.
+            pmutex_unlock(&m_mutex);
             goto error_out;
         }
         {
@@ -191,10 +192,7 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         }
     }
 
-    r = prwlock_wrlock(&m_session_rwlock);
-    if (r!=0) {
-        goto unlock_out;
-    }
+    prwlock_wrlock(&m_session_rwlock);
 
     m_session = new backup_session(source, dest, calls, &m_table, &r);
     print_time("Toku Hot Backup: Started:");    
@@ -207,10 +205,7 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
     this->enable_capture();
     this->enable_copy();
 
-    r = prwlock_unlock(&m_session_rwlock);
-    if (r!=0) {
-        goto disable_out;
-    }
+    prwlock_unlock(&m_session_rwlock);
 
     WHEN_GLASSBOX( ({
                 m_is_capturing = true;
@@ -233,12 +228,7 @@ disable_out: // preserves r if r!=0
         while (m_keep_capturing) sched_yield();
             }) );
 
-    {
-        int r2 = prwlock_wrlock(&m_session_rwlock);
-        if (r==0 && r2!=0) {
-            r = r2;
-        }
-    }
+    prwlock_wrlock(&m_session_rwlock);
 
     m_backup_is_running = false;
     this->disable_capture();
@@ -251,22 +241,11 @@ disable_out: // preserves r if r!=0
     delete m_session;
     m_session = NULL;
 
-    {
-        int r2 = prwlock_unlock(&m_session_rwlock);
-        if (r==0 && r2!=0) {
-            r = r2;
-        }
-    }
+    prwlock_unlock(&m_session_rwlock);
 
 unlock_out: // preserves r if r!0
 
-    {
-        int r2 = pthread_mutex_unlock(&m_mutex);
-        if (r==0 && r2!=0) {
-            fatal_error(r2, "pthread_mutex_unlock failed at %s:%d", __FILE__, __LINE__);
-            r = r2;
-        }
-    }
+    pmutex_unlock(&m_mutex);
     if (m_an_error_happened) {
         calls->report_error(m_errnum, m_errstring);
         if (r==0) {
@@ -532,11 +511,8 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
 
         // We want to release the description->lock ASAP, since it's limiting other writes.
         // We cannot release it before the real write since the real write determines the new m_offset.
-        {
-            int r = file->lock_range(lock_start, lock_end);
-            if (r!=0) ok = false;
-            else      have_range_lock = true;
-        }
+        file->lock_range(lock_start, lock_end);
+        have_range_lock = true;
     }
     ssize_t n_wrote = call_real_write(fd, buf, nbyte);
     if (n_wrote>0 && description) { // Don't need OK, just need description
@@ -623,10 +599,7 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 
     source_file * file = description->get_source_file();
 
-    {
-        int r = file->lock_range(offset, offset+nbyte);
-        if (r!=0) return call_real_pwrite(fd, buf, nbyte, offset);
-    }
+    file->lock_range(offset, offset+nbyte);
     ssize_t nbytes_written = call_real_pwrite(fd, buf, nbyte, offset);
     int e = 0;
     if (nbytes_written>0) {
@@ -723,10 +696,7 @@ int manager::rename(const char *oldpath, const char *newpath)
     }
     
     // Grab the session lock.
-    r = prwlock_rdlock(&m_session_rwlock);
-    if (r!=0) {
-        goto source_free_out;
-    }
+    prwlock_rdlock(&m_session_rwlock);
     
     // If the rename succeeded and backup is running...
     if (m_session != NULL && this->capture_is_enabled()) {
@@ -783,7 +753,7 @@ int manager::rename(const char *oldpath, const char *newpath)
         }
     }
 
-    ignore(prwlock_unlock(&m_session_rwlock));
+    prwlock_unlock(&m_session_rwlock);
 
     if (full_new_destination_path != NULL) {
         free((void*)full_new_destination_path);
@@ -824,10 +794,7 @@ int manager::unlink(const char *path)
         goto free_out; 
     }
 
-    r = prwlock_rdlock(&m_session_rwlock);
-    if (r != 0) {
-        goto free_out;
-    }
+    prwlock_rdlock(&m_session_rwlock);
 
     m_table.lock();
 
@@ -872,7 +839,7 @@ int manager::unlink(const char *path)
 
     m_table.unlock();
     m_table.try_to_remove_locked(source);
-    ignore(prwlock_unlock(&m_session_rwlock));
+    prwlock_unlock(&m_session_rwlock);
 
 free_out:
     free((void*)full_path);
@@ -902,10 +869,7 @@ int manager::ftruncate(int fd, off_t length)
 
     source_file * file = description->get_source_file();
 
-    {
-        int r = file->lock_range(length, LLONG_MAX);
-        if (r!=0) return call_real_ftruncate(fd, length);
-    }
+    file->lock_range(length, LLONG_MAX);
     int user_result = call_real_ftruncate(fd, length);
     int e = 0;
     if (user_result==0) {
@@ -940,6 +904,7 @@ int manager::ftruncate(int fd, off_t length)
 //
 int manager::truncate(const char *path, off_t length)
 {
+    int r;
     int user_error = 0;
     int error = 0;
     const char * full_path = realpath(path, NULL);
@@ -949,12 +914,7 @@ int manager::truncate(const char *path, off_t length)
         return call_real_truncate(path, length);
     }
 
-    int r = prwlock_rdlock(&m_session_rwlock);
-    if (r != 0) {
-        user_error = call_real_truncate(path, length);
-        goto free_out;
-    }
-
+    prwlock_rdlock(&m_session_rwlock);
     
     if (m_session != NULL && m_session->is_prefix_of_realpath(full_path)) {
         const char * destination_file = NULL;
@@ -966,12 +926,7 @@ int manager::truncate(const char *path, off_t length)
         file->add_reference();
         m_table.unlock();
         
-        r = file->lock_range(length, LLONG_MAX);
-        if (r != 0) {
-            user_error = call_real_truncate(path, length);
-            file->remove_reference();
-            goto free_out;
-        }
+        file->lock_range(length, LLONG_MAX);
         
         user_error = call_real_truncate(full_path, length);
         if (user_error == 0 && this->capture_is_enabled()) {
@@ -1000,7 +955,7 @@ int manager::truncate(const char *path, off_t length)
         }
     }
 
-    ignore(prwlock_unlock(&m_session_rwlock));
+    prwlock_unlock(&m_session_rwlock);
     
 free_out:
     free((void*) full_path);
@@ -1018,20 +973,17 @@ free_out:
 //
 void manager::mkdir(const char *pathname)
 {
-    int r = prwlock_rdlock(&m_session_rwlock);
-    if (r!=0) {
-        return; // don't try to do any more once the lock failed.
-    }
+    prwlock_rdlock(&m_session_rwlock);
 
     if(m_session != NULL) {
-        r = m_session->capture_mkdir(pathname);
+        int r = m_session->capture_mkdir(pathname);
         if (r != 0) {
             the_manager.backup_error(r, "failed mkdir creating %s", pathname);
             // proceed to unlocking below
         }
     }
 
-    ignore(prwlock_unlock(&m_session_rwlock));
+    prwlock_unlock(&m_session_rwlock);
 }
 
 
@@ -1087,12 +1039,7 @@ void manager::backup_error(int errnum, const char *format_string, ...) {
 //
 void manager::set_error_internal(int errnum, const char *format_string, va_list ap) {
     m_backup_is_running = false;
-    {
-        int r = pthread_mutex_lock(&m_error_mutex); // don't use pmutex here.
-        if (r!=0) {
-            this->kill();  // go ahead and set the error, however
-        }
-    }
+    pmutex_lock(&m_error_mutex);
     if (!m_an_error_happened) {
         int len = 2*PATH_MAX + strlen(format_string) + 1000; // should be big enough for all our errors
         char *string = (char*)malloc(len);
@@ -1103,26 +1050,17 @@ void manager::set_error_internal(int errnum, const char *format_string, va_list 
         m_errnum = errnum;
         m_an_error_happened = true; // set this last so that it will be OK.
     }
-    {
-        int r = pthread_mutex_unlock(&m_error_mutex);  // don't use pmutex here.
-        if (r!=0) {
-            this->kill();
-        }
-    }
+    pmutex_unlock(&m_error_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 bool manager::try_to_enter_session_and_lock(void)
 {
-    int r = prwlock_rdlock(&m_session_rwlock);
-    if (r != 0) {
-        // Any error in locking code is fata, just return, it's over.
-        return false;
-    }
+    prwlock_rdlock(&m_session_rwlock);
 
     if (m_session == NULL) {
-        ignore(prwlock_unlock(&m_session_rwlock));
+        prwlock_unlock(&m_session_rwlock);
         return false;
     }
 
@@ -1133,7 +1071,7 @@ bool manager::try_to_enter_session_and_lock(void)
 //
 void manager::exit_session_and_unlock_or_die(void)
 {
-    ignore(prwlock_unlock(&m_session_rwlock));
+    prwlock_unlock(&m_session_rwlock);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
