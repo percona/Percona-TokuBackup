@@ -21,7 +21,7 @@ public:
     int hash(const char * const file) const;
     void insert(source_file * const file, int hash_index); // you may insert the same file more than once.
     void remove(source_file * const file);
-    int try_to_remove_locked(source_file * const file);
+    void try_to_remove_locked(source_file * const file);
     void try_to_remove(source_file * const file);
 
     // These methods rename at least the source_file object and
@@ -31,8 +31,8 @@ public:
     int rename(source_file * const target, const char *new_name, const char *dest);
 
     int size(void) const;
-    int lock(void) __attribute__((warn_unused_result));   // Return 0 on success or an error number.  Reports the error to the backup manager.
-    int unlock(void) __attribute__((warn_unused_result)); // Return 0 on success or an error number.  Reports the error to the backup manager.
+    void lock(void); // no return results since we assume that mutexes work.
+    void unlock(void);
 private:
     size_t m_count;
     source_file **m_array;

@@ -478,15 +478,15 @@ void manager::close(int fd) {
     
     source_file * source = file->get_source_file();
     if (this->try_to_enter_session_and_lock()) {
-        ignore(m_table.lock());
+        m_table.lock();
         source->try_to_remove_destination();
-        ignore(m_table.unlock());
+        m_table.unlock();
         this->exit_session_and_unlock_or_die();
     }
 
     // This will remove both the source file and destination file
     // objects, if they exist.
-    ignore(m_table.try_to_remove_locked(source));
+    m_table.try_to_remove_locked(source);
     
     int r1 = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
     if (r1!=0) {
@@ -829,10 +829,7 @@ int manager::unlink(const char *path)
         goto free_out;
     }
 
-    r = m_table.lock();
-    if (r != 0) { 
-        goto free_out;
-    }
+    m_table.lock();
 
     if (m_session != NULL && this->capture_is_enabled() && m_session->is_prefix_of_realpath(full_path)) {
         // 1. Find source file, unlink it.
@@ -873,9 +870,8 @@ int manager::unlink(const char *path)
     source->try_to_remove_destination();
     ignore(source->name_unlock());
 
-    r = m_table.unlock();
-    if (r != 0) {}
-    ignore(m_table.try_to_remove_locked(source));
+    m_table.unlock();
+    m_table.try_to_remove_locked(source);
     ignore(prwlock_unlock(&m_session_rwlock));
 
 free_out:
@@ -964,20 +960,11 @@ int manager::truncate(const char *path, off_t length)
         const char * destination_file = NULL;
         destination_file = m_session->translate_prefix_of_realpath(full_path);
         // Find and lock the associated source file.
-        r = m_table.lock();
-        if (r != 0) {
-            user_error = call_real_truncate(path, length);
-            goto free_out;
-        }
+        m_table.lock();
 
         source_file * file = m_table.get(destination_file);
         file->add_reference();
-        r = m_table.unlock();
-        if (r != 0) {
-            user_error = call_real_truncate(path, length);
-            file->remove_reference();
-            goto free_out;
-        }
+        m_table.unlock();
         
         r = file->lock_range(length, LLONG_MAX);
         if (r != 0) {

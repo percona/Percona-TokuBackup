@@ -42,12 +42,9 @@ file_hash_table::~file_hash_table() {
 //
 int file_hash_table::get_or_create_locked(const char * const file_name, source_file **file)
 {
+    int r;
     source_file * source = NULL;
-    int unlock_r = 0;
-    int r = this->lock();
-    if (r != 0) {
-        goto final_out;
-    }
+    this->lock();
 
     source = this->get(file_name);
     if (source == NULL) {
@@ -65,18 +62,10 @@ int file_hash_table::get_or_create_locked(const char * const file_name, source_f
     source->add_reference();
 
 unlock_out:
-    unlock_r = this->unlock();
-    if (unlock_r != 0) {
-        if (r != 0) {
-            delete source;
-        }
+    this->unlock();
 
-        source = NULL;
-    }
-
-final_out:
     *file = source;
-    return unlock_r | r;
+    return r;
 }
 
 ////////////////////////////////////////////////////////
@@ -183,17 +172,11 @@ void file_hash_table::remove(source_file * const file)
 
 ////////////////////////////////////////////////////////
 //
-int file_hash_table::try_to_remove_locked(source_file * const file)
+void file_hash_table::try_to_remove_locked(source_file * const file)
 {
-    int r = this->lock();
-    if (r != 0) {
-        goto error_out;
-    }
-    
+    this->lock();
     this->try_to_remove(file);
-    r = this->unlock();
-error_out:
-    return r;
+    this->unlock();
 }
 
 ////////////////////////////////////////////////////////
@@ -212,27 +195,15 @@ void file_hash_table::try_to_remove(source_file * const file)
 //
 int file_hash_table::rename_locked(const char *old_path, const char *new_path, const char *dest_path)
 {
+    int r;
     source_file * target = NULL;
-    int r = this->lock();
-    if (r != 0) {
-        // Fatal pthread error.
-        free((void*)dest_path);
-        goto final_out;
-    }
+    this->lock();
 
     target = this->get(old_path);
     if (target != NULL) {
         r = this->rename(target, new_path, dest_path);
-        if (r != 0) {
-            goto unlock_table_out;
-        }
     }
-
-unlock_table_out:
-
-    ignore(this->unlock());
-
-final_out:    
+    this->unlock();
     return r;
 }
 
@@ -286,16 +257,14 @@ int file_hash_table::size(void) const
 
 ////////////////////////////////////////////////////////
 // Description: See file_hash_table.h.
-int file_hash_table::lock(void)
-{
-    return pmutex_lock_c(&m_mutex);
+void file_hash_table::lock(void) {
+    pmutex_lock(&m_mutex);
 }
 
 ////////////////////////////////////////////////////////
 // Description: See file_hash_table.h.
-int file_hash_table::unlock(void)
-{
-    return pmutex_unlock_c(&m_mutex);
+void file_hash_table::unlock(void) {
+    pmutex_unlock(&m_mutex);
 }
 
 

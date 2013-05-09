@@ -145,10 +145,7 @@ bool source_file::lock_range_would_block_unlocked(uint64_t lo, uint64_t hi) {
 //
 int source_file::lock_range(uint64_t lo, uint64_t hi)
 {
-    {
-        int r = pmutex_lock_c(m_mutex);
-        if (r!=0) return r;
-    }
+    pmutex_lock(m_mutex);
     while (this->lock_range_would_block_unlocked(lo, hi)) {
         int r = pthread_cond_wait(m_cond, m_mutex);
         if (r!=0) {
@@ -168,10 +165,7 @@ int source_file::lock_range(uint64_t lo, uint64_t hi)
 //
 int source_file::unlock_range(uint64_t lo, uint64_t hi)
 {
-    {
-        int r = pmutex_lock_c(m_mutex);
-        if (r!=0) return r;
-    }
+    pmutex_lock(m_mutex);
     size_t size = m_locked_ranges.size();
     for (size_t i=0; i<size; i++) {
         if (m_locked_ranges[i].lo == lo &&
