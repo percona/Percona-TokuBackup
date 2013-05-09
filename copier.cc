@@ -339,13 +339,10 @@ int copier::copy_using_source_info(source_info src_info, const char *path)
 {
     source_file * file = NULL;
     TRACE("Creating new source file", path);
-    int result = m_table->get_or_create_locked(src_info.m_path, &file);
-    if (result != 0) {
-        return result;
-    }
+    m_table->get_or_create_locked(src_info.m_path, &file);
 
     src_info.m_file = file;
-    result = this->create_destination_and_copy(src_info, path);
+    int result = this->create_destination_and_copy(src_info, path);
 
     m_table->try_to_remove_locked(file);
     return result;

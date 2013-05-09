@@ -9,7 +9,7 @@
 #include "backup_test_helpers.h"
 #include "source_file.h"
 
-class source_file sf;
+class source_file sf("hello");
 
 volatile int stepa = 0;
 volatile int stepb = 0;
@@ -93,7 +93,6 @@ static void thread_test_noblock(void) {
 int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
 
     // test a single range that covers everything
-    {   int r = sf.init("hello");                   check(r==0); }
     sf.lock_range(0, LLONG_MAX);
     check( sf.lock_range_would_block_unlocked(0, 1));
     check(!sf.lock_range_would_block_unlocked(0, 0));

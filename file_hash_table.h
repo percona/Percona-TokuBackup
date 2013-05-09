@@ -15,7 +15,7 @@ class file_hash_table {
 public:
     file_hash_table();
     ~file_hash_table();
-    int get_or_create_locked(const char * const file_name, source_file **file);
+    void get_or_create_locked(const char * const file_name, source_file **file);
     source_file* get(const char *full_file_path) const;
     void put(source_file * const file);
     int hash(const char * const file) const;

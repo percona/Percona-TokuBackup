@@ -17,9 +17,8 @@ struct range {
 
 class source_file {
 public:
-    source_file();
+    source_file(const char *path);
     ~source_file(void); /// the source file will delete the path, if it has been set.
-    int init(const char * path);     // report any error, and return 0 on success or the error number.  This is how the path member is set.
     const char * name(void);
     source_file *next(void);
     void set_next(source_file *next);

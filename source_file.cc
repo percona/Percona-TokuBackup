@@ -18,13 +18,25 @@
 
 ////////////////////////////////////////////////////////
 //
-source_file::source_file()
- : m_full_path(NULL),
+source_file::source_file(const char *path)
+ : m_full_path(strdup(path)),
    m_next(NULL), 
    m_reference_count(0),
    m_unlinked(false),
    m_destination_file(NULL)
 {
+    {
+        int r = pthread_mutex_init(&m_mutex, NULL);
+        check(r==0);
+    }
+    {
+        int r = pthread_cond_init(&m_cond, NULL);
+        check(r==0);
+    }
+    {
+        int r = pthread_rwlock_init(&m_name_rwlock, NULL);
+        check(r==0);
+    }
 };
 
 source_file::~source_file(void) {
@@ -44,25 +56,6 @@ source_file::~source_file(void) {
             check(r==0);
         }
     }
-}
-
-int source_file::init(const char *path)
-{
-    m_full_path = strdup(path);
-    check(m_full_path!=NULL);
-    {
-        int r = pthread_mutex_init(&m_mutex, NULL);
-        check(r==0);
-    }
-    {
-        int r = pthread_cond_init(&m_cond, NULL);
-        check(r==0);
-    }
-    {
-        int r = pthread_rwlock_init(&m_name_rwlock, NULL);
-        check(r==0);
-    }
-    return 0;
 }
 
 ////////////////////////////////////////////////////////

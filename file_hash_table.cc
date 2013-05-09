@@ -40,32 +40,22 @@ file_hash_table::~file_hash_table() {
 
 ////////////////////////////////////////////////////////
 //
-int file_hash_table::get_or_create_locked(const char * const file_name, source_file **file)
+void file_hash_table::get_or_create_locked(const char * const file_name, source_file **file)
 {
-    int r;
     source_file * source = NULL;
     this->lock();
 
     source = this->get(file_name);
     if (source == NULL) {
-        source = new source_file();
-        r = source->init(file_name);
-        if (r != 0) {
-            delete source;
-            source = NULL;
-            goto unlock_out;
-        }
-        
+        source = new source_file(file_name);
         this->put(source);
     }
     
     source->add_reference();
 
-unlock_out:
     this->unlock();
 
     *file = source;
-    return r;
 }
 
 ////////////////////////////////////////////////////////

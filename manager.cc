@@ -772,10 +772,7 @@ int manager::unlink(const char *path)
     // realpath will fail saying it cannot find the path.
     user_error = call_real_unlink(full_path);
 
-    r = m_table.get_or_create_locked(full_path, &source);
-    if (r != 0) {
-        goto free_out; 
-    }
+    m_table.get_or_create_locked(full_path, &source);
 
     prwlock_rdlock(&m_session_rwlock);
 
@@ -1062,7 +1059,6 @@ void manager::exit_session_and_unlock_or_die(void)
 int manager::setup_description_and_source_file(int fd, const char *file)
 {
     int error = 0;
-    int r = 0;
     source_file * source = NULL;
     description * file_description = NULL;
     
@@ -1077,12 +1073,8 @@ int manager::setup_description_and_source_file(int fd, const char *file)
         goto error_out;
     }
 
-    r = m_table.get_or_create_locked(full_source_file_path, &source);
+    m_table.get_or_create_locked(full_source_file_path, &source);
     free((void*)full_source_file_path);
-    if (r != 0) {
-        error = r;
-        goto error_out;
-    }
     
     // Now that we have the source file, regardless of whether we had
     // to create it or not, we can now create the file description
