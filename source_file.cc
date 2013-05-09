@@ -11,10 +11,11 @@
 #include <fcntl.h>
 
 #include "check.h"
-#include "source_file.h"
 #include "manager.h"
 #include "mutex.h"
 #include "real_syscalls.h"
+#include "rwlock.h"
+#include "source_file.h"
 
 ////////////////////////////////////////////////////////
 //
@@ -145,24 +146,21 @@ int source_file::unlock_range(uint64_t lo, uint64_t hi)
 //
 void source_file::name_write_lock(void)
 {
-    int r = pthread_rwlock_wrlock(&m_name_rwlock);
-    check(r==0);
+    prwlock_wrlock(&m_name_rwlock);
 }
 
 ////////////////////////////////////////////////////////
 //
 void source_file::name_read_lock(void)
 {
-    int r = pthread_rwlock_rdlock(&m_name_rwlock);
-    check(r==0);
+    prwlock_rdlock(&m_name_rwlock);
 }
 
 ////////////////////////////////////////////////////////
 //
 void source_file::name_unlock(void)
 {
-    int r = pthread_rwlock_unlock(&m_name_rwlock);
-    check(r==0);
+    prwlock_unlock(&m_name_rwlock);
 }
 
 ////////////////////////////////////////////////////////
