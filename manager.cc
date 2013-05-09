@@ -517,9 +517,8 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
     }
     bool have_description_lock = false;
     if (ok && description) {
-        int r = description->lock();
-        if (r!=0) ok = false;
-        else      have_description_lock = true;
+        description->lock();
+        have_description_lock = true;
     }
     source_file *file = NULL;
     bool have_range_lock = false;
@@ -546,8 +545,7 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
     }
     // Now we can release the description lock, since the offset is calculated.  Release it even if not OK.
     if (have_description_lock) {
-        int r = description->unlock();
-        if (r != 0) ok=false;
+        description->unlock();
     }
 
     // We still have the lock range, with which we do the pwrite.
@@ -590,23 +588,12 @@ ssize_t manager::read(int fd, void *buf, size_t nbyte) {
     if (rr!=0 || description == NULL) {
         r = call_real_read(fd, buf, nbyte);
     } else {
-        {
-            int rrr = description->lock();
-            if (rrr!=0) {
-                // Do the read if there was an error.
-                return call_real_read(fd, buf, nbyte);
-            }
-        }
+        description->lock();
         r = call_real_read(fd, buf, nbyte);
         if (r>0) {
             description->increment_offset(r); //moves the offset
         }
-        {
-            int rrr = description->unlock();
-            if (rrr!=0) {
-                backup_error(rrr, "failed unlock at %s:%d", __FILE__, __LINE__);
-            }
-        }
+        description->unlock();
     }
     
     return r;
@@ -682,13 +669,12 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) {
         if (r!=0 || description==NULL) ok = false;
     }
     if (ok) {
-        int r = description->lock();
-        if (r!=0) ok = false;
+        description->lock();
     }
     off_t new_offset = call_real_lseek(fd, nbyte, whence);
     if (ok) {
         description->lseek(new_offset);
-        int r __attribute__((unused)) = description->unlock();
+        description->unlock();
     }
     return new_offset;
 }

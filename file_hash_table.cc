@@ -288,14 +288,14 @@ int file_hash_table::size(void) const
 // Description: See file_hash_table.h.
 int file_hash_table::lock(void)
 {
-    return pmutex_lock(&m_mutex);
+    return pmutex_lock_c(&m_mutex);
 }
 
 ////////////////////////////////////////////////////////
 // Description: See file_hash_table.h.
 int file_hash_table::unlock(void)
 {
-    return pmutex_unlock(&m_mutex);
+    return pmutex_unlock_c(&m_mutex);
 }
 
 

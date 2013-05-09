@@ -14,6 +14,12 @@ extern int pthread_mutex_lock(pthread_mutex_t *) __attribute__((deprecated));
 extern int pthread_mutex_unlock(pthread_mutex_t *) __attribute__((deprecated));
 #endif
 
-extern int pmutex_lock(pthread_mutex_t *); // Reports any errors to the_manager and returns the error code.
-extern int pmutex_unlock(pthread_mutex_t *); // Reports any errors to the_manager and returns the error code.
+// We assume there are no errors returned by these functions (if mutexes are broken, then other things are going wrong...)  This function checks for errors and aborts.
+extern void pmutex_lock(pthread_mutex_t *);
+extern void pmutex_unlock(pthread_mutex_t *);
+
+// these will go away
+extern int pmutex_lock_c(pthread_mutex_t *) __attribute__((__warn_unused_result__));
+extern int pmutex_unlock_c(pthread_mutex_t *) __attribute__((__warn_unused_result__));
+
 #endif

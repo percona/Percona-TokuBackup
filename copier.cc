@@ -105,21 +105,21 @@ int copier::do_copy(void) {
     int r = 0;
     char *fname = 0;
     size_t n_known = 0;
-    r = pmutex_lock(&m_todo_mutex);
+    r = pmutex_lock_c(&m_todo_mutex);
     if (r != 0) goto out;
     // Start with "."
     m_todo.push_back(strdup("."));
     n_known = m_todo.size();
-    r = pmutex_unlock(&m_todo_mutex);
+    r = pmutex_unlock_c(&m_todo_mutex);
     if (r != 0) goto out;
     while (n_known != 0) {
 
         if (!the_manager.copy_is_enabled()) goto out;
         
-        r = pmutex_lock(&m_todo_mutex);
+        r = pmutex_lock_c(&m_todo_mutex);
         if (r != 0) goto out;
         fname = m_todo.back();
-        r = pmutex_unlock(&m_todo_mutex);
+        r = pmutex_unlock_c(&m_todo_mutex);
         if (r != 0) goto out;
         TRACE("Copying: ", fname);
         
@@ -132,10 +132,10 @@ int copier::do_copy(void) {
             goto out;
         }
 
-        r = pmutex_lock(&m_todo_mutex);
+        r = pmutex_lock_c(&m_todo_mutex);
         if (r != 0) goto out;
         m_todo.pop_back();
-        r = pmutex_unlock(&m_todo_mutex);
+        r = pmutex_unlock_c(&m_todo_mutex);
         if (r != 0) goto out;
         
         r = this->copy_stripped_file(fname);
@@ -146,10 +146,10 @@ int copier::do_copy(void) {
         }
         m_total_files_backed_up++;
         
-        r = pmutex_lock(&m_todo_mutex);
+        r = pmutex_lock_c(&m_todo_mutex);
         if (r != 0) goto out;
         n_known = m_todo.size();
-        r = pmutex_unlock(&m_todo_mutex);
+        r = pmutex_unlock_c(&m_todo_mutex);
         if (r != 0) goto out;
     }
 
@@ -590,7 +590,7 @@ int copier::add_dir_entries_to_todo(DIR *dir, const char *file)
     TRACE("--Adding all entries in this directory to todo list: ", file);
     int error = 0;
     {
-        int r = pmutex_lock(&m_todo_mutex);
+        int r = pmutex_lock_c(&m_todo_mutex);
         if (r != 0) return r;
     }
     struct dirent const *e = NULL;
@@ -621,7 +621,7 @@ int copier::add_dir_entries_to_todo(DIR *dir, const char *file)
     
 out:
     {
-        int r = pmutex_unlock(&m_todo_mutex);
+        int r = pmutex_unlock_c(&m_todo_mutex);
         if (r != 0) return r;
     }
 
@@ -632,12 +632,12 @@ out:
 //
 void copier::add_file_to_todo(const char *file)
 {
-    int r = pmutex_lock(&m_todo_mutex);
+    int r = pmutex_lock_c(&m_todo_mutex);
     if (r != 0) {
         return;
     }
     m_todo.push_back(strdup(file));
-    r = pmutex_unlock(&m_todo_mutex);
+    r = pmutex_unlock_c(&m_todo_mutex);
     if (r != 0) {
         return;
     }
@@ -657,7 +657,7 @@ void copier::add_file_to_todo(const char *file)
 //     This should only be called if there is no future copy work.
 //
 void copier::cleanup(void) {
-    ignore(pmutex_lock(&m_todo_mutex));   
+    ignore(pmutex_lock_c(&m_todo_mutex));   
     for(std::vector<char *>::size_type i = 0; i < m_todo.size(); ++i) {
         char *file = m_todo[i];
         if (file == NULL) {
@@ -667,6 +667,6 @@ void copier::cleanup(void) {
         free((void*)file);
         m_todo[i] = NULL;
     }
-    ignore(pmutex_unlock(&m_todo_mutex));   
+    ignore(pmutex_unlock_c(&m_todo_mutex));   
 
 }

@@ -177,11 +177,11 @@ void fmap::grow_array(int fd)
 }
 
 int lock_fmap(void) {
-    return pmutex_lock(&get_put_mutex);
+    return pmutex_lock_c(&get_put_mutex);
 }
 
 int unlock_fmap(void) {
-    return pmutex_unlock(&get_put_mutex);
+    return pmutex_unlock_c(&get_put_mutex);
 }
 
 // Instantiate the templates we need

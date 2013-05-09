@@ -27,8 +27,8 @@ public:
     //  Return 0 on success, otherwise inform the backup manager of the error (fatal_error or backup_error) and return the error code.
     void set_source_file(source_file *file);
     source_file * get_source_file(void) const;
-    int lock(void) __attribute__((warn_unused_result));
-    int unlock(void) __attribute__((warn_unused_result));
+    void lock(void);
+    void unlock(void);
 
     void lseek(off_t new_offset);        
     void increment_offset(ssize_t nbyte);
