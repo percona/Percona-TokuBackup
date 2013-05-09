@@ -109,16 +109,14 @@ int copier::do_copy(void) {
     // Start with "."
     m_todo.push_back(strdup("."));
     n_known = m_todo.size();
-    r = pmutex_unlock_c(&m_todo_mutex);
-    if (r != 0) goto out;
+    pmutex_unlock(&m_todo_mutex);
     while (n_known != 0) {
 
         if (!the_manager.copy_is_enabled()) goto out;
         
         pmutex_lock(&m_todo_mutex);
         fname = m_todo.back();
-        r = pmutex_unlock_c(&m_todo_mutex);
-        if (r != 0) goto out;
+        pmutex_unlock(&m_todo_mutex);
         TRACE("Copying: ", fname);
         
         char *msg = malloc_snprintf(strlen(fname)+100, "Backup progress %ld bytes, %ld files.  %ld files known of. Copying file %s",  m_total_bytes_backed_up, m_total_files_backed_up, n_known, fname);
@@ -132,8 +130,7 @@ int copier::do_copy(void) {
 
         pmutex_lock(&m_todo_mutex);
         m_todo.pop_back();
-        r = pmutex_unlock_c(&m_todo_mutex);
-        if (r != 0) goto out;
+        pmutex_unlock(&m_todo_mutex);
         
         r = this->copy_stripped_file(fname);
         free((void*)fname);
@@ -145,8 +142,7 @@ int copier::do_copy(void) {
         
         pmutex_lock(&m_todo_mutex);
         n_known = m_todo.size();
-        r = pmutex_unlock_c(&m_todo_mutex);
-        if (r != 0) goto out;
+        pmutex_unlock(&m_todo_mutex);
     }
 
 out:
@@ -601,10 +597,7 @@ int copier::add_dir_entries_to_todo(DIR *dir, const char *file)
     }
     
 out:
-    {
-        int r = pmutex_unlock_c(&m_todo_mutex);
-        if (r != 0) return r;
-    }
+    pmutex_unlock(&m_todo_mutex);
 
     return error;
 }

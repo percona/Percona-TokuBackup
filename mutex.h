@@ -18,8 +18,4 @@ extern int pthread_mutex_unlock(pthread_mutex_t *) __attribute__((deprecated));
 extern void pmutex_lock(pthread_mutex_t *);
 extern void pmutex_unlock(pthread_mutex_t *);
 
-// these will go away
-extern int pmutex_lock_c(pthread_mutex_t *) __attribute__((__warn_unused_result__));
-extern int pmutex_unlock_c(pthread_mutex_t *) __attribute__((__warn_unused_result__));
-
 #endif

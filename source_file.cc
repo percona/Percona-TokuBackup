@@ -150,14 +150,15 @@ int source_file::lock_range(uint64_t lo, uint64_t hi)
         int r = pthread_cond_wait(m_cond, m_mutex);
         if (r!=0) {
             the_manager.fatal_error(r, "Trying to cond_wait at %s:%d", __FILE__, __LINE__);
-            ignore(pmutex_unlock_c(m_mutex));
+            pmutex_unlock(m_mutex);
             return r;
         }
     }
     // Got here, we don't intersect any of the ranges.
     struct range new_range = {lo,hi};
     m_locked_ranges.push_back((struct range)new_range);
-    return pmutex_unlock_c(m_mutex);
+    pmutex_unlock(m_mutex);
+    return 0;
 }
 
 
@@ -176,22 +177,17 @@ int source_file::unlock_range(uint64_t lo, uint64_t hi)
                 int r = pthread_cond_broadcast(m_cond);
                 if (r!=0) {
                     the_manager.fatal_error(r, "Trying to cond_broadcast at %s:%d", __FILE__, __LINE__);
-                    ignore(pmutex_unlock_c(m_mutex));
+                    pmutex_unlock(m_mutex);
                     return r;
                 }
             }
-            {
-                int r = pmutex_unlock_c(m_mutex);
-                if (r!=0) {
-                    return r;
-                }
-            }
+            pmutex_unlock(m_mutex);
             return 0;
         }
     }
     // No such range.
     the_manager.fatal_error(EINVAL, "Range doesn't exist at %s:%d", __FILE__, __LINE__);
-    ignore(pmutex_unlock_c(m_mutex)); // ignore any error from this since we already have an error.
+    pmutex_unlock(m_mutex);
     return EINVAL;
 }
 
