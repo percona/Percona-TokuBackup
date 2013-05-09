@@ -35,9 +35,9 @@ public:
     //  This function does not acquire any locks.  We expose it for testing purposes (it should not be used by production code).x
 
     // Name locking and associated rename call.
-    int name_write_lock(void) __attribute__((warn_unused_result));
-    int name_read_lock(void)  __attribute__((warn_unused_result));
-    int name_unlock(void);
+    void name_write_lock(void);
+    void name_read_lock(void);
+    void name_unlock(void);
     int rename(const char * new_name);
 
     // Note: These three methods are not inherintly thread safe.
@@ -60,11 +60,11 @@ public:
 private:
     char * m_full_path; // the source_file owns this.
     source_file *m_next;
-    pthread_rwlock_t *m_name_rwlock;
+    pthread_rwlock_t m_name_rwlock;
     unsigned int m_reference_count;
 
-    pthread_mutex_t *m_mutex;
-    pthread_cond_t  *m_cond;
+    pthread_mutex_t  m_mutex;
+    pthread_cond_t   m_cond;
     std::vector<struct range> m_locked_ranges;
 
     bool m_unlinked;

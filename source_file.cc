@@ -21,10 +21,7 @@
 source_file::source_file()
  : m_full_path(NULL),
    m_next(NULL), 
-   m_name_rwlock(NULL),
    m_reference_count(0),
-   m_mutex(NULL),
-   m_cond(NULL),
    m_unlinked(false),
    m_destination_file(NULL)
 {
@@ -33,49 +30,36 @@ source_file::source_file()
 source_file::~source_file(void) {
     if (m_full_path != NULL) {
         free(m_full_path);
-    }
-    if (m_mutex) {
-        int r = pthread_mutex_destroy(m_mutex);
-        check(r==0);
-        delete m_mutex;
-        m_mutex = NULL;
-    }
-    if (m_cond) {
-        int r = pthread_cond_destroy(m_cond);
-        check(r==0);
-        delete m_cond;
-        m_cond = NULL;
-    }
-    if (m_name_rwlock) {
-        int r = pthread_rwlock_destroy(m_name_rwlock);
-        check(r==0);
-        delete m_name_rwlock;
-        m_name_rwlock = NULL;
+        m_full_path = NULL;
+        {
+            int r = pthread_mutex_destroy(&m_mutex);
+            check(r==0);
+        }
+        {
+            int r = pthread_cond_destroy(&m_cond);
+            check(r==0);
+        }
+        {
+            int r = pthread_rwlock_destroy(&m_name_rwlock);
+            check(r==0);
+        }
     }
 }
 
 int source_file::init(const char *path)
 {
     m_full_path = strdup(path);
-    if (m_full_path == NULL) {
-        int r = errno;
-        the_manager.backup_error(r, "Could not allocate memory.");
-        return r;
-    }
-
+    check(m_full_path!=NULL);
     {
-        m_mutex = new pthread_mutex_t;
-        int r = pthread_mutex_init(m_mutex, NULL);
+        int r = pthread_mutex_init(&m_mutex, NULL);
         check(r==0);
     }
     {
-        m_cond = new pthread_cond_t;
-        int r = pthread_cond_init(m_cond, NULL);
+        int r = pthread_cond_init(&m_cond, NULL);
         check(r==0);
     }
     {
-        m_name_rwlock = new pthread_rwlock_t;
-        int r = pthread_rwlock_init(m_name_rwlock, NULL);
+        int r = pthread_rwlock_init(&m_name_rwlock, NULL);
         check(r==0);
     }
     return 0;
@@ -127,15 +111,15 @@ bool source_file::lock_range_would_block_unlocked(uint64_t lo, uint64_t hi) {
 //
 void source_file::lock_range(uint64_t lo, uint64_t hi)
 {
-    pmutex_lock(m_mutex);
+    pmutex_lock(&m_mutex);
     while (this->lock_range_would_block_unlocked(lo, hi)) {
-        int r = pthread_cond_wait(m_cond, m_mutex);
+        int r = pthread_cond_wait(&m_cond, &m_mutex);
         check(r==0);
     }
     // Got here, we don't intersect any of the ranges.
     struct range new_range = {lo,hi};
     m_locked_ranges.push_back((struct range)new_range);
-    pmutex_unlock(m_mutex);
+    pmutex_unlock(&m_mutex);
 }
 
 
@@ -143,7 +127,7 @@ void source_file::lock_range(uint64_t lo, uint64_t hi)
 //
 int source_file::unlock_range(uint64_t lo, uint64_t hi)
 {
-    pmutex_lock(m_mutex);
+    pmutex_lock(&m_mutex);
     size_t size = m_locked_ranges.size();
     for (size_t i=0; i<size; i++) {
         if (m_locked_ranges[i].lo == lo &&
@@ -151,50 +135,41 @@ int source_file::unlock_range(uint64_t lo, uint64_t hi)
             m_locked_ranges[i] = m_locked_ranges[size-1];
             m_locked_ranges.pop_back();
             {
-                int r = pthread_cond_broadcast(m_cond);
+                int r = pthread_cond_broadcast(&m_cond);
                 check(r==0);
             }
-            pmutex_unlock(m_mutex);
+            pmutex_unlock(&m_mutex);
             return 0;
         }
     }
     // No such range.
     the_manager.fatal_error(EINVAL, "Range doesn't exist at %s:%d", __FILE__, __LINE__);
-    pmutex_unlock(m_mutex);
+    pmutex_unlock(&m_mutex);
     return EINVAL;
 }
 
 ////////////////////////////////////////////////////////
 //
-int source_file::name_write_lock(void)
+void source_file::name_write_lock(void)
 {
-    int r = pthread_rwlock_wrlock(m_name_rwlock);
-    if (r!=0) {
-        the_manager.fatal_error(r, "rwlock_rwlock at %s:%d", __FILE__, __LINE__);
-    }
-    return r;
+    int r = pthread_rwlock_wrlock(&m_name_rwlock);
+    check(r==0);
 }
 
 ////////////////////////////////////////////////////////
 //
-int source_file::name_read_lock(void)
+void source_file::name_read_lock(void)
 {
-    int r = pthread_rwlock_rdlock(m_name_rwlock);
-    if (r!=0) {
-        the_manager.fatal_error(r, "rwlock_rdlock at %s:%d", __FILE__, __LINE__);
-    }
-    return r;
+    int r = pthread_rwlock_rdlock(&m_name_rwlock);
+    check(r==0);
 }
 
 ////////////////////////////////////////////////////////
 //
-int source_file::name_unlock(void)
+void source_file::name_unlock(void)
 {
-    int r = pthread_rwlock_unlock(m_name_rwlock);
-    if (r!=0) {
-        the_manager.fatal_error(r, "rwlock_unlock at %s:%d", __FILE__, __LINE__);
-    }
-    return r;
+    int r = pthread_rwlock_unlock(&m_name_rwlock);
+    check(r==0);
 }
 
 ////////////////////////////////////////////////////////

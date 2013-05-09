@@ -365,17 +365,11 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
     // lock to help serialize access.
     m_table->lock();
 
-    {
-        int r = src_info.m_file->name_write_lock();
-        if (r != 0) return r;
-    }
+    src_info.m_file->name_write_lock();
 
     int result = src_info.m_file->try_to_create_destination_file(dest_path);
 
-    {
-        int r = src_info.m_file->name_unlock();
-        if (r != 0) return r;
-    }
+    src_info.m_file->name_unlock();
 
     m_table->unlock();
     if (result != 0) { return result; }

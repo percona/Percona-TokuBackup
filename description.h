@@ -17,7 +17,7 @@ class description {
 private:
     off_t m_offset;            // The offset that is moved by read(), write() and lseek().
     source_file *m_source_file;
-    pthread_mutex_t *m_mutex; // A mutex used to make m_offset move atomically when we perform a write (or read).
+    pthread_mutex_t m_mutex;   // A mutex used to make m_offset move atomically when we perform a write (or read).
 
 public:
     description();

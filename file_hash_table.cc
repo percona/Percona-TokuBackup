@@ -212,13 +212,10 @@ int file_hash_table::rename_locked(const char *old_path, const char *new_path, c
 int file_hash_table::rename(source_file * target, const char *new_source_name, const char *dest)
 {
     destination_file * dest_file = NULL;
-    int r = target->name_write_lock();
-    if (r != 0) {
-        goto out;
-    }
+    target->name_write_lock();
     
     this->remove(target);
-    r = target->rename(new_source_name);
+    int r = target->rename(new_source_name);
     if (r != 0) {
         goto unlock_out;
     }
@@ -242,9 +239,7 @@ int file_hash_table::rename(source_file * target, const char *new_source_name, c
     this->put(target);
 
 unlock_out:
-    ignore(target->name_unlock());
-
-out:
+    target->name_unlock();
     return r;
 }
 

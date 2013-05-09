@@ -272,17 +272,10 @@ int manager::prepare_directories_for_backup(backup_session *session) {
         }
         
         source_file * source = file->get_source_file();
-        r = source->name_read_lock();
-        if (r != 0) {
-            goto out;
-        }
+        source->name_read_lock();
 
         if (!session->is_prefix_of_realpath(source->name())) {
-            r = source->name_unlock();
-            if (r != 0) {
-                goto out;
-            }
-
+            source->name_unlock();
             continue;
         }
 
@@ -290,7 +283,7 @@ int manager::prepare_directories_for_backup(backup_session *session) {
         r = open_path(file_name);
         if (r != 0) {
             backup_error(r, "Failed to open path");
-            ignore(source->name_unlock());
+            source->name_unlock();
             free(file_name);
             goto out;
         }
@@ -298,15 +291,12 @@ int manager::prepare_directories_for_backup(backup_session *session) {
         r = source->try_to_create_destination_file(file_name);
         if (r != 0) {
             backup_error(r, "Could not create backup file.");
-            ignore(source->name_unlock());
+            source->name_unlock();
             free(file_name);
             goto out;
         }
 
-        r = source->name_unlock();
-        if (r != 0) {
-            goto out;
-        }
+        source->name_unlock();
     }
     
 out:
@@ -398,10 +388,7 @@ int manager::open(int fd, const char *file)
     }
     
     source = description->get_source_file();
-    result = source->name_read_lock();
-    if (result != 0) {
-        this->fatal_error(result, "pthread error grabbing source file lock.");
-    }
+    source->name_read_lock();
 
     // Next, determine the full path of the backup file.
     result = m_session->capture_open(file, &backup_file_name);
@@ -417,16 +404,12 @@ int manager::open(int fd, const char *file)
             // TODO: Refactor this free().  This string should be
             // freed by the owner: the destination file object.
             free(backup_file_name);
-            ignore(source->name_unlock());
+            source->name_unlock();
             goto out;
         }
     }
 
-    result = source->name_unlock();
-    if (result != 0) {
-        this->fatal_error(result, "pthread error.");
-        goto out;
-    }
+    source->name_unlock();
 
 out:
     this->exit_session_and_unlock_or_die();
@@ -832,10 +815,10 @@ int manager::unlink(const char *path)
 
     // We have to unlink the source file, regardless of whether ther
     // is a backup session in progress or not.
-    ignore(source->name_write_lock());
+    source->name_write_lock();
     source->unlink();
     source->try_to_remove_destination();
-    ignore(source->name_unlock());
+    source->name_unlock();
 
     m_table.unlock();
     m_table.try_to_remove_locked(source);
@@ -1106,7 +1089,6 @@ int manager::setup_description_and_source_file(int fd, const char *file)
     // object that will track the offsets and map this fd with the
     // source file object.
     file_description = new description();
-    ignore(file_description->init());
     file_description->set_source_file(source);
     lock_fmap();
     m_map.put_unlocked(fd, file_description);

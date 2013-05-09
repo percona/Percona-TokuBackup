@@ -22,31 +22,20 @@
 //
 description::description()
 : m_offset(0),
-  m_source_file(NULL),
-  m_mutex(NULL)
+  m_source_file(NULL)
 {
+    int r = pthread_mutex_init(&m_mutex, NULL);
+    check(r==0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 description::~description(void)
 {
-    if (m_mutex) {
-        pthread_mutex_destroy(m_mutex); // ignore any errors...
-        delete m_mutex;
-        m_mutex = NULL;
-    }
+    int r = pthread_mutex_destroy(&m_mutex);
+    check(r==0);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// See description.h for specification.
-int description::init(void)
-{
-    m_mutex = new pthread_mutex_t;
-    int r = pthread_mutex_init(m_mutex, NULL);
-    check(r==0);
-    return r;
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -66,14 +55,14 @@ source_file * description::get_source_file(void) const
 //
 void description::lock(void)
 {
-    pmutex_lock(m_mutex);
+    pmutex_lock(&m_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 void description::unlock(void)
 {
-    pmutex_unlock(m_mutex);
+    pmutex_unlock(&m_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
