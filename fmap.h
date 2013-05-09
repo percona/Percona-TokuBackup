@@ -42,7 +42,7 @@ friend class fmap_unit_test;
 
 // Global locks used when the file descriptor map is updated.   Sometimes the backup system needs to hold the lock for several operations.
 // If an error occurs, it's reported and the error number is returned.  If no error then returns 0.
-int lock_fmap(void);
-int unlock_fmap(void);
+void lock_fmap(void);
+void unlock_fmap(void);
 
 #endif // End of header guardian.

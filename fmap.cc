@@ -61,15 +61,9 @@ int fmap::get(int fd, description** resultp) {
     if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
-    {
-        int r = lock_fmap();
-        if (r!=0) return r;
-    }
+    lock_fmap();
     description *result = this->get_unlocked(fd);
-    {
-        int r = unlock_fmap();
-        if (r!=0) return r;
-    }
+    unlock_fmap();
     *resultp = result;
     return 0;
 }
@@ -105,18 +99,15 @@ void fmap::put_unlocked(int fd, description *file)
 // Requires: the fd is something currently mapped.
 
 int fmap::erase(int fd) {
-    {
-        int r = lock_fmap();
-        if (r!=0) return r;
-    }
+    lock_fmap();
     if ((size_t)fd  >= m_map.size()) {
-        return unlock_fmap();
+        unlock_fmap();
+        return 0;
     } else {
         description *description = m_map[fd];
         m_map[fd] = NULL;
         {
-            int r = unlock_fmap();
-            int r2 = 0;
+            unlock_fmap();
             if (description) {
                 // Do this after releasing the lock
                 //                source_file * src_file = description->get_source_file();
@@ -125,8 +116,6 @@ int fmap::erase(int fd) {
                 //}
                 delete description;
             }
-            if (r) return r;
-            if (r2) return r2;
             return 0;
         }
     }
@@ -176,12 +165,12 @@ void fmap::grow_array(int fd)
     }
 }
 
-int lock_fmap(void) {
-    return pmutex_lock_c(&get_put_mutex);
+void lock_fmap(void) {
+    pmutex_lock(&get_put_mutex);
 }
 
-int unlock_fmap(void) {
-    return pmutex_unlock_c(&get_put_mutex);
+void unlock_fmap(void) {
+    pmutex_unlock(&get_put_mutex);
 }
 
 // Instantiate the templates we need

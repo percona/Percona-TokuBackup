@@ -1183,9 +1183,9 @@ int manager::setup_description_and_source_file(int fd, const char *file)
     file_description = new description();
     ignore(file_description->init());
     file_description->set_source_file(source);
-    ignore(lock_fmap());
+    lock_fmap();
     m_map.put_unlocked(fd, file_description);
-    ignore(unlock_fmap());
+    unlock_fmap();
 
  error_out:
     return error;
