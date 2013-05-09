@@ -119,6 +119,9 @@ bool should_pause(int flag)
         case MANAGER_IN_DISABLE:
             result = MANAGER_IN_DISABLE;
             break;
+        case COPIER_AFTER_OPEN_SOURCE:
+            result = COPIER_AFTER_OPEN_SOURCE & PAUSE_POINTS;
+            break;
         default:
             break;
     }

@@ -320,6 +320,8 @@ int copier::copy_regular_file(const char *source, const char *dest, off_t source
         }
     }
 
+    PAUSE(HotBackup::COPIER_AFTER_OPEN_SOURCE);
+
     source_info src_info = {srcfd, source, source_file_size, NULL};
     int result = this->copy_using_source_info(src_info, dest);
     
@@ -352,6 +354,7 @@ int copier::copy_using_source_info(source_info src_info, const char *path)
 //
 int copier::create_destination_and_copy(source_info src_info,  const char *path)
 {
+    TRACE("Creating new destination file", path);
     char * dest_path = strdup(path);
     if (dest_path == NULL) {
         int r = errno;
@@ -364,15 +367,27 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
 
     src_info.m_file->name_write_lock();
 
-    int result = src_info.m_file->try_to_create_destination_file(dest_path);
+    // Check to see if the real source file still exists.  If it
+    // doesn't, it has been unlinked and we should NOT create the
+    // destination file.  We are protected by the table lock here.
+    bool source_exists = true;
+    int result = 0;
+    struct stat buf;
+    printf("stat'ing file = %s \n", src_info.m_path);
+    int stat_r = lstat(src_info.m_path, &buf);
+    if (stat_r == 0) {
+        result = src_info.m_file->try_to_create_destination_file(dest_path);
+    } else {
+        source_exists = false;
+    }
 
     src_info.m_file->name_unlock();
 
     m_table->unlock();
     if (result != 0) { return result; }
-    
-    // Actually perform the copy.
-    {
+
+    if (source_exists) {
+        // Actually perform the copy.
         int r = this->copy_file_data(src_info);
         if (r!=0) {
             return r;
@@ -429,7 +444,7 @@ int copier::copy_file_data(source_info src_info) {
     int r = 0;
     source_file * file = src_info.m_file;
     destination_file * dest = file->get_destination();
-
+    TRACE("Copying to file:", dest->get_path());
     const size_t buf_size = 1024 * 1024;
     char *buf = new char[buf_size]; // this cannot be on the stack.
     ssize_t n_wrote_now = 0;
