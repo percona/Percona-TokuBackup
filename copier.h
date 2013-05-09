@@ -39,13 +39,15 @@ struct source_info {
 ////////////////////////////////////////////////////////////////////////////////
 //
 class copier {
-private:
+  private:
     const char *m_source;
     const char *m_dest;
     std::vector<char *> m_todo;
     backup_callbacks *m_calls;
     file_hash_table * const m_table;
-    static pthread_mutex_t m_todo_mutex;
+public:
+    static pthread_mutex_t m_todo_mutex; // make this public so that we can grab the mutex when creating a copier.
+private:
     uint64_t m_total_bytes_backed_up;
     uint64_t m_total_files_backed_up;
     int copy_regular_file(const char *source, const char *dest, off_t file_size)  __attribute__((warn_unused_result));

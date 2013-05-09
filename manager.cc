@@ -194,7 +194,9 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
 
     prwlock_wrlock(&m_session_rwlock);
 
+    pmutex_lock(&copier::m_todo_mutex);
     m_session = new backup_session(source, dest, calls, &m_table, &r);
+    pmutex_lock(&copier::m_todo_mutex);
     print_time("Toku Hot Backup: Started:");    
 
     r = this->prepare_directories_for_backup(m_session);
