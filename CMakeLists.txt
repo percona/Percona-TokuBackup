@@ -72,6 +72,7 @@ if (USE_GCOV)
   set(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
   set(CMAKE_C_FLAGS   "--coverage ${CMAKE_C_FLAGS}")
   set(CMAKE_EXE_LINKER_FLAGS "--coverage ${CMAKE_EXE_LINKER_FLAGS}")
+  find_program(COVERAGE_COMMAND NAMES gcov47 gcov)
 endif (USE_GCOV)
 
 ##add_subdirectory(db-benchmark-test)
