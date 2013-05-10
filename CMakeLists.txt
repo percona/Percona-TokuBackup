@@ -31,6 +31,8 @@ set(BACKUP_SOURCES
 
 add_library(HotBackup          SHARED ${BACKUP_SOURCES})
 
+find_program(COVERAGE_COMMAND NAMES gcov47 gcov)
+
 IF(NOT APPLE)
   target_link_libraries(HotBackup          LINK_PUBLIC rt)
 ENDIF()
@@ -128,5 +130,4 @@ if (USE_GCOV)
   set(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
   set(CMAKE_C_FLAGS   "--coverage ${CMAKE_C_FLAGS}")
   set(CMAKE_EXE_LINKER_FLAGS "--coverage ${CMAKE_EXE_LINKER_FLAGS}")
-  find_program(COVERAGE_COMMAND NAMES gcov47 gcov)
 endif (USE_GCOV)
