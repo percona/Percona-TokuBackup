@@ -59,8 +59,8 @@ static void* do_rename(void* ignore) {
         check(r<len);
     }
 
+    backup_set_keep_capturing(true); //this must be done before start_copying.
     backup_set_start_copying(true);
-    backup_set_keep_capturing(true);
     while(!backup_done_copying()) sched_yield();
     backup_set_keep_capturing(false);
     while(!backup_is_capturing()) sched_yield();

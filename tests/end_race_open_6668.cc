@@ -42,7 +42,7 @@ static int my_open(const char *path, int flags, ...) {
 }
 
 static void* do_open(void* ignore) {
-    backup_set_start_copying(true);
+    backup_set_start_copying(true); // this must be done before turning on keep_capturing.
     backup_set_keep_capturing(true);
     while(!backup_is_capturing()) sched_yield();
     while(!backup_done_copying()) sched_yield();

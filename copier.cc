@@ -124,6 +124,7 @@ int copier::do_copy(void) throw() {
         r = m_calls->poll(0, msg);
         free(msg);
         if (r != 0) {
+            fprintf(stderr, "%s:%d r=%d\n", __FILE__, __LINE__, r);
             goto out;
         }
 
@@ -135,6 +136,7 @@ int copier::do_copy(void) throw() {
         free((void*)fname);
         fname = NULL;
         if(r != 0) {
+            fprintf(stderr, "%s:%d r=%d\n", __FILE__, __LINE__, r);
             goto out;
         }
         m_total_files_backed_up++;
