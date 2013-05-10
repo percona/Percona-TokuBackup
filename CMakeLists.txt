@@ -67,14 +67,6 @@ configure_file(CTestCustom.cmake . COPYONLY)
 
 # INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/../tokudb
 
-option(USE_GCOV "Use gcov for test coverage." OFF)
-if (USE_GCOV)
-  set(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
-  set(CMAKE_C_FLAGS   "--coverage ${CMAKE_C_FLAGS}")
-  set(CMAKE_EXE_LINKER_FLAGS "--coverage ${CMAKE_EXE_LINKER_FLAGS}")
-  find_program(COVERAGE_COMMAND NAMES gcov47 gcov)
-endif (USE_GCOV)
-
 ##add_subdirectory(db-benchmark-test)
 
 IF (NOT DEFINED INSTALL_LIBDIR)
@@ -129,3 +121,12 @@ if (USE_ETAGS)
     add_custom_target(build_etags ALL DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/TAGS" etags-stamp)
   endif ()
 endif ()
+
+# Put gcov after including the test subdir, so that we don't measure the coverage of the test code.
+option(USE_GCOV "Use gcov for test coverage." OFF)
+if (USE_GCOV)
+  set(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+  set(CMAKE_C_FLAGS   "--coverage ${CMAKE_C_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "--coverage ${CMAKE_EXE_LINKER_FLAGS}")
+  find_program(COVERAGE_COMMAND NAMES gcov47 gcov)
+endif (USE_GCOV)
