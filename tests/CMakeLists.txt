@@ -46,6 +46,7 @@ set(glassboxtests
   disable_race
   end_race_open_6668
   end_race_rename_6668
+  end_race_rename_6668b
   range_locks
   test6415_enospc_injection
   test6431_postcopy
