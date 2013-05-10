@@ -226,12 +226,6 @@ unlock_out:
 }
 
 ////////////////////////////////////////////////////////
-//
-int file_hash_table::size(void) const throw() {
-    return m_count;
-}
-
-////////////////////////////////////////////////////////
 // Description: See file_hash_table.h.
 void file_hash_table::lock(void) throw() {
     pmutex_lock(&m_mutex);

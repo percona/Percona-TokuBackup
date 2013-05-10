@@ -30,7 +30,6 @@ public:
     int rename_locked(const char *old_name, const char *new_name, const char *dest) throw();
     int rename(source_file * const target, const char *new_name, const char *dest) throw();
 
-    int size(void) const throw();
     void lock(void) throw(); // no return results since we assume that mutexes work.
     void unlock(void) throw();
 private:

@@ -32,7 +32,6 @@ public:
     // Effect: simply adds given description pointer to array, no locks acquired.
     description* get_unlocked(int fd) throw(); // use this one instead of get() when you already have the lock.
     int erase(int fd) throw() __attribute__((warn_unused_result)); // returns 0 or an error number.
-    void erase_unlocked(int fd) throw();
     int size(void) throw();
 private:
     void grow_array(int fd) throw();
