@@ -15,7 +15,7 @@ extern int pthread_mutex_unlock(pthread_mutex_t *) __attribute__((deprecated));
 #endif
 
 // We assume there are no errors returned by these functions (if mutexes are broken, then other things are going wrong...)  This function checks for errors and aborts.
-extern void pmutex_lock(pthread_mutex_t *);
-extern void pmutex_unlock(pthread_mutex_t *);
+extern void pmutex_lock(pthread_mutex_t *) throw();
+extern void pmutex_unlock(pthread_mutex_t *) throw();
 
 #endif

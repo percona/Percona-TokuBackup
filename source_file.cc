@@ -19,7 +19,7 @@
 
 ////////////////////////////////////////////////////////
 //
-source_file::source_file(const char *path)
+source_file::source_file(const char *path) throw()
  : m_full_path(strdup(path)),
    m_next(NULL), 
    m_reference_count(0),
@@ -40,7 +40,7 @@ source_file::source_file(const char *path)
     }
 };
 
-source_file::~source_file(void) {
+source_file::~source_file(void) throw() {
     if (m_full_path != NULL) {
         free(m_full_path);
         m_full_path = NULL;
@@ -61,26 +61,24 @@ source_file::~source_file(void) {
 
 ////////////////////////////////////////////////////////
 //
-const char * source_file::name(void)
-{
+const char * source_file::name(void) const throw() {
     return m_full_path;
 }
 
 ////////////////////////////////////////////////////////
 //
-source_file * source_file::next(void)
-{
+source_file * source_file::next(void) const throw() {
     return m_next;
 }
 
 ////////////////////////////////////////////////////////
 //
-void source_file::set_next(source_file *next_source) {
+void source_file::set_next(source_file *next_source) throw() {
     m_next = next_source;
 }
 
 static bool ranges_intersect (uint64_t lo0, uint64_t hi0,
-                              uint64_t lo1, uint64_t hi1)
+                              uint64_t lo1, uint64_t hi1) throw()
 // Effect: Return true iff [lo0,hi0)  (the half-open interval from lo0 inclusive to hi0 exclusive) intersects [lo1, hi1).
 {
     if (lo0 >= hi0) return false; // range0 is empty
@@ -90,7 +88,7 @@ static bool ranges_intersect (uint64_t lo0, uint64_t hi0,
     return true;
 }
 
-bool source_file::lock_range_would_block_unlocked(uint64_t lo, uint64_t hi) {
+bool source_file::lock_range_would_block_unlocked(uint64_t lo, uint64_t hi) const throw() {
     size_t size = m_locked_ranges.size();    
     for (size_t i = 0; i<size; i++) {
         if (ranges_intersect(m_locked_ranges[i].lo, m_locked_ranges[i].hi,
@@ -103,8 +101,7 @@ bool source_file::lock_range_would_block_unlocked(uint64_t lo, uint64_t hi) {
 
 ////////////////////////////////////////////////////////
 //
-void source_file::lock_range(uint64_t lo, uint64_t hi)
-{
+void source_file::lock_range(uint64_t lo, uint64_t hi) throw() {
     pmutex_lock(&m_mutex);
     while (this->lock_range_would_block_unlocked(lo, hi)) {
         int r = pthread_cond_wait(&m_cond, &m_mutex);
@@ -119,8 +116,7 @@ void source_file::lock_range(uint64_t lo, uint64_t hi)
 
 ////////////////////////////////////////////////////////
 //
-int source_file::unlock_range(uint64_t lo, uint64_t hi)
-{
+int source_file::unlock_range(uint64_t lo, uint64_t hi) throw() {
     pmutex_lock(&m_mutex);
     size_t size = m_locked_ranges.size();
     for (size_t i=0; i<size; i++) {
@@ -144,29 +140,25 @@ int source_file::unlock_range(uint64_t lo, uint64_t hi)
 
 ////////////////////////////////////////////////////////
 //
-void source_file::name_write_lock(void)
-{
+void source_file::name_write_lock(void) throw() {
     prwlock_wrlock(&m_name_rwlock);
 }
 
 ////////////////////////////////////////////////////////
 //
-void source_file::name_read_lock(void)
-{
+void source_file::name_read_lock(void) throw() {
     prwlock_rdlock(&m_name_rwlock);
 }
 
 ////////////////////////////////////////////////////////
 //
-void source_file::name_unlock(void)
-{
+void source_file::name_unlock(void) throw() {
     prwlock_unlock(&m_name_rwlock);
 }
 
 ////////////////////////////////////////////////////////
 //
-int source_file::rename(const char * new_name)
-{
+int source_file::rename(const char * new_name) throw() {
     int r = 0;
     free(m_full_path);
     m_full_path = realpath(new_name, NULL);
@@ -179,15 +171,13 @@ int source_file::rename(const char * new_name)
 
 ////////////////////////////////////////////////////////
 //
-void source_file::add_reference(void)
-{
+void source_file::add_reference(void) throw() {
     __sync_fetch_and_add(&m_reference_count, 1);
 }
 
 ////////////////////////////////////////////////////////
 //
-void source_file::remove_reference(void)
-{
+void source_file::remove_reference(void) throw() {
     // TODO.  How can the code that decremented a reference count only if it was positive be right?  Under what conditions could someone be decrementing a refcount when they don't know that it's positive?
     check(m_reference_count>0);
     __sync_fetch_and_add(&m_reference_count, -1);
@@ -195,36 +185,31 @@ void source_file::remove_reference(void)
 
 ////////////////////////////////////////////////////////
 //
-unsigned int source_file::get_reference_count(void)
-{
+unsigned int source_file::get_reference_count(void) const throw() {
     return m_reference_count;
 }
 
 ////////////////////////////////////////////////////////
 //
-void source_file::unlink()
-{
+void source_file::unlink() throw() {
     m_unlinked = true;
 }
 
 ////////////////////////////////////////////////////////
 //
-destination_file * source_file::get_destination(void) const
-{
+destination_file * source_file::get_destination(void) const throw() {
     return m_destination_file;
 }
 
 ////////////////////////////////////////////////////////
 //
-void source_file::set_destination(destination_file *destination)
-{
+void source_file::set_destination(destination_file *destination) throw() {
     m_destination_file = destination;
 }
 
 ////////////////////////////////////////////////////////
 //
-void source_file::try_to_remove_destination(void)
-{
+void source_file::try_to_remove_destination(void) throw() {
     // The only way this function could be called when this
     // source_file object's destination_file reference is NULL is
     // when it was created by the COPY object.
@@ -243,8 +228,7 @@ void source_file::try_to_remove_destination(void)
 
 ////////////////////////////////////////////////////////
 //
-int source_file::try_to_create_destination_file(char * full_path)
-{
+int source_file::try_to_create_destination_file(char * full_path) throw() {
     int r = 0;
     if (m_unlinked == true) {
         free((void*)full_path);

@@ -32,18 +32,18 @@ const int CAPUTRE_FLAG = 0x02;
 // INTERPOSE
 const int INTERPOSE_FLAG = 0x04;
 
-void CopyTrace(const char *s, const char *arg);
-void CopyWarn(const char *s, const char *arg);
-void CopyError(const char *s, const char *arg);
-void CaptureTrace(const char *s, const char *arg);
-void CaptureTrace(const char *s, const int arg);
-void CaptureWarn(const char *s, const char *arg);
-void CaptureError(const char *s, const char *arg);
-void CaptureError(const char *s, const int arg);
-void InterposeTrace(const char *s, const char *arg);
-void InterposeTrace(const char *s, const int arg);
-void InterposeWarn(const char *s, const char *arg);
-void InterposeError(const char *s, const char *arg);
+void CopyTrace(const char *s, const char *arg) throw();
+void CopyWarn(const char *s, const char *arg) throw();
+void CopyError(const char *s, const char *arg) throw();
+void CaptureTrace(const char *s, const char *arg) throw();
+void CaptureTrace(const char *s, const int arg) throw();
+void CaptureWarn(const char *s, const char *arg) throw();
+void CaptureError(const char *s, const char *arg) throw();
+void CaptureError(const char *s, const int arg) throw();
+void InterposeTrace(const char *s, const char *arg) throw();
+void InterposeTrace(const char *s, const int arg) throw();
+void InterposeWarn(const char *s, const char *arg) throw();
+void InterposeError(const char *s, const char *arg) throw();
 
 // Pause Points:
 //
@@ -56,8 +56,8 @@ const int MANAGER_IN_PREPARE                = 0x08;
 const int MANAGER_IN_DISABLE                = 0x10;
 const int COPIER_AFTER_OPEN_SOURCE          = 0x20;
 
-bool should_pause(int);
-void toggle_pause_point(int);
+bool should_pause(int) throw();
+void toggle_pause_point(int) throw();
 
 } // End of namespace.
 

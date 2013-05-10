@@ -47,7 +47,7 @@ template <class T> static void dlsym_set(T *ptr, const char *name)
 //
 // **************************************************************************
 static int (*real_open)(const char *file, int oflag, ...) = NULL;
-int call_real_open(const char *file, int oflag, ...) {
+int call_real_open(const char *file, int oflag, ...) throw() {
     dlsym_set(&real_open, "open");
 
     // See if we are creating or just opening the file.
@@ -62,7 +62,7 @@ int call_real_open(const char *file, int oflag, ...) {
     }
 }
 
-open_fun_t register_open(open_fun_t f) {
+open_fun_t register_open(open_fun_t f)  throw(){
     dlsym_set(&real_open, "open");
     open_fun_t r = real_open;
     real_open = f;
@@ -71,31 +71,31 @@ open_fun_t register_open(open_fun_t f) {
 
 static close_fun_t real_close = NULL;
 
-int call_real_close(int fd) {
+int call_real_close(int fd) throw() {
     dlsym_set(&real_close, "close");
     return real_close(fd);
 }
 
-close_fun_t register_close(close_fun_t f) {
+close_fun_t register_close(close_fun_t f) throw() {
     dlsym_set(&real_close, "close");
     close_fun_t r = real_close;
     real_close = f;
     return r;
 }
 
-static ssize_t (*real_write)(int fd, const void *buf, size_t nbyte) = NULL;
-ssize_t call_real_write(int fd, const void *buf, size_t nbyte) {
+static write_fun_t real_write = NULL;
+ssize_t call_real_write(int fd, const void *buf, size_t nbyte) throw() {
     dlsym_set(&real_write, "write");
     return real_write(fd, buf, nbyte);
 }
-write_fun_t register_write(write_fun_t f) {
+write_fun_t register_write(write_fun_t f) throw() {
     dlsym_set(&real_write, "write");
     write_fun_t r = real_write;
     real_write = f;
     return r;
 }
 
-ssize_t call_real_read(int fildes, const void *buf, size_t nbyte) {
+ssize_t call_real_read(int fildes, const void *buf, size_t nbyte) throw() {
     static ssize_t (*real_read)(int fildes, const void *buf, size_t nbyte) = NULL;
     dlsym_set(&real_read, "read");
     return real_read(fildes, buf, nbyte);
@@ -103,11 +103,11 @@ ssize_t call_real_read(int fildes, const void *buf, size_t nbyte) {
 
 static pwrite_fun_t real_pwrite = NULL;
 
-ssize_t call_real_pwrite(int fildes, const void *buf, size_t nbyte, off_t offset) {
+ssize_t call_real_pwrite(int fildes, const void *buf, size_t nbyte, off_t offset) throw() {
     dlsym_set(&real_pwrite, "pwrite");
     return real_pwrite(fildes, buf, nbyte, offset);
 }
-pwrite_fun_t register_pwrite(pwrite_fun_t f) {
+pwrite_fun_t register_pwrite(pwrite_fun_t f) throw() {
     dlsym_set(&real_pwrite, "pwrite");
     pwrite_fun_t r = real_pwrite;
     real_pwrite = f;
@@ -115,12 +115,12 @@ pwrite_fun_t register_pwrite(pwrite_fun_t f) {
 }
 
 static off_t (*real_lseek)(int, off_t, int) = NULL;
-off_t call_real_lseek(int fd, off_t offset, int whence) {
+off_t call_real_lseek(int fd, off_t offset, int whence) throw() {
     dlsym_set(&real_lseek, "lseek");
     return real_lseek(fd, offset, whence);
 }
 
-lseek_fun_t register_lseek(lseek_fun_t f) {
+lseek_fun_t register_lseek(lseek_fun_t f) throw() {
     dlsym_set(&real_lseek, "lseek");
     lseek_fun_t r = real_lseek;
     real_lseek = f;
@@ -128,12 +128,12 @@ lseek_fun_t register_lseek(lseek_fun_t f) {
 }
 
 static int (*real_ftruncate)(int fildes,  off_t length) = NULL;
-int call_real_ftruncate(int fildes, off_t length) {
+int call_real_ftruncate(int fildes, off_t length) throw() {
     dlsym_set(&real_ftruncate, "ftruncate");
     return real_ftruncate(fildes, length);
 }
 
-ftruncate_fun_t register_ftruncate(ftruncate_fun_t f) {
+ftruncate_fun_t register_ftruncate(ftruncate_fun_t f) throw() {
     dlsym_set(&real_ftruncate, "ftruncate");
     ftruncate_fun_t r = real_ftruncate;
     real_ftruncate = f;
@@ -152,7 +152,7 @@ int call_real_unlink(const char *path) throw() {
     return real_unlink(path);
 }
 
-unlink_fun_t register_unlink(unlink_fun_t f) {
+unlink_fun_t register_unlink(unlink_fun_t f) throw() {
     dlsym_set(&real_unlink, "unlink");
     unlink_fun_t r = real_unlink;
     real_unlink = f;
@@ -160,12 +160,12 @@ unlink_fun_t register_unlink(unlink_fun_t f) {
 }
 
 static rename_fun_t real_rename = NULL;
-int call_real_rename(const char* oldpath, const char* newpath) {
+int call_real_rename(const char* oldpath, const char* newpath) throw() {
     dlsym_set(&real_rename, "rename");
     return real_rename(oldpath, newpath);
 }
 
-rename_fun_t register_rename(rename_fun_t f) {
+rename_fun_t register_rename(rename_fun_t f) throw() {
     dlsym_set(&real_rename, "rename");
     rename_fun_t r = real_rename;
     real_rename = f;
@@ -179,7 +179,7 @@ int call_real_mkdir(const char *pathname, mode_t mode) throw() {
     return real_mkdir(pathname, mode);
 }
 
-mkdir_fun_t register_mkdir(mkdir_fun_t f) {
+mkdir_fun_t register_mkdir(mkdir_fun_t f) throw() {
     dlsym_set(&real_mkdir, "mkdir");
     mkdir_fun_t r = real_mkdir;
     real_mkdir = f;

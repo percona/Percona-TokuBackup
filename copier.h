@@ -50,21 +50,21 @@ public:
 private:
     uint64_t m_total_bytes_backed_up;
     uint64_t m_total_files_backed_up;
-    int copy_regular_file(const char *source, const char *dest, off_t file_size)  __attribute__((warn_unused_result));
-    int copy_using_source_info(source_info src_info, const char *dest);
-    int create_destination_and_copy(source_info src_info, const char *dest);
-    int add_dir_entries_to_todo(DIR *dir, const char *file)  __attribute__((warn_unused_result));
+    int copy_regular_file(const char *source, const char *dest, off_t file_size) throw()  __attribute__((warn_unused_result));
+    int copy_using_source_info(source_info src_info, const char *dest) throw();
+    int create_destination_and_copy(source_info src_info, const char *dest) throw();
+    int add_dir_entries_to_todo(DIR *dir, const char *file) throw() __attribute__((warn_unused_result));
 public:
-    copier(backup_callbacks *calls, file_hash_table * const table);
-    void set_directories(const char *source, const char *dest);
-    void set_error(int error);
-    int do_copy(void) __attribute__((warn_unused_result)) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
-    int copy_stripped_file(const char *file) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
-    int copy_full_path(const char *source, const char* dest, const char *file) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
-    int copy_file_data(source_info src_info)  __attribute__((warn_unused_result)); // Returns the error code (not in errno)
-    void add_file_to_todo(const char *file);
-    int open_both_files(const char *source, const char *dest, int *srcfd, int *destfd);
-    void cleanup(void);
+    copier(backup_callbacks *calls, file_hash_table * const table) throw();
+    void set_directories(const char *source, const char *dest) throw();
+    void set_error(int error) throw();
+    int do_copy(void) throw() __attribute__((warn_unused_result)) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
+    int copy_stripped_file(const char *file) throw() __attribute__((warn_unused_result)); // Returns the error code (not in errno)
+    int copy_full_path(const char *source, const char* dest, const char *file) throw() __attribute__((warn_unused_result)); // Returns the error code (not in errno)
+    int copy_file_data(source_info src_info) throw() __attribute__((warn_unused_result)); // Returns the error code (not in errno)
+    void add_file_to_todo(const char *file) throw();
+    int open_both_files(const char *source, const char *dest, int *srcfd, int *destfd) throw();
+    void cleanup(void) throw();
 };
 
 #endif // End of header guardian.

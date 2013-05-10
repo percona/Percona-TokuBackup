@@ -11,46 +11,46 @@
 
 extern pthread_mutex_t backup_manager_mutex;
 
-int call_real_open(const char *file, int oflag, ...) __attribute__((warn_unused_result));
-int call_real_close(int fd)  __attribute__((warn_unused_result));
-ssize_t call_real_write(int fd, const void *buf, size_t nbyte) __attribute__((warn_unused_result));
-ssize_t call_real_read(int fildes, const void *buf, size_t nbyte) __attribute__((warn_unused_result));
-ssize_t call_real_pwrite(int fildes, const void *buf, size_t nbyte, off_t offset) __attribute__((warn_unused_result));
-off_t call_real_lseek(int fd, off_t offset, int whence) __attribute__((warn_unused_result));
-int call_real_ftruncate(int fildes, off_t length) __attribute__((warn_unused_result));
+int call_real_open(const char *file, int oflag, ...) throw() __attribute__((warn_unused_result));
+int call_real_close(int fd) throw()  __attribute__((warn_unused_result));
+ssize_t call_real_write(int fd, const void *buf, size_t nbyte) throw() __attribute__((warn_unused_result));
+ssize_t call_real_read(int fildes, const void *buf, size_t nbyte) throw() __attribute__((warn_unused_result));
+ssize_t call_real_pwrite(int fildes, const void *buf, size_t nbyte, off_t offset) throw() __attribute__((warn_unused_result));
+off_t call_real_lseek(int fd, off_t offset, int whence) throw() __attribute__((warn_unused_result));
+int call_real_ftruncate(int fildes, off_t length) throw() __attribute__((warn_unused_result));
 int call_real_truncate(const char *path, off_t length) throw() __attribute__((__nonnull__ (1)))  __attribute__((warn_unused_result));
 int call_real_unlink(const char *path) throw() __attribute__((__nonnull__ (1)))  __attribute__((warn_unused_result));
-int call_real_rename(const char* oldpath, const char* newpath) __attribute__((warn_unused_result));
+int call_real_rename(const char* oldpath, const char* newpath) throw() __attribute__((warn_unused_result));
 int call_real_mkdir(const char *pathname, mode_t mode) throw() __attribute__((__nonnull__ (1))) __attribute__((warn_unused_result));
 
 typedef int (*open_fun_t)(const char *, int, ...);
-open_fun_t register_open(open_fun_t new_open);
+open_fun_t register_open(open_fun_t new_open) throw();
 
 typedef ssize_t (*pwrite_fun_t)(int, const void *, size_t, off_t);
-pwrite_fun_t register_pwrite(pwrite_fun_t new_pwrite); // Effect: The system will call new_pwrite in the future.  The function it would have called is returned (so that the new_pwrite function can use it, if it wants)
+pwrite_fun_t register_pwrite(pwrite_fun_t new_pwrite) throw(); // Effect: The system will call new_pwrite in the future.  The function it would have called is returned (so that the new_pwrite function can use it, if it wants)
 
 typedef ssize_t (*write_fun_t)(int, const void *, size_t);
-write_fun_t register_write(write_fun_t new_write);
+write_fun_t register_write(write_fun_t new_write) throw();
 
 typedef ssize_t (*read_fun_t)(int, void *, size_t);
-read_fun_t register_read(read_fun_t new_read);
+read_fun_t register_read(read_fun_t new_read) throw();
 
 typedef off_t (*lseek_fun_t)(int, off_t, int);
-lseek_fun_t register_lseek(lseek_fun_t new_lseek);
+lseek_fun_t register_lseek(lseek_fun_t new_lseek) throw();
 
 typedef int (*ftruncate_fun_t)(int, off_t);
-ftruncate_fun_t register_ftruncate(ftruncate_fun_t new_ftruncate);
+ftruncate_fun_t register_ftruncate(ftruncate_fun_t new_ftruncate) throw();
 
 typedef int (*unlink_fun_t)(const char *);
-unlink_fun_t register_unlink(unlink_fun_t new_unlink);
+unlink_fun_t register_unlink(unlink_fun_t new_unlink) throw();
 
 typedef int (*rename_fun_t)(const char *, const char *);
-rename_fun_t register_rename(rename_fun_t new_rename);
+rename_fun_t register_rename(rename_fun_t new_rename) throw();
 
 typedef int (*mkdir_fun_t)(const char *, mode_t);
-mkdir_fun_t register_mkdir(mkdir_fun_t new_mkdir);
+mkdir_fun_t register_mkdir(mkdir_fun_t new_mkdir) throw();
 
 typedef int (*close_fun_t)(int);
-close_fun_t register_close(close_fun_t new_close);
+close_fun_t register_close(close_fun_t new_close) throw();
 
 #endif // end of header guardian.

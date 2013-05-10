@@ -6,8 +6,8 @@
 
 #include <pthread.h>
 
-extern void prwlock_rdlock(pthread_rwlock_t *);
-extern void prwlock_wrlock(pthread_rwlock_t *);
-extern void prwlock_unlock(pthread_rwlock_t *);
+extern void prwlock_rdlock(pthread_rwlock_t *) throw();
+extern void prwlock_wrlock(pthread_rwlock_t *) throw();
+extern void prwlock_unlock(pthread_rwlock_t *) throw();
 
 #endif // End of header guardian.

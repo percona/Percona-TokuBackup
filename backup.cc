@@ -286,7 +286,7 @@ int mkdir(const char *pathname, mode_t mode) {
 
 extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *dest_dirs[], int dir_count,
                                         backup_poll_fun_t poll_fun, void *poll_extra,
-                                        backup_error_fun_t error_fun, void *error_extra) {
+                                        backup_error_fun_t error_fun, void *error_extra) throw() {
     if (dir_count!=1) {
         error_fun(EINVAL, "Only one source directory may be specified for backup", error_extra);
         return EINVAL;
@@ -334,15 +334,15 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
     return the_manager.do_backup(source_dirs[0], dest_dirs[0], &calls);
 }
 
-extern "C" void tokubackup_throttle_backup(unsigned long bytes_per_second) {
+extern "C" void tokubackup_throttle_backup(unsigned long bytes_per_second) throw() {
     the_manager.set_throttle(bytes_per_second);
 }
 
-unsigned long get_throttle(void) {
+unsigned long get_throttle(void) throw() {
     return the_manager.get_throttle();
 }
 
-char *malloc_snprintf(size_t size, const char *format, ...) {
+char *malloc_snprintf(size_t size, const char *format, ...) throw() {
     va_list ap;
     va_start(ap, format);
     char *result = (char*)malloc(size);
@@ -354,24 +354,22 @@ char *malloc_snprintf(size_t size, const char *format, ...) {
 const char *tokubackup_version_string = "tokubackup 1.0 $Revision$";
 
 #ifdef GLASSBOX
-void backup_pause_disable(bool b)
-{
+void backup_pause_disable(bool b) throw() {
     the_manager.pause_disable(b);
 }
 
-void backup_set_keep_capturing(bool b)
+void backup_set_keep_capturing(bool b) throw()
 // Effect: see backup_internal.h
 {
     the_manager.set_keep_capturing(b);
 }
-bool backup_is_capturing(void) {
+bool backup_is_capturing(void) throw() {
     return the_manager.is_capturing();
 }
-bool backup_done_copying(void) {
+bool backup_done_copying(void) throw() {
     return the_manager.is_done_copying();
 }
-void backup_set_start_copying(bool b)
-{
+void backup_set_start_copying(bool b) throw() {
     the_manager.set_start_copying(b);
 }
 #endif

@@ -9,7 +9,7 @@
 
 #include "manager_state.h"
 
-manager_state::manager_state()
+manager_state::manager_state() throw()
     : m_is_dead(false),
       m_capture_enabled(false),
       m_copy_enabled(false)
@@ -19,39 +19,39 @@ manager_state::manager_state()
     VALGRIND_HG_DISABLE_CHECKING(&m_copy_enabled,    sizeof(m_copy_enabled));
 }
 
-bool manager_state::is_dead(void) {
+bool manager_state::is_dead(void) throw() {
     return m_is_dead;
 }
 
-bool manager_state::is_alive(void) {
+bool manager_state::is_alive(void) throw() {
     return !m_is_dead;
 }
 
-void manager_state::kill(void) {
+void manager_state::kill(void) throw() {
     m_is_dead = true;
 }
 
-bool manager_state::capture_is_enabled(void) {
+bool manager_state::capture_is_enabled(void) throw() {
     return m_capture_enabled;
 }
 
-void manager_state::enable_capture(void) {
+void manager_state::enable_capture(void) throw() {
     m_capture_enabled = true;
 }
 
-void manager_state::disable_capture(void) {
+void manager_state::disable_capture(void) throw() {
     m_capture_enabled = false;
 }
 
-bool manager_state::copy_is_enabled(void) {
+bool manager_state::copy_is_enabled(void) throw() {
     return m_copy_enabled;
 }
 
-void manager_state::enable_copy(void) {
+void manager_state::enable_copy(void) throw() {
     m_copy_enabled = true;
 }
 
-void manager_state::disable_copy(void) {
+void manager_state::disable_copy(void) throw() {
     m_copy_enabled = false;
 }
 

@@ -20,7 +20,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-description::description()
+description::description() throw()
 : m_offset(0),
   m_source_file(NULL)
 {
@@ -30,7 +30,7 @@ description::description()
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-description::~description(void)
+description::~description(void) throw()
 {
     int r = pthread_mutex_destroy(&m_mutex);
     check(r==0);
@@ -39,46 +39,43 @@ description::~description(void)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void description::set_source_file(source_file *file)
-{
+void description::set_source_file(source_file *file) throw() {
     m_source_file = file;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-source_file * description::get_source_file(void) const
+source_file * description::get_source_file(void) const throw()
 {
     return m_source_file;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void description::lock(void)
-{
+void description::lock(void) throw() {
     pmutex_lock(&m_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void description::unlock(void)
-{
+void description::unlock(void) throw() {
     pmutex_unlock(&m_mutex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void description::increment_offset(ssize_t nbyte) {    
+void description::increment_offset(ssize_t nbyte) throw() {
     m_offset += nbyte;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-off_t description::get_offset(void) {    
+off_t description::get_offset(void) throw() {    
     return m_offset;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void description::lseek(off_t new_offset) {
+void description::lseek(off_t new_offset) throw() {
     m_offset = new_offset;
 }

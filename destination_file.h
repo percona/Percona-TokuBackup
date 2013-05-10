@@ -10,15 +10,15 @@
 
 class destination_file {
 public:
-    destination_file(const int opened_fd, const char * full_path);
-    ~destination_file();
-    int close(void) const;
-    int pwrite(const void *buf, size_t nbyte, off_t offset) const;
-    int truncate(off_t length) const;
-    int unlink(void) const;
-    int rename(const char *new_path);
-    int get_fd(void) const;
-    const char * get_path(void) const;
+    destination_file(const int opened_fd, const char * full_path) throw();
+    ~destination_file() throw();
+    int close(void) const throw();
+    int pwrite(const void *buf, size_t nbyte, off_t offset) const throw();
+    int truncate(off_t length) const throw();
+    int unlink(void) const throw();
+    int rename(const char *new_path) throw();
+    int get_fd(void) const throw();
+    const char * get_path(void) const throw();
 private:
     const int m_fd;
     const char * m_path;

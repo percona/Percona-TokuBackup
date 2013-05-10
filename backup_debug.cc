@@ -14,85 +14,73 @@ int BACKUP_TRACE_FLAGS = 0x0F;
 int BACKUP_WARN_FLAGS = 0x0F;
 int BACKUP_ERROR_FLAGS = 0x0F;
 
-void CopyTrace(const char *s, const char *arg) 
-{
+void CopyTrace(const char *s, const char *arg) throw() {
     if(BACKUP_TRACE_FLAGS & COPY_FLAG) {
         printf("TRACE: <COPY> %s %s\n", s, arg);
     }
 }
 
-void CopyWarn(const char *s, const char *arg)
-{
+void CopyWarn(const char *s, const char *arg) throw() {
     if(BACKUP_WARN_FLAGS & COPY_FLAG) {
         printf("WARN: <COPY> %s %s\n", s, arg);
     }
 }
 
-void CopyError(const char *s, const char *arg)
-{
+void CopyError(const char *s, const char *arg) throw() {
     if(BACKUP_ERROR_FLAGS & COPY_FLAG) {
         printf("ERROR: <COPY> %s %s\n", s, arg);
     }
 }
 
-void CaptureTrace(const char *s, const char *arg) 
-{
+void CaptureTrace(const char *s, const char *arg) throw() {
     if(BACKUP_TRACE_FLAGS & CAPUTRE_FLAG) {
         printf("TRACE: <CAPTURE> %s %s\n", s, arg);
     }
 }
 
-void CaptureTrace(const char *s, const int arg)
-{
+void CaptureTrace(const char *s, const int arg) throw() {
     if(BACKUP_TRACE_FLAGS & CAPUTRE_FLAG) {
         printf("TRACE: <CAPTURE> %s %d\n", s, arg);
     }
 }
 
-void CaptureWarn(const char *s, const char *arg)
-{
+void CaptureWarn(const char *s, const char *arg) throw() {
     if(BACKUP_WARN_FLAGS & CAPUTRE_FLAG) {
         printf("WARN: <CAPTURE> %s %s\n", s, arg);
     }
 }
 
-void CaptureError(const char *s, const char *arg)
-{
+void CaptureError(const char *s, const char *arg) throw() {
     if(BACKUP_ERROR_FLAGS & CAPUTRE_FLAG) {
         printf("ERROR: <CAPTURE> %s %s\n", s, arg);
     }
 }
 
-void CaptureError(const char *s, const int arg)
-{
+void CaptureError(const char *s, const int arg) throw() {
     if(BACKUP_ERROR_FLAGS & CAPUTRE_FLAG) {
         printf("ERROR: <CAPTURE> %s %d\n", s, arg);
     }
 }
 
-void InterposeTrace(const char *s, const char *arg) 
-{
+void InterposeTrace(const char *s, const char *arg) throw() {
     if(BACKUP_TRACE_FLAGS & INTERPOSE_FLAG) {
         printf("TRACE: <INTERPOSE> %s %s\n", s, arg);
     }
 }
 
-void InterposeTrace(const char *s, const int arg) 
-{
+void InterposeTrace(const char *s, const int arg) throw() {
     if(BACKUP_TRACE_FLAGS & INTERPOSE_FLAG) {
         printf("TRACE: <INTERPOSE> %s %d\n", s, arg);
     }
 }
 
-void InterposeWarn(const char *s, const char *arg)
-{
+void InterposeWarn(const char *s, const char *arg) throw() {
     if(BACKUP_WARN_FLAGS & INTERPOSE_FLAG) {
         printf("WARN: <INTERPOSE> %s %s\n", s, arg);
     }
 }
 
-void InterposeError(const char *s, const char *arg)
-{
+void InterposeError(const char *s, const char *arg) throw() {
     if(BACKUP_ERROR_FLAGS & INTERPOSE_FLAG) {
         printf("ERROR: <INTERPOSE> %s %s\n", s, arg);
     }
@@ -100,8 +88,7 @@ void InterposeError(const char *s, const char *arg)
 
 static int PAUSE_POINTS = 0x00;
 
-bool should_pause(int flag)
-{
+bool should_pause(int flag) throw() {
     bool result = false;
     switch (flag) {
         case COPIER_BEFORE_READ:
@@ -129,8 +116,7 @@ bool should_pause(int flag)
     return result;
 }
 
-void toggle_pause_point(int flag)
-{
+void toggle_pause_point(int flag) throw() {
     VALGRIND_HG_DISABLE_CHECKING(&PAUSE_POINTS, sizeof(PAUSE_POINTS));
     PAUSE_POINTS = PAUSE_POINTS ^ flag;
 }

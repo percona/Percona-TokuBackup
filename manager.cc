@@ -41,7 +41,7 @@
 
 //////////////////////////////////////////////////////////////////////////////
 //
-static void print_time(const char *toku_string) {
+static void print_time(const char *toku_string) throw() {
     time_t t;
     char buf[27];
     time(&t);
@@ -61,7 +61,7 @@ pthread_mutex_t manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
 //
 //     Constructor.
 //
-manager::manager(void)
+manager::manager(void) throw()
     : 
 #ifdef GLASSBOX
       m_pause_disable(false),
@@ -87,7 +87,7 @@ manager::manager(void)
 #endif
 }
 
-manager::~manager(void) {
+manager::~manager(void) throw() {
     if (m_errstring) free(m_errstring);
 }
 
@@ -106,7 +106,7 @@ __thread backup_callbacks *thread_has_backup_calls = NULL;
 //
 //     
 //
-int manager::do_backup(const char *source, const char *dest, backup_callbacks *calls) {
+int manager::do_backup(const char *source, const char *dest, backup_callbacks *calls) throw() {
     thread_has_backup_calls = calls;
 
     int r = 0;
@@ -262,7 +262,7 @@ error_out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int manager::prepare_directories_for_backup(backup_session *session) {
+int manager::prepare_directories_for_backup(backup_session *session) throw() {
     int r = 0;
     // Loop through all the current file descriptions and prepare them
     // for backup.
@@ -308,8 +308,7 @@ out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void manager::disable_descriptions(void)
-{
+void manager::disable_descriptions(void) throw() {
     lock_fmap();
     const int size = m_map.size();
     const int middle __attribute__((unused)) = size / 2; // used only in glassbox mode.
@@ -347,8 +346,7 @@ void manager::disable_descriptions(void)
 // it may be updated if and when the user updates the original/source
 // copy of the file.
 //
-int manager::open(int fd, const char *file)
-{
+int manager::open(int fd, const char *file) throw() {
     TRACE("entering open() with fd = ", fd);
     // Skip the given 'file' if it is not a regular file.
     struct stat buf;
@@ -470,8 +468,7 @@ void manager::close(int fd) {
 // backup copy of a prevously opened file.
 //     Also does the write itself (the write is in here so that a lock can be obtained to protect the file offset)
 //
-ssize_t manager::write(int fd, const void *buf, size_t nbyte)
-{
+ssize_t manager::write(int fd, const void *buf, size_t nbyte) throw() {
     TRACE("entering write() with fd = ", fd);
     bool ok = true;
     description *description;
@@ -541,7 +538,7 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte)
 //
 //     Do the read.
 //
-ssize_t manager::read(int fd, void *buf, size_t nbyte) {
+ssize_t manager::read(int fd, void *buf, size_t nbyte) throw() {
     TRACE("entering write() with fd = ", fd);
     ssize_t r = 0;
     description *description;
@@ -569,7 +566,7 @@ ssize_t manager::read(int fd, void *buf, size_t nbyte) {
 //     Same as regular write, but uses additional offset argument
 // to write to a particular position in the backup file.
 //
-ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
+ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset) throw()
 // Do the write, returning the number of bytes written.
 // Note: If the backup destination gets a short write, that's an error.
 {
@@ -618,7 +615,7 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 //     Move the backup file descriptor to the new position.  This allows
 // upcoming intercepted writes to be backed up properly.
 //
-off_t manager::lseek(int fd, size_t nbyte, int whence) {
+off_t manager::lseek(int fd, size_t nbyte, int whence) throw() {
     TRACE("entering seek() with fd = ", fd);
     description *description;
     bool ok = true;
@@ -645,8 +642,7 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) {
 //
 //     TBD...
 //
-int manager::rename(const char *oldpath, const char *newpath)
-{
+int manager::rename(const char *oldpath, const char *newpath) throw() {
     TRACE("entering rename() with oldpath = ", oldpath);
     int r = 0;
     int user_error = 0;
@@ -755,8 +751,7 @@ source_free_out:
 // unlink() -
 //
 //
-int manager::unlink(const char *path)
-{
+int manager::unlink(const char *path) throw() {
     TRACE("entering unlink with path = ", path);
     int r = 0;
     int user_error = 0;
@@ -836,8 +831,7 @@ free_out:
 //
 //     TBD...
 //
-int manager::ftruncate(int fd, off_t length)
-{
+int manager::ftruncate(int fd, off_t length) throw() {
     TRACE("entering ftruncate with fd = ", fd);
     // TODO: Remove the logic for null descriptions, since we will
     // always have a description and a source_file.
@@ -884,8 +878,7 @@ int manager::ftruncate(int fd, off_t length)
 //
 //     TBD...
 //
-int manager::truncate(const char *path, off_t length)
-{
+int manager::truncate(const char *path, off_t length) throw() {
     int r;
     int user_error = 0;
     int error = 0;
@@ -953,8 +946,7 @@ free_out:
 //
 //     TBD...
 //
-void manager::mkdir(const char *pathname)
-{
+void manager::mkdir(const char *pathname) throw() {
     prwlock_rdlock(&m_session_rwlock);
 
     if(m_session != NULL) {
@@ -971,18 +963,18 @@ void manager::mkdir(const char *pathname)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void manager::set_throttle(unsigned long bytes_per_second) {
+void manager::set_throttle(unsigned long bytes_per_second) throw() {
     VALGRIND_HG_DISABLE_CHECKING(&m_throttle, sizeof(m_throttle));
     m_throttle = bytes_per_second;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-unsigned long manager::get_throttle(void) {
+unsigned long manager::get_throttle(void) const throw() {
     return m_throttle;
 }
 
-void manager::backup_error_ap(int errnum, const char *format_string, va_list ap) {
+void manager::backup_error_ap(int errnum, const char *format_string, va_list ap) throw() {
     this->disable_capture();
     this->disable_copy();
     if (thread_has_backup_calls) {
@@ -999,8 +991,7 @@ void manager::backup_error_ap(int errnum, const char *format_string, va_list ap)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void manager::fatal_error(int errnum, const char *format_string, ...)
-{
+void manager::fatal_error(int errnum, const char *format_string, ...) throw() {
     va_list ap;
     va_start(ap, format_string);
     this->kill();
@@ -1010,7 +1001,7 @@ void manager::fatal_error(int errnum, const char *format_string, ...)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void manager::backup_error(int errnum, const char *format_string, ...) {
+void manager::backup_error(int errnum, const char *format_string, ...)  throw() {
     va_list ap;
     va_start(ap, format_string);
     this->backup_error_ap(errnum, format_string, ap);
@@ -1019,7 +1010,7 @@ void manager::backup_error(int errnum, const char *format_string, ...) {
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void manager::set_error_internal(int errnum, const char *format_string, va_list ap) {
+void manager::set_error_internal(int errnum, const char *format_string, va_list ap) throw() {
     m_backup_is_running = false;
     pmutex_lock(&m_error_mutex);
     if (!m_an_error_happened) {
@@ -1037,8 +1028,7 @@ void manager::set_error_internal(int errnum, const char *format_string, va_list 
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-bool manager::try_to_enter_session_and_lock(void)
-{
+bool manager::try_to_enter_session_and_lock(void) throw() {
     prwlock_rdlock(&m_session_rwlock);
 
     if (m_session == NULL) {
@@ -1051,15 +1041,13 @@ bool manager::try_to_enter_session_and_lock(void)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void manager::exit_session_and_unlock_or_die(void)
-{
+void manager::exit_session_and_unlock_or_die(void) throw() {
     prwlock_unlock(&m_session_rwlock);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int manager::setup_description_and_source_file(int fd, const char *file)
-{
+int manager::setup_description_and_source_file(int fd, const char *file) throw() {
     int error = 0;
     source_file * source = NULL;
     description * file_description = NULL;
@@ -1094,25 +1082,24 @@ int manager::setup_description_and_source_file(int fd, const char *file)
 
 #ifdef GLASSBOX
 // Test routines.
-void manager::pause_disable(bool pause)
-{
+void manager::pause_disable(bool pause) throw() {
     VALGRIND_HG_DISABLE_CHECKING(&m_pause_disable, sizeof(m_pause_disable));
     m_pause_disable = pause;
 }
 
-void manager::set_keep_capturing(bool keep_capturing) {
+void manager::set_keep_capturing(bool keep_capturing) throw() {
     VALGRIND_HG_DISABLE_CHECKING(&m_keep_capturing, sizeof(m_keep_capturing));
     m_keep_capturing = keep_capturing;
 }
 
-bool manager::is_done_copying(void) {
+bool manager::is_done_copying(void) throw() {
     return m_done_copying;
 }
-bool manager::is_capturing(void) {
+bool manager::is_capturing(void) throw() {
     return m_is_capturing;
 }
 
-void manager::set_start_copying(bool start_copying) {
+void manager::set_start_copying(bool start_copying) throw() {
     VALGRIND_HG_DISABLE_CHECKING(&m_start_copying, sizeof(m_start_copying));
     m_start_copying = start_copying;
 }

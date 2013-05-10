@@ -16,7 +16,7 @@
 
 //////////////////////////////////////////////////////////////////////////////
 //
-backup_session::backup_session(const char* source, const char *dest, backup_callbacks *calls, file_hash_table * const file, int *errnum)
+backup_session::backup_session(const char* source, const char *dest, backup_callbacks *calls, file_hash_table * const file, int *errnum) throw()
     : m_source_dir(NULL), m_dest_dir(NULL), m_copier(calls, file)
 {
     // TODO: #6541 assert that the directory's are not the same.
@@ -46,8 +46,7 @@ backup_session::backup_session(const char* source, const char *dest, backup_call
 
 //////////////////////////////////////////////////////////////////////////////
 //
-backup_session::~backup_session()
-{
+backup_session::~backup_session() throw() {
     if(m_source_dir) {
         free((void*)m_source_dir);
     }
@@ -59,8 +58,7 @@ backup_session::~backup_session()
 
 //////////////////////////////////////////////////////////////////////////////
 //
-int backup_session::init(const char* source, const char *dest)
-{
+int backup_session::init(const char* source, const char *dest) throw() {
     int r = 0;
     m_source_dir = realpath(source, NULL);
     if (m_source_dir == NULL) {
@@ -80,8 +78,7 @@ int backup_session::init(const char* source, const char *dest)
 
 //////////////////////////////////////////////////////////////////////////////
 //
-int backup_session::do_copy()
-{
+int backup_session::do_copy() throw() {
     int r = m_copier.do_copy();
     return r;
 }
@@ -95,8 +92,7 @@ int backup_session::do_copy()
 //     Determines if the given file name is within our source
 // directory or not.
 //
-bool backup_session::is_prefix(const char *file)
-{
+bool backup_session::is_prefix(const char *file) throw() {
     // mallocing this to make memcheck happy.  I don't like the extra malloc, but I'm more worried about testability than speed right now. -Bradley
     char *absfile = realpath(file, NULL);
     if (absfile==NULL) return false;
@@ -107,12 +103,11 @@ bool backup_session::is_prefix(const char *file)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-bool backup_session::is_prefix_of_realpath(const char *absfile)
-{
+bool backup_session::is_prefix_of_realpath(const char *absfile) throw() {
     return strncmp(m_source_dir, absfile, strlen(m_source_dir)) == 0;
 }
 
-static int does_file_exist(const char*);
+static int does_file_exist(const char*) throw();
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -123,7 +118,7 @@ static int does_file_exist(const char*);
 //     Creates backup path for given file if it doesn't exist already.
 //     Any errors are reported, and an error number is returned.
 //
-int open_path(const char *file_path) {
+int open_path(const char *file_path) throw() {
     int r = 0;
     // See if the file exists in the backup copy already...
     int exists = does_file_exist(file_path);
@@ -149,7 +144,7 @@ int open_path(const char *file_path) {
 //     Recursively creates all the backup subdirectories 
 // required for the given path.
 //
-int create_subdirectories(const char *path) {
+int create_subdirectories(const char *path) throw() {
     const char SLASH = '/';
     char *directory = strdup(path);
     char *next_slash = directory;
@@ -211,7 +206,7 @@ out:
 
 //////////////////////////////////////////////////////////////////////////////
 // Effect: See backup_directory.h
-char* backup_session::translate_prefix(const char *file) {
+char* backup_session::translate_prefix(const char *file) throw() {
     char *absfile = realpath(file, NULL);
     // TODO: What if realpath returns a NULL?  It would segfault.  See #6605.
     char *result = translate_prefix_of_realpath(absfile);
@@ -219,7 +214,7 @@ char* backup_session::translate_prefix(const char *file) {
     return result;
 }
 
-char* backup_session::translate_prefix_of_realpath(const char *absfile) {
+char* backup_session::translate_prefix_of_realpath(const char *absfile) throw() {
     // TODO: #6543 Should we have a copy of these lengths already?
     size_t len_op = strlen(m_source_dir);
     size_t len_np = strlen(m_dest_dir);
@@ -239,7 +234,7 @@ char* backup_session::translate_prefix_of_realpath(const char *absfile) {
 //
 // Description:
 //
-static int does_file_exist(const char *file) {
+static int does_file_exist(const char *file) throw() {
     int result = 0;
     struct stat sb;
     // We use stat to determine if the file does not exist.
@@ -260,8 +255,7 @@ static int does_file_exist(const char *file) {
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int backup_session::capture_open(const char *file, char **result)
-{
+int backup_session::capture_open(const char *file, char **result) throw() {
     if(!this->is_prefix(file)) {
         *result = NULL;
         return 0;
@@ -281,8 +275,7 @@ int backup_session::capture_open(const char *file, char **result)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int backup_session::capture_mkdir(const char *pathname)
-{
+int backup_session::capture_mkdir(const char *pathname) throw() {
     if(!this->is_prefix(pathname)) {
         return 0;
     }
@@ -295,14 +288,12 @@ int backup_session::capture_mkdir(const char *pathname)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void backup_session::add_to_copy_todo_list(const char *file_path)
-{
+void backup_session::add_to_copy_todo_list(const char *file_path) throw() {
      m_copier.add_file_to_todo(file_path);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void backup_session::cleanup(void)
-{
+void backup_session::cleanup(void) throw() {
     m_copier.cleanup();
 }

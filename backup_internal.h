@@ -12,28 +12,28 @@
 class backup_callbacks; // need a forward reference for this.
 
 
-unsigned long get_throttle(void);
+unsigned long get_throttle(void) throw();
 // Effect: Callback used during a backup session to get current throttle level.
 
-int create_subdirectories(const char*) __attribute__((warn_unused_result));
+int create_subdirectories(const char*) throw() __attribute__((warn_unused_result));
 
-char *malloc_snprintf(size_t size, const char *format, ...) __attribute__((format (printf, 2, 3)));
+char *malloc_snprintf(size_t size, const char *format, ...) throw() __attribute__((format (printf, 2, 3)));
 // Effect: Return a malloced string of the given size containing the results of doing snprintf(string,size,format,...)
 //  No errors occur if the size isn't big enough, instead a properly null-terminated string of at most size is returned without overflowing any buffers.
 
-int open_path(const char *file_path) __attribute__((warn_unused_result));
+int open_path(const char *file_path) throw() __attribute__((warn_unused_result));
 // Effect: Create a backup path for a given file if it doesn't exist already.
 
-void backup_pause_disable(bool b);
+void backup_pause_disable(bool b) throw();
 
-void backup_set_start_copying(bool b); // When the backup has started and is about to start copying, wait for this boolean to be true (true by default).
-bool backup_is_capturing(void);        // Return true if the backup has started capturing.
-bool backup_done_copying(void);          // Return true if the backup has finished copying.  This goes true sometime after is_capturing goes true. 
-void backup_set_keep_capturing(bool b);
+void backup_set_start_copying(bool b) throw(); // When the backup has started and is about to start copying, wait for this boolean to be true (true by default).
+bool backup_is_capturing(void) throw();        // Return true if the backup has started capturing.
+bool backup_done_copying(void) throw();          // Return true if the backup has finished copying.  This goes true sometime after is_capturing goes true. 
+void backup_set_keep_capturing(bool b) throw();
 // Effect:  By default, when a backup finishes, it disables capturing.  If before the backup finishes, someone calls backup_set_keep_capturing(true)
 //  then the capturing will keep running until someone calls backup_set_capturing(false).
 //  This can be called by any thread.
 
-static inline void ignore(int a __attribute__((unused))) {}
+static inline void ignore(int a __attribute__((unused))) throw() {}
 
 #endif // end of header guardian.

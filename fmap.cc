@@ -30,8 +30,7 @@ static pthread_mutex_t get_put_mutex = PTHREAD_MUTEX_INITIALIZER;
 //
 //     Constructor.
 //
-fmap::fmap()
-{}
+fmap::fmap() throw() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -41,8 +40,7 @@ fmap::fmap()
 //
 //     Destructor.
 //
-fmap::~fmap()
-{
+fmap::~fmap() throw() {
     for(std::vector<file_description *>::size_type i = 0; i < m_map.size(); ++i)
     {
         description *file = m_map[i];
@@ -57,7 +55,7 @@ fmap::~fmap()
 
 ////////////////////////////////////////////////////////////////////////////////
 // Description:  See fmap.h.
-int fmap::get(int fd, description** resultp) {
+int fmap::get(int fd, description** resultp) throw() {
     if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
@@ -68,7 +66,7 @@ int fmap::get(int fd, description** resultp) {
     return 0;
 }
 
-description* fmap::get_unlocked(int fd) {
+description* fmap::get_unlocked(int fd) throw() {
     if (fd < 0) return NULL;
     description *result;
     if ((size_t)fd >= m_map.size()) {
@@ -80,8 +78,7 @@ description* fmap::get_unlocked(int fd) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void fmap::put_unlocked(int fd, description *file)
-{
+void fmap::put_unlocked(int fd, description *file) throw() {
     this->grow_array(fd);
     glass_assert(m_map[fd] == NULL);
     m_map[fd] = file;
@@ -98,7 +95,7 @@ void fmap::put_unlocked(int fd, description *file)
 //
 // Requires: the fd is something currently mapped.
 
-int fmap::erase(int fd) {
+int fmap::erase(int fd) throw() {
     lock_fmap();
     if ((size_t)fd  >= m_map.size()) {
         unlock_fmap();
@@ -123,8 +120,7 @@ int fmap::erase(int fd) {
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-void fmap::erase_unlocked(int fd)
-{
+void fmap::erase_unlocked(int fd) throw() {
     if ((size_t)fd < m_map.size()) {
         m_map[fd] = NULL;
     }
@@ -136,8 +132,7 @@ void fmap::erase_unlocked(int fd)
 //
 // size():
 //
-int fmap::size(void)
-{
+int fmap::size(void) throw() {
     return  m_map.size();
 }
 
@@ -154,8 +149,7 @@ int fmap::size(void)
 // backup directory.
 // 
 // Requires: the get_put_mutex is held
-void fmap::grow_array(int fd)
-{
+void fmap::grow_array(int fd) throw() {
     if (fd>=0) {
         while(m_map.size() <= (size_t)fd) {
             m_map.push_back(NULL);
@@ -165,11 +159,11 @@ void fmap::grow_array(int fd)
     }
 }
 
-void lock_fmap(void) {
+void lock_fmap(void) throw() {
     pmutex_lock(&get_put_mutex);
 }
 
-void unlock_fmap(void) {
+void unlock_fmap(void) throw() {
     pmutex_unlock(&get_put_mutex);
 }
 

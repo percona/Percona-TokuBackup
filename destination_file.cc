@@ -16,14 +16,13 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-destination_file::destination_file(const int opened_fd, const char * full_path)
+destination_file::destination_file(const int opened_fd, const char * full_path) throw()
     : m_fd(opened_fd), m_path(full_path)
 {};
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-destination_file::~destination_file()
-{
+destination_file::~destination_file() throw() {
     if (m_path != NULL) {
         free((void*)m_path);
     }
@@ -31,8 +30,7 @@ destination_file::~destination_file()
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int destination_file::close(void) const
-{
+int destination_file::close(void) const throw() {
     // TODO: #6544 Check refcount, if it's zero we REALLY have to close
     // the file.  Otherwise, if there are any references left, 
     // we can only decrement the refcount; other file descriptors
@@ -48,8 +46,7 @@ int destination_file::close(void) const
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int destination_file::pwrite(const void *buf, size_t nbyte, off_t offset) const
-{
+int destination_file::pwrite(const void *buf, size_t nbyte, off_t offset) const throw() {
     // Get the data written out, or do 
     while (nbyte > 0) {
         ssize_t wr = call_real_pwrite(m_fd, buf, nbyte, offset);
@@ -75,8 +72,7 @@ int destination_file::pwrite(const void *buf, size_t nbyte, off_t offset) const
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int destination_file::truncate(off_t length) const
-{
+int destination_file::truncate(off_t length) const throw() {
     int r = 0;
     r = call_real_ftruncate(m_fd, length);
     if (r != 0) {
@@ -89,8 +85,7 @@ int destination_file::truncate(off_t length) const
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int destination_file::unlink(void) const
-{
+int destination_file::unlink(void) const throw() {
     int r = call_real_unlink(m_path);
     if (r != 0) {
         r = errno;
@@ -102,8 +97,7 @@ int destination_file::unlink(void) const
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int destination_file::rename(const char *new_path)
-{
+int destination_file::rename(const char *new_path) throw() {
     int r = 0;
     char * new_destination_path = strdup(new_path);
     if (new_destination_path == NULL) {
@@ -130,14 +124,12 @@ int destination_file::rename(const char *new_path)
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int destination_file::get_fd(void) const
-{
+int destination_file::get_fd(void) const throw() {
     return m_fd;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-const char * destination_file::get_path(void) const
-{
+const char * destination_file::get_path(void) const throw() {
     return m_path;
 }

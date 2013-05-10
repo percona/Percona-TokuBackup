@@ -52,30 +52,30 @@ private:
     char * volatile m_errstring;                 // The error string to be passed to the polling function.  This string is malloc'd and owned by the manager.  This can be read without the mutex.
 
 public:
-    manager(void);
-    ~manager(void);
+    manager(void) throw();
+    ~manager(void) throw();
     // N.B. the google style guide requires all references to be either labeled as a const, or declared to be pointers.
     // I see no reason to use reference variables.  They are redundant with pointers.
-    int do_backup(const char *source, const char *dest, backup_callbacks *calls);
+    int do_backup(const char *source, const char *dest, backup_callbacks *calls) throw();
 
     // Methods used during interposition:
-    int open(int fd, const char *file) __attribute__((warn_unused_result)); // returns 0 on success, error number on failure and it has reported the error to the backup manager.
+    int open(int fd, const char *file) throw() __attribute__((warn_unused_result)); // returns 0 on success, error number on failure and it has reported the error to the backup manager.
     void close(int fd); // It has reported the error to the backup manager, and the application doesn't care.
-    ssize_t write(int fd, const void *buf, size_t nbyte); // Actually performs the write on fd (so that a lock can be obtained).
-    ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset); // Actually performs the write on fd (so that a lock can be obtained).
-    ssize_t read(int fd, void *buf, size_t nbyte);        // Actually performs the read (so a lock can be obtained).  Returns the number read.
-    off_t   lseek(int fd, size_t nbyte, int whence);      // Actually performs the seek (so a lock can be obtained).
-    int rename(const char *oldpath, const char *newpath);
-    int unlink(const char *path);
-    int ftruncate(int fd, off_t length);                  // Actually performs the trunate (so a lock can be obtained).
-    int truncate(const char *path, off_t length);
-    void mkdir(const char *pathname);
+    ssize_t write(int fd, const void *buf, size_t nbyte) throw(); // Actually performs the write on fd (so that a lock can be obtained).
+    ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset) throw(); // Actually performs the write on fd (so that a lock can be obtained).
+    ssize_t read(int fd, void *buf, size_t nbyte) throw();        // Actually performs the read (so a lock can be obtained).  Returns the number read.
+    off_t   lseek(int fd, size_t nbyte, int whence) throw();      // Actually performs the seek (so a lock can be obtained).
+    int rename(const char *oldpath, const char *newpath) throw();
+    int unlink(const char *path) throw();
+    int ftruncate(int fd, off_t length) throw();                  // Actually performs the trunate (so a lock can be obtained).
+    int truncate(const char *path, off_t length) throw();
+    void mkdir(const char *pathname) throw();
     
-    void set_throttle(unsigned long bytes_per_second); // This is thread-safe.
-    unsigned long get_throttle(void);                 // This is thread-safe.
+    void set_throttle(unsigned long bytes_per_second) throw(); // This is thread-safe.
+    unsigned long get_throttle(void) const throw();                 // This is thread-safe.
 
-    void fatal_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4)));
-    void backup_error(int errnum, const char *format, ...) __attribute__((format(printf,3,4)));
+    void fatal_error(int errnum, const char *format, ...) throw() __attribute__((format(printf,3,4)));
+    void backup_error(int errnum, const char *format, ...) throw() __attribute__((format(printf,3,4)));
     // Effect: Set the error information and turn off the backup.  
     //   For fatal errors, the backup manager is dead, and can not do any more backups.
     //   For backup errors, the backup manager isn't dead  so the user could try doing backup again.
@@ -84,26 +84,26 @@ public:
     //  If this function is called on the backup thread, the errors are reported immediately.
     //  If this function is called on another thread, the error is saved for later so that the backup thread can report it.
   private:
-    void backup_error_ap(int errnum, const char *format, va_list ap); // This is the internal shared part of those two functions.
+    void backup_error_ap(int errnum, const char *format, va_list ap) throw(); // This is the internal shared part of those two functions.
 
   public:
     // TODO: #6537 Factor the test interface out of the main class, cleanly.
     // Test interface.  We'd probably like to compile all this stuff away in production code.
-    void pause_disable(bool pause);
-    void set_keep_capturing(bool keep_capturing);    // Tell the manager to keep capturing until told not to. This is thread safe.
-    bool is_capturing(void);                         // Is the manager capturing?
-    bool is_done_copying(void);                      // Is the manager done copying (true sometime after is_capturing)
-    void set_start_copying(bool start_copying);     // Tell the manager not to start copying (by passing false) and then to start copying (by passing true). This is thread safe.
+    void pause_disable(bool pause) throw();
+    void set_keep_capturing(bool keep_capturing) throw();    // Tell the manager to keep capturing until told not to. This is thread safe.
+    bool is_capturing(void) throw();                         // Is the manager capturing?
+    bool is_done_copying(void) throw();                      // Is the manager done copying (true sometime after is_capturing)
+    void set_start_copying(bool start_copying) throw();     // Tell the manager not to start copying (by passing false) and then to start copying (by passing true). This is thread safe.
     // end of test interface
 
 private:
     // Backup session control methods.
-    bool try_to_enter_session_and_lock(void);
-    void exit_session_and_unlock_or_die(void);
-    int prepare_directories_for_backup(backup_session *session);
-    void disable_descriptions(void);
-    void set_error_internal(int errnum, const char *format, va_list ap);
-    int setup_description_and_source_file(int fd, const char *file);
+    bool try_to_enter_session_and_lock(void) throw();
+    void exit_session_and_unlock_or_die(void) throw();
+    int prepare_directories_for_backup(backup_session *session) throw();
+    void disable_descriptions(void) throw();
+    void set_error_internal(int errnum, const char *format, va_list ap) throw();
+    int setup_description_and_source_file(int fd, const char *file) throw();
 };
 
 extern manager the_manager;

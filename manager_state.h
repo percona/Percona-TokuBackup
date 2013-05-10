@@ -10,17 +10,17 @@
 
 class manager_state {
 public:
-    manager_state();
-    bool is_dead(void);
-    bool is_alive(void);
-    void kill(void);
-    bool capture_is_enabled(void);
-    bool copy_is_enabled(void);
+    manager_state() throw();
+    bool is_dead(void) throw();
+    bool is_alive(void) throw();
+    void kill(void) throw();
+    bool capture_is_enabled(void) throw();
+    bool copy_is_enabled(void) throw();
 protected:
-    void enable_capture(void);
-    void disable_capture(void);
-    void enable_copy(void);
-    void disable_copy(void);
+    void enable_capture(void) throw();
+    void disable_capture(void) throw();
+    void enable_copy(void) throw();
+    void disable_copy(void) throw();
 private:
     volatile bool m_is_dead;
     volatile bool m_capture_enabled;

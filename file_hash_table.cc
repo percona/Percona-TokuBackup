@@ -19,16 +19,16 @@ pthread_mutex_t file_hash_table::m_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 ////////////////////////////////////////////////////////
 //
-file_hash_table::file_hash_table() : m_count(0),
-                                     m_array(new source_file*[1]),
-                                     m_size(1)
+file_hash_table::file_hash_table() throw() : m_count(0),
+                                             m_array(new source_file*[1]),
+                                             m_size(1)
 {
     m_array[0] = NULL;
 }
 
 ////////////////////////////////////////////////////////
 //
-file_hash_table::~file_hash_table() {
+file_hash_table::~file_hash_table() throw() {
     for (size_t i=0; i < m_size; i++) {
         while (source_file *head = m_array[i]) {
             m_array[i] = head->next();
@@ -40,8 +40,7 @@ file_hash_table::~file_hash_table() {
 
 ////////////////////////////////////////////////////////
 //
-void file_hash_table::get_or_create_locked(const char * const file_name, source_file **file)
-{
+void file_hash_table::get_or_create_locked(const char * const file_name, source_file **file) throw() {
     source_file * source = NULL;
     this->lock();
 
@@ -60,7 +59,7 @@ void file_hash_table::get_or_create_locked(const char * const file_name, source_
 
 ////////////////////////////////////////////////////////
 //
-source_file* file_hash_table::get(const char * const full_file_path) const
+source_file* file_hash_table::get(const char * const full_file_path) const throw()
 {
     int hash_index = this->hash(full_file_path);
     source_file *file_found = m_array[hash_index];
@@ -78,16 +77,14 @@ source_file* file_hash_table::get(const char * const full_file_path) const
 
 ////////////////////////////////////////////////////////
 //
-void file_hash_table::put(source_file * const file)
-{
+void file_hash_table::put(source_file * const file) throw() {
     int hash_index = this->hash(file->name());
     this->insert(file, hash_index);
 }
 
 ////////////////////////////////////////////////////////
 //
-int file_hash_table::hash(const char * const file) const
-{
+int file_hash_table::hash(const char * const file) const  throw() {
     int length = strlen(file);
     uint64_t the_hash[2];
     MurmurHash3_x64_128(file, length, 0, the_hash);
@@ -96,7 +93,7 @@ int file_hash_table::hash(const char * const file) const
 
 ////////////////////////////////////////////////////////
 //
-void file_hash_table::insert(source_file * const file, int hash_index)
+void file_hash_table::insert(source_file * const file, int hash_index)  throw()
         // It's OK to insert the same file repeatedly (in which case the table is not modified)
 {
     source_file *current = m_array[hash_index];
@@ -110,7 +107,7 @@ void file_hash_table::insert(source_file * const file, int hash_index)
     maybe_resize();
 }
 
-void file_hash_table::maybe_resize(void) {
+void file_hash_table::maybe_resize(void) throw() {
     if (m_size < m_count) {
         source_file **old_array = m_array;
         size_t old_size = m_size;
@@ -135,8 +132,7 @@ void file_hash_table::maybe_resize(void) {
 
 ////////////////////////////////////////////////////////
 //
-void file_hash_table::remove(source_file * const file)
-{
+void file_hash_table::remove(source_file * const file) throw() {
     int hash_index = this->hash(file->name());
     source_file *current = m_array[hash_index];
     source_file *previous = NULL;
@@ -162,8 +158,7 @@ void file_hash_table::remove(source_file * const file)
 
 ////////////////////////////////////////////////////////
 //
-void file_hash_table::try_to_remove_locked(source_file * const file)
-{
+void file_hash_table::try_to_remove_locked(source_file * const file) throw() {
     this->lock();
     this->try_to_remove(file);
     this->unlock();
@@ -171,8 +166,7 @@ void file_hash_table::try_to_remove_locked(source_file * const file)
 
 ////////////////////////////////////////////////////////
 //
-void file_hash_table::try_to_remove(source_file * const file)
-{
+void file_hash_table::try_to_remove(source_file * const file) throw() {
     file->remove_reference();
     if (file->get_reference_count() == 0) {
         file->try_to_remove_destination();
@@ -183,8 +177,7 @@ void file_hash_table::try_to_remove(source_file * const file)
 
 ////////////////////////////////////////////////////////
 //
-int file_hash_table::rename_locked(const char *old_path, const char *new_path, const char *dest_path)
-{
+int file_hash_table::rename_locked(const char *old_path, const char *new_path, const char *dest_path) throw() {
     int r;
     source_file * target = NULL;
     this->lock();
@@ -199,8 +192,7 @@ int file_hash_table::rename_locked(const char *old_path, const char *new_path, c
 
 ////////////////////////////////////////////////////////
 //
-int file_hash_table::rename(source_file * target, const char *new_source_name, const char *dest)
-{
+int file_hash_table::rename(source_file * target, const char *new_source_name, const char *dest) throw() {
     destination_file * dest_file = NULL;
     target->name_write_lock();
     
@@ -235,20 +227,19 @@ unlock_out:
 
 ////////////////////////////////////////////////////////
 //
-int file_hash_table::size(void) const
-{
+int file_hash_table::size(void) const throw() {
     return m_count;
 }
 
 ////////////////////////////////////////////////////////
 // Description: See file_hash_table.h.
-void file_hash_table::lock(void) {
+void file_hash_table::lock(void) throw() {
     pmutex_lock(&m_mutex);
 }
 
 ////////////////////////////////////////////////////////
 // Description: See file_hash_table.h.
-void file_hash_table::unlock(void) {
+void file_hash_table::unlock(void) throw() {
     pmutex_unlock(&m_mutex);
 }
 

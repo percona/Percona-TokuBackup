@@ -68,7 +68,7 @@ pthread_mutex_t copier::m_todo_mutex = PTHREAD_MUTEX_INITIALIZER;
 //
 //     Constructor for this copier object.
 //
-copier::copier(backup_callbacks *calls, file_hash_table * const table)
+copier::copier(backup_callbacks *calls, file_hash_table * const table) throw()
     : m_source(NULL), 
       m_dest(NULL), 
       m_calls(calls), 
@@ -86,8 +86,7 @@ copier::copier(backup_callbacks *calls, file_hash_table * const table)
 //     Adds a directory heirarchy to be copied from the given source
 // to the given destination.
 //
-void copier::set_directories(const char *source, const char *dest)
-{
+void copier::set_directories(const char *source, const char *dest) throw() {
     m_source = source;
     m_dest = dest;
 }
@@ -101,7 +100,7 @@ void copier::set_directories(const char *source, const char *dest)
 //     Loops through all files and subdirectories of the current 
 // directory that has been selected for backup.
 //
-int copier::do_copy(void) {
+int copier::do_copy(void) throw() {
     int r = 0;
     char *fname = 0;
     size_t n_known = 0;
@@ -151,7 +150,7 @@ out:
 }
 
 
-static void pathcat(char *dest, size_t destlen, const char *a, int alen, const char *b)
+static void pathcat(char *dest, size_t destlen, const char *a, int alen, const char *b) throw()
 // Effect: Concatenate paths A and B (insert a / between if needed) into dest.  If a ends with a / and b starts with a / then put only 1 / in.
 // Requires: destlen is big enough.  A is nonempty.
 {
@@ -175,7 +174,7 @@ static void pathcat(char *dest, size_t destlen, const char *a, int alen, const c
 // destination directory members to determine the exact location
 // of the file in both the original and backup locations.
 //
-int copier::copy_stripped_file(const char *file) {
+int copier::copy_stripped_file(const char *file) throw() {
     int r = 0;
     bool is_dot = (strcmp(file, ".") == 0);
     if (is_dot) {
@@ -219,7 +218,7 @@ out:
 // determine the relative location of the file in the directory
 // heirarchy.
 //
-int copier::copy_full_path(const char *source, const char* dest, const char *file) {
+int copier::copy_full_path(const char *source, const char* dest, const char *file) throw() {
     int r = 0;
     struct stat sbuf;
     int stat_r = stat(source, &sbuf);
@@ -307,8 +306,7 @@ out:
 // function creates the new file, then copies all the bytes from
 // one to the other.
 //
-int copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size)
-{
+int copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size) throw() {
     int srcfd = call_real_open(source, O_RDONLY);
     if (srcfd < 0) {
         int error = errno;
@@ -337,8 +335,7 @@ int copier::copy_regular_file(const char *source, const char *dest, off_t source
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-int copier::copy_using_source_info(source_info src_info, const char *path)
-{
+int copier::copy_using_source_info(source_info src_info, const char *path) throw() {
     source_file * file = NULL;
     TRACE("Creating new source file", path);
     m_table->get_or_create_locked(src_info.m_path, &file);
@@ -352,8 +349,7 @@ int copier::copy_using_source_info(source_info src_info, const char *path)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-int copier::create_destination_and_copy(source_info src_info,  const char *path)
-{
+int copier::create_destination_and_copy(source_info src_info,  const char *path) throw() {
     TRACE("Creating new destination file", path);
     char * dest_path = strdup(path);
     if (dest_path == NULL) {
@@ -406,7 +402,7 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-static int gettime_reporting_error(struct timespec *ts, backup_callbacks *calls) {
+static int gettime_reporting_error(struct timespec *ts, backup_callbacks *calls) throw() {
     int r = clock_gettime(CLOCK_MONOTONIC, ts);
     if (r!=0) {
         char string[1000];
@@ -426,7 +422,7 @@ static int gettime_reporting_error(struct timespec *ts, backup_callbacks *calls)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-static double tdiff(struct timespec a, struct timespec b)
+static double tdiff(struct timespec a, struct timespec b) throw()
 // Effect: Return a-b in seconds.
 {
     return (a.tv_sec - b.tv_sec) + 1e-9*(a.tv_nsec - b.tv_nsec);
@@ -440,7 +436,7 @@ static double tdiff(struct timespec a, struct timespec b)
 //     This section actually copies all the bytes from the source
 // file to our newly created backup copy.
 //
-int copier::copy_file_data(source_info src_info) {
+int copier::copy_file_data(source_info src_info) throw() {
     int r = 0;
     source_file * file = src_info.m_file;
     destination_file * dest = file->get_destination();
@@ -568,8 +564,7 @@ out:
 //     Loop through each entry, adding directories and regular
 // files to our copy 'todo' list.
 //
-int copier::add_dir_entries_to_todo(DIR *dir, const char *file)
-{
+int copier::add_dir_entries_to_todo(DIR *dir, const char *file) throw() {
     TRACE("--Adding all entries in this directory to todo list: ", file);
     int error = 0;
     pmutex_lock(&m_todo_mutex);
@@ -607,8 +602,7 @@ out:
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-void copier::add_file_to_todo(const char *file)
-{
+void copier::add_file_to_todo(const char *file) throw() {
     pmutex_lock(&m_todo_mutex);
     m_todo.push_back(strdup(file));
     pmutex_unlock(&m_todo_mutex);
@@ -626,7 +620,7 @@ void copier::add_file_to_todo(const char *file)
 //
 //     This should only be called if there is no future copy work.
 //
-void copier::cleanup(void) {
+void copier::cleanup(void) throw() {
     pmutex_lock(&m_todo_mutex);
     for(std::vector<char *>::size_type i = 0; i < m_todo.size(); ++i) {
         char *file = m_todo[i];

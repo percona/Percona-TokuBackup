@@ -20,19 +20,19 @@ private:
     pthread_mutex_t m_mutex;   // A mutex used to make m_offset move atomically when we perform a write (or read).
 
 public:
-    description();
-    ~description(void);
-    int init(void) __attribute__((warn_unused_result));
+    description() throw();
+    ~description(void) throw();
+    int init(void) throw() __attribute__((warn_unused_result));
     // Effect: Initialize a description.  (Note that the constructor isn't allowed to do anything meaningful, since error handling is tricky.
     //  Return 0 on success, otherwise inform the backup manager of the error (fatal_error or backup_error) and return the error code.
-    void set_source_file(source_file *file);
-    source_file * get_source_file(void) const;
-    void lock(void);
-    void unlock(void);
+    void set_source_file(source_file *file) throw();
+    source_file * get_source_file(void) const throw();
+    void lock(void) throw();
+    void unlock(void) throw();
 
-    void lseek(off_t new_offset);        
-    void increment_offset(ssize_t nbyte);
-    off_t get_offset(void); // return the current offset.
+    void lseek(off_t new_offset) throw();        
+    void increment_offset(ssize_t nbyte) throw();
+    off_t get_offset(void) throw(); // return the current offset.
 };
 
 #endif // end of header guardian.
