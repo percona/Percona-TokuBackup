@@ -33,10 +33,12 @@
 
 #define	FORCE_INLINE static inline __attribute__((always_inline))
 
+#ifndef MURMUR_64_ONLY
 inline uint32_t rotl32 ( uint32_t x, int8_t r )
 {
   return (x << r) | (x >> (32 - r));
 }
+#endif
 
 inline uint64_t rotl64 ( uint64_t x, int8_t r )
 {
@@ -54,10 +56,12 @@ inline uint64_t rotl64 ( uint64_t x, int8_t r )
 // Block read - if your platform needs to do endian-swapping or can only
 // handle aligned reads, do the conversion here
 
+#ifndef MURMUR_64_ONLY
 FORCE_INLINE uint32_t getblock ( const uint32_t * p, int i )
 {
   return p[i];
 }
+#endif
 
 FORCE_INLINE uint64_t getblock ( const uint64_t * p, int i )
 {
@@ -67,6 +71,7 @@ FORCE_INLINE uint64_t getblock ( const uint64_t * p, int i )
 //-----------------------------------------------------------------------------
 // Finalization mix - force all bits of a hash block to avalanche
 
+#ifndef MURMUR_64_ONLY
 FORCE_INLINE uint32_t fmix ( uint32_t h )
 {
   h ^= h >> 16;
@@ -77,6 +82,7 @@ FORCE_INLINE uint32_t fmix ( uint32_t h )
 
   return h;
 }
+#endif
 
 //----------
 
@@ -93,6 +99,7 @@ FORCE_INLINE uint64_t fmix ( uint64_t k )
 
 //-----------------------------------------------------------------------------
 
+#ifndef MURMUR_64_ONLY
 void MurmurHash3_x86_32 ( const void * key, int len,
                           uint32_t seed, void * out ) throw() {
   const uint8_t * data = (const uint8_t*)key;
@@ -145,9 +152,11 @@ void MurmurHash3_x86_32 ( const void * key, int len,
 
   *(uint32_t*)out = h1;
 } 
+#endif
 
 //-----------------------------------------------------------------------------
 
+#ifndef MURMUR_64_ONLY
 void MurmurHash3_x86_128 ( const void * key, const int len,
                            uint32_t seed, void * out ) throw() {
   const uint8_t * data = (const uint8_t*)key;
@@ -249,6 +258,7 @@ void MurmurHash3_x86_128 ( const void * key, const int len,
   ((uint32_t*)out)[2] = h3;
   ((uint32_t*)out)[3] = h4;
 }
+#endif
 
 //-----------------------------------------------------------------------------
 
