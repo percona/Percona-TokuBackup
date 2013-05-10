@@ -17,46 +17,17 @@
 #include <string.h>
 #include <unistd.h>
 
-static char *src, *dst;
-__thread int64_t delay_me_count = -1;
+int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+    char *src = get_src();
+    char *dst = get_dst();
+    setup_source();
+    setup_destination();
 
-static rename_fun_t original_rename;
-static int my_rename(const char *oldpath, const char *newpath) {
-    printf("Rename\n %s\n %s\n", oldpath, newpath);
-    printf("delay_me_count=%ld\n", delay_me_count);
-    //    printf("my_open(\"%s\", %d,...) delay=%d\n", path, flags, delay_it);
-    //    if (delay_it) {
-    //        backup_set_keep_capturing(false); // inside the open we let the capture finish, then sleep
-    //        sleep(1);
-    //        printf("slept.\n");
-    //    }
-    if (delay_me_count--==0) {
-        backup_set_keep_capturing(false);
-        sleep(1);
-    }
-    int r = original_rename(oldpath, newpath);
-    if (delay_me_count--==0) {
-        backup_set_keep_capturing(false);
-        sleep(1);
-    }
-    return r;
-}
-
-int64_t do_rename_delay_count = -1;
-static void* do_rename(void* ignore) {
-    delay_me_count = do_rename_delay_count;
+    size_t len = strlen(src) + 20; 
+    char *no_such_path = (char*)malloc(len);
+    char *newpath      = (char*)malloc(len);
     {
-        int fd = openf(O_RDWR | O_CREAT, 0777, "%s/old.data", src);
-        check(fd>=0);
-        int r = close(fd);
-        check(r==0);
-    }
-
-    size_t len = strlen(src) + 10; 
-    char *gonpath = (char*)malloc(len);
-    char *newpath = (char*)malloc(len);
-    {
-        size_t r = snprintf(gonpath, len, "%s/gon.data", src);
+        size_t r = snprintf(no_such_path, len, "%s/no_such.data", src);
         check(r<len);
     }
     {
@@ -64,38 +35,17 @@ static void* do_rename(void* ignore) {
         check(r<len);
     }
 
-    backup_set_keep_capturing(true); //this must be done before start_copying.
-    backup_set_start_copying(true);
-    while(!backup_done_copying()) sched_yield();
-    int r = rename(gonpath, newpath);
-    check(r==-1);
-    backup_set_keep_capturing(false);
-    free(gonpath);
-    free(newpath);
-    return ignore;
-}
-
-int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
-    src = get_src();
-    dst = get_dst();
-    setup_source();
-    setup_destination();
-    original_rename = register_rename(my_rename);
     pthread_t thread;
-    pthread_t open_th;
     backup_set_start_copying(false);
     start_backup_thread(&thread);
-    {
-        do_rename_delay_count = 0;
-        int r = pthread_create(&open_th, NULL, do_rename, NULL);
-        check(r==0);
-    }
+    backup_set_keep_capturing(true);
+    backup_set_start_copying(true);
+    int r = rename(no_such_path, newpath);
+    check(r==-1);
+    backup_set_keep_capturing(false);
     finish_backup_thread(thread);
-    {
-        void *result;
-        int r = pthread_join(open_th, &result);
-        check(r==0 && result==NULL);
-    }
+    free(no_such_path);
+    free(newpath);
     free(src);
     free(dst);
     return 0;
