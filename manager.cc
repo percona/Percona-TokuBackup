@@ -652,7 +652,10 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     const char * full_old_path = realpath(oldpath, NULL);
     if (full_old_path == NULL) {
         error = errno;
-        the_manager.backup_error(error, "Could not rename file.");
+        if (error == ENOMEM) {
+            the_manager.backup_error(error, "Could not rename file.");
+        }
+
         return call_real_rename(oldpath, newpath);
     }
 
@@ -661,7 +664,10 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     user_error = call_real_rename(oldpath, newpath);
     if (user_error != 0) {
         error = errno;
-        the_manager.backup_error(error, "Could not rename user file: %s", oldpath);
+        if (error == ENOMEM) {
+            the_manager.backup_error(error, "Could not rename user file: %s", oldpath);
+        }
+
         goto source_free_out;
     }
 
