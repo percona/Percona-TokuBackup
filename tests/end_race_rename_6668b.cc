@@ -92,7 +92,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         check(r==0);
     }
     finish_backup_thread(thread);
-    cleanup_dirs(); // try to delete things out from under the running open.
+    systemf("rm -rf %s", dst); // delete things out from under the rename()
     {
         void *result;
         int r = pthread_join(open_th, &result);
