@@ -7,14 +7,7 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include <stdlib.h>
-#include <stdio.h>
-static inline void check_fun(long predicate, const char *expr, const char *file, int line) throw() {
-    if (!predicate) {
-        fprintf(stderr, "check(%s) failed at %s:%d\n", expr, file, line);
-        abort();
-    }
-}
+void check_fun(long predicate, const char *expr, const char *file, int line) throw();
 
 // Like assert, except it doesn't go away under NDEBUG.
 // Do this with a function so that we don't get false answers on branch coverage.

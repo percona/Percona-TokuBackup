@@ -13,6 +13,7 @@ set(CMAKE_CXX_FLAGS "-Werror -W -Wall -Wshadow ${CMAKE_CXX_FLAGS}")
 set(BACKUP_SOURCES
 	backup_debug.cc
 	backup_directory.cc
+        check.cc
 	copier.cc
 	description.cc
 	destination_file.cc

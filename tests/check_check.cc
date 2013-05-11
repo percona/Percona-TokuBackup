@@ -1,5 +1,6 @@
 #include "check.h"
 #include <signal.h>
+#include <stdlib.h>
 
 // To see if check(0) aborts, install a signal handler that does exit(0).
 
