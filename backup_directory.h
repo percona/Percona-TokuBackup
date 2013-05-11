@@ -23,7 +23,6 @@ class backup_session
 public:
     backup_session(const char *source, const char *dest, backup_callbacks *call, file_hash_table * const table, int *errnum) throw(); // returns a nonzero in *errnum if an error callback has occured.
     ~backup_session() throw();
-    int init(const char *source, const char *dest) throw(); // returns error code if there was an error setting the directory names.
     int do_copy() throw() __attribute__((warn_unused_result)); // returns the error code (not in errno)
     int directories_set(backup_callbacks*) throw();
     bool is_prefix(const char *file) throw();
