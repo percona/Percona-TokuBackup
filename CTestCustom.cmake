@@ -5,12 +5,17 @@ foreach(test
  backup_no_fractal_tree_threaded
  backup_no_ft2
  cannotopen_dest_dir
+ check_check
  closedirfails_dest_dir
  copy_files
+ debug_coverage
  disable_race
  empty_dest
  end_race_open_6668
  end_race_rename_6668
+ end_race_rename_6668b
+ failed_rename_kills_backup_6703
+ failed_unlink_kills_backup_6704
  file_hash_table_tests
  ftruncate
  ftruncate_injection_6480
@@ -38,6 +43,7 @@ foreach(test
  test6483_mkdir_injection
  throttle_6564
  unlink
+ unlink_copy_race
  unlink_during_copy_test6515
  unlink_during_copy_test6515b
  unlink_during_copy_test6515c

@@ -43,6 +43,7 @@ set(glassboxtests
   check_check
   debug_coverage
   failed_rename_kills_backup_6703 ## Needs the keep_capturing API
+  failed_unlink_kills_backup_6704 ## Needs the keep_capturing API
   ftruncate                       ## Needs the keep_capturing API
   ftruncate_injection_6480
   copy_files
