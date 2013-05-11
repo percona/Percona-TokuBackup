@@ -4,6 +4,7 @@
 #ident "$Id$"
 
 #include "backup_debug.h"
+#include "check.h"
 #include "copier.h"
 #include "file_hash_table.h"
 #include "manager.h"
@@ -159,11 +160,7 @@ static void pathcat(char *dest, size_t destlen, const char *a, int alen, const c
     bool a_has_slash_at_end = (alen>0) && (a[alen-1]=='/');
     if (b[0]=='/') b++;
     int r = snprintf(dest, destlen, "%s%s%s", a, a_has_slash_at_end ? "" : "/", b);
-    if (r>=(int)destlen) {
-        static bool ecount=0;
-        ecount++;
-        if (ecount==0) fprintf(stderr, "pathcat length computation error in backup\n");
-    }
+    check(r<(int)destlen);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
