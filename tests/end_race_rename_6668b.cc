@@ -20,6 +20,7 @@
 static char *src, *dst;
 __thread int64_t delay_me_count = -1;
 
+bool did_stop_capture = false;
 static rename_fun_t original_rename;
 static int my_rename(const char *oldpath, const char *newpath) {
     printf("Rename\n %s\n %s\n", oldpath, newpath);
@@ -33,11 +34,13 @@ static int my_rename(const char *oldpath, const char *newpath) {
     if (delay_me_count--==0) {
         backup_set_keep_capturing(false);
         sleep(1);
+        did_stop_capture = true;
     }
     int r = original_rename(oldpath, newpath);
     if (delay_me_count--==0) {
         backup_set_keep_capturing(false);
         sleep(1);
+        did_stop_capture = true;
     }
     return r;
 }
@@ -67,10 +70,16 @@ static void* do_rename(void* ignore) {
     backup_set_keep_capturing(true); //this must be done before start_copying.
     backup_set_start_copying(true);
     while(!backup_done_copying()) sched_yield();
-    backup_set_keep_capturing(false);
-    while(!backup_is_capturing()) sched_yield();
     int r = rename(oldpath, newpath);
     check(r==0);
+
+    if (!did_stop_capture) {
+        // If the keep_capturing wasn't disabled before, disable it now.
+        backup_set_keep_capturing(false);
+        while(!backup_is_capturing()) sched_yield();
+        did_stop_capture = true;
+    }
+
     free(oldpath);
     free(newpath);
     return ignore;
