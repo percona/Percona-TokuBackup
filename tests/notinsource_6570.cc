@@ -1,5 +1,5 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
-#ident "$Id: unlink_during_copy_test6515.cc 55458 2013-04-13 21:44:50Z bkuszmaul $"
+#ident "$Id$"
 
 // Test doing operations that are in a directory that's not backed up.
 

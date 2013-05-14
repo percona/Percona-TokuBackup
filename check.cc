@@ -1,4 +1,4 @@
-#ident "$Id: check.h 56070 2013-05-09 15:42:27Z bkuszmaul $"
+#ident "$Id$"
 
 #include <stdlib.h>
 #include <stdio.h>
