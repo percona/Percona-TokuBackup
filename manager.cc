@@ -210,8 +210,8 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
     prwlock_unlock(&m_session_rwlock);
 
     WHEN_GLASSBOX( ({
-                m_is_capturing = true;
                 m_done_copying = false;
+                m_is_capturing = true;
                 while (!m_start_copying) sched_yield();
             }) );
 

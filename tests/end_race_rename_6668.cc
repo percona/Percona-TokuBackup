@@ -60,11 +60,14 @@ static void* do_rename(void* ignore) {
         check(r<len);
     }
 
-    backup_set_keep_capturing(true); //this must be done before start_copying.
+    // This sequence is very stylized.  Do it wrong, and you'll have races in your test code.
+    while(!backup_is_capturing()) sched_yield();
+    backup_set_keep_capturing(true);
     backup_set_start_copying(true);
     while(!backup_done_copying()) sched_yield();
     backup_set_keep_capturing(false);
     while(!backup_is_capturing()) sched_yield();
+
     int r = rename(old_realpath, newpath);
     check(r==0);
     free(old_realpath);

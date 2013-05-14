@@ -33,6 +33,27 @@ void backup_set_keep_capturing(bool b) throw();
 // Effect:  By default, when a backup finishes, it disables capturing.  If before the backup finishes, someone calls backup_set_keep_capturing(true)
 //  then the capturing will keep running until someone calls backup_set_capturing(false).
 //  This can be called by any thread.
+// You must do this sequence:
+//    Initially:  start_copying=true, is_capturing=false, keep_capturing=false
+// Before the backup thread starts, if you want to put in the pauses:
+//    backup_set_start_copying(false);   
+// Then you have the application (on the left) and the backup thread on the right
+//    
+//    applicationthread                  backupthread
+//
+//                                       done_copying = false
+//                                       is_capturing = true
+//    while(!is_capturing)
+//    keep_capturing=true;
+//    start_copying=true;
+//                                       while(!start_copying);
+//                                       done_copying=true;
+//    while(!done_copying);
+//    keep_capturing=false;
+//                                       while(keep_capturing);
+//                                       is_capturing=false;
+//    while(!is_capturing);
+// and when we are done we ahve start_copying=true, is_capturing=false, keep_capturing=false so we can go again.
 
 static inline void ignore(int a __attribute__((unused))) throw() {}
 
