@@ -27,8 +27,8 @@ public:
     // These methods rename at least the source_file object and
     // reinsert it into our hash table.  If there is a
     // destination_file object, that file is also renamed.
-    int rename_locked(const char *old_name, const char *new_name, const char *dest) throw();
-    int rename(source_file * const target, const char *new_name, const char *dest) throw();
+    int rename_locked(const char *old_name, const char *new_name, const char *dest) throw(); // On success return 0, otherwise return error number (not in errno).
+    int rename(source_file * const target, const char *new_name, const char *dest) throw(); // On success return 0, otherwise return error number (not in errno).
 
     void lock(void) throw(); // no return results since we assume that mutexes work.
     void unlock(void) throw();

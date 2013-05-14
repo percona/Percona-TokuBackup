@@ -178,7 +178,7 @@ void file_hash_table::try_to_remove(source_file * const file) throw() {
 ////////////////////////////////////////////////////////
 //
 int file_hash_table::rename_locked(const char *old_path, const char *new_path, const char *dest_path) throw() {
-    int r;
+    int r = 0;
     source_file * target = NULL;
     this->lock();
 

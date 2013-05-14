@@ -22,8 +22,8 @@ static char *delay_this_old;
 
 static rename_fun_t original_rename;
 static int my_rename(const char *oldpath, const char *newpath) {
-    printf("Rename\n %s\n %s\n", oldpath, newpath);
-    bool delay_it = strcmp(delay_this_old, oldpath)==0;
+    printf("Rename\n %s\n %s (delaying\n %s)\n", oldpath, newpath, delay_this_old);
+    bool delay_it = (strcmp(delay_this_old, oldpath)==0);
     printf("delay=%d\n", delay_it);
     //    printf("my_open(\"%s\", %d,...) delay=%d\n", path, flags, delay_it);
     //    if (delay_it) {
@@ -54,6 +54,7 @@ static void* do_rename(void* ignore) {
         size_t r = snprintf(oldpath, len, "%s/old.data", src);
         check(r<len);
     }
+    char *old_realpath = realpath(oldpath, NULL);
     {
         size_t r = snprintf(newpath, len, "%s/new.data", src);
         check(r<len);
@@ -64,8 +65,9 @@ static void* do_rename(void* ignore) {
     while(!backup_done_copying()) sched_yield();
     backup_set_keep_capturing(false);
     while(!backup_is_capturing()) sched_yield();
-    int r = rename(oldpath, newpath);
+    int r = rename(old_realpath, newpath);
     check(r==0);
+    free(old_realpath);
     free(oldpath);
     free(newpath);
     return ignore;

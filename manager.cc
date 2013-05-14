@@ -719,8 +719,8 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
             // session.
             r = m_table.rename_locked(full_old_path, full_new_path, full_new_destination_path);
             if (r != 0) {
-                error = errno;
-                this->backup_error(error, "pthread error. Coudl not rename().");
+                error = r;
+                this->backup_error(error, "Could not rename(%s, %s).", full_new_path, full_new_destination_path);
             } else {
                 // If the copier has already copied or is copying the
                 // file, this will succceed.  If the copier has not yet

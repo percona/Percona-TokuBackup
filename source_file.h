@@ -37,7 +37,7 @@ public:
     void name_write_lock(void) throw();
     void name_read_lock(void) throw();
     void name_unlock(void) throw();
-    int rename(const char * new_name) throw();
+    int rename(const char * new_name) throw(); // return 0 on success, error number on failure (doesn't set errno)
 
     // Note: These three methods are not inherintly thread safe.
     // They must be protected with a mutex.
