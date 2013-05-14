@@ -33,11 +33,16 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     pthread_t thread;
     backup_set_start_copying(false);
     start_backup_thread(&thread);
+
+    // The sequence of controlls is very stylized.  Do it wrong, and you'll have races in your test code.
+    while(!backup_is_capturing()) sched_yield();
     backup_set_keep_capturing(true);
     backup_set_start_copying(true);
     int r = unlink(no_such_path);
     check(r==-1);
+    while(!backup_done_copying()) sched_yield();
     backup_set_keep_capturing(false);
+    while(!backup_is_capturing()) sched_yield();
     finish_backup_thread(thread);
     free(no_such_path);
     free(src);
