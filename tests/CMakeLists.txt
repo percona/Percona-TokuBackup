@@ -87,3 +87,9 @@ foreach(test ${glassboxtests})
     add_valgrind_tool_test(drd ${test})
   endif (USE_GRIND)
 endforeach(test)
+
+## Special library and linking needed for rename injection.
+add_library(rp STATIC realpath_library.cc)
+add_executable(realpath_error_injection realpath_error_injection.cc backup_test_helpers)
+target_link_libraries(realpath_error_injection rp HotBackupGlassbox ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+add_test(realpath_error_injection realpath_error_injection --testname realpath_error_injection) 

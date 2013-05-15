@@ -1065,7 +1065,7 @@ int manager::setup_description_and_source_file(int fd, const char *file) throw()
         error = errno;
         // This error is not recoverable, because we can't guarantee 
         // that we can CAPTURE any calls on the given fd or file.
-        this->fatal_error(errno, "Could not allocate space for backup.");
+        this->backup_error(errno, "Could not allocate space for backup.");
         goto error_out;
     }
 
