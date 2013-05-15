@@ -32,9 +32,9 @@ static void create_n_files(void)
         assert(fd > 0);
         char buf[SIZE] = {BEFORE};
         int pwrite_r = pwrite(fd, buf, SIZE, 0);
-        assert(pwrite_r == SIZE);
+        check(pwrite_r == SIZE);
         int close_r = close(fd);
-        assert(close_r == 0);
+        check(close_r == 0);
     }
 
     free((void*)src);
@@ -53,12 +53,12 @@ static int unlink_verify(void)
         snprintf(source_file, SIZE, "%s/my_%d.data", source_scratch, i);
         struct stat blah;
         int stat_r = stat(source_file, &blah);
-        assert(stat_r != 0);
+        check(stat_r != 0);
         int error = errno;
         if (error != ENOENT) {
             printf("source file : %s should not exist.\n", source_file);
             result = -1;
-            assert(stat_r != 0);
+            check(stat_r != 0);
         }
 
         snprintf(destination_file, SIZE,  "%s/my_%d.data", destination_scratch, i);
@@ -68,7 +68,7 @@ static int unlink_verify(void)
             perror("");
             printf("destination file : %s should not exist.\n", destination_file);
             result = -1;
-            assert(stat_r != 0);
+            check(stat_r != 0);
         }
     }
 
@@ -84,7 +84,7 @@ static void my_unlink(int i)
     char name[PATH_MAX] = {0};
     snprintf(name, PATH_MAX, "%s/my_%d.data", free_me, i);
     r = unlink(name);
-    assert(r == 0);
+    check(r == 0);
     free((void*) free_me);
 }
 

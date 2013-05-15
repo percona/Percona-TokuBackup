@@ -26,56 +26,56 @@ static void exercise(void) {
         assert(fda>=0);
         {
             ssize_t r = write(fda, filea_name, slen);
-            assert(r==(ssize_t)slen);
+            check(r==(ssize_t)slen);
         }
         {
             int r = close(fda);
-            assert(r==0);
+            check(r==0);
         }
         {
             int r = unlink(filea_name);
-            assert(r==0);
+            check(r==0);
         }
     }
     // open, unlink, write, close
     {
         char filea_name[nlen];
         size_t slen = snprintf(filea_name, nlen, "%s/filea", not_src);
-        assert(slen<nlen);
+        check(slen<nlen);
         int fda = open(filea_name, O_RDWR|O_CREAT, 0777);
-        assert(fda>=0);
+        check(fda>=0);
         {
             int r = unlink(filea_name);
-            assert(r==0);
+            check(r==0);
         }
         {
             ssize_t r = write(fda, filea_name, slen);
-            assert(r==(ssize_t)slen);
+            check(r==(ssize_t)slen);
         }
         {
             int r = close(fda);
-            assert(r==0);
+            check(r==0);
         }
     }
     // open, write, rename, close2
     {
         char filea_name[nlen];
         char fileb_name[nlen];
-        size_t alen = snprintf(filea_name, nlen, "%s/filea", not_src);  assert(alen<nlen);
-        size_t blen = snprintf(fileb_name, nlen, "%s/fileb", not_src);  assert(blen<nlen);
+        size_t alen = snprintf(filea_name, nlen, "%s/filea", not_src);  check(alen<nlen);
+        size_t blen = snprintf(fileb_name, nlen, "%s/fileb", not_src);  check(blen<nlen);
         int fda = open(filea_name, O_RDWR|O_CREAT, 0777);
-        assert(fda>=0);
+        check(fda>=0);
         {
             ssize_t r = write(fda, filea_name, alen);
-            assert(r==(ssize_t)alen);
+            check(r==(ssize_t)alen);
         }
         {
             int r = rename(filea_name, fileb_name);
-            assert(r==0);
+            check(r==0);
         }
         {
             int r = close(fda);
-            assert(r==0);
+            check(r==0);
         }
     }
 }
@@ -88,22 +88,22 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     strncpy(not_src, src, slen+N_EXTRA_BYTES);
     const char go_back_n_bytes = 7;
     printf("backed up =%s\n",not_src+slen-go_back_n_bytes);
-    assert(0==strcmp(not_src+slen-go_back_n_bytes, ".source"));
+    check(0==strcmp(not_src+slen-go_back_n_bytes, ".source"));
     size_t n_written = snprintf(not_src+slen - go_back_n_bytes, N_EXTRA_BYTES+go_back_n_bytes, ".notsource");
-    assert(n_written< N_EXTRA_BYTES+go_back_n_bytes);
+    check(n_written< N_EXTRA_BYTES+go_back_n_bytes);
     {
         int r = systemf("rm -rf %s", not_src);
-        assert(r==0);
+        check(r==0);
     }
     {
         int r = mkdir(not_src, 0777);
-        assert(r==0);
+        check(r==0);
     }
     setup_source();
     setup_destination();
 
     int fd = openf(O_WRONLY|O_CREAT, 0777, "%s/data", src);
-    assert(fd>=0);
+    check(fd>=0);
     {
         const int bufsize=1024;
         const int nbufs  =1024;
@@ -113,7 +113,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         }
         for (int i=0; i<nbufs; i++) {
             ssize_t r = write(fd, buf, bufsize);
-            assert(r==bufsize);
+            check(r==bufsize);
         }
     }
     tokubackup_throttle_backup(1L<<18); // quarter megabyte per second, so that's 4 seconds.

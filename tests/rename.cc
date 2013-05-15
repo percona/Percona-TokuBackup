@@ -31,9 +31,9 @@ static void create_n_files(void)
         assert(fd > 0);
         char buf[SIZE] = {BEFORE};
         int pwrite_r = pwrite(fd, buf, SIZE, 0);
-        assert(pwrite_r == SIZE);
+        check(pwrite_r == SIZE);
         int close_r = close(fd);
-        assert(close_r == 0);
+        check(close_r == 0);
     }
 
     free((void*)src);
@@ -53,10 +53,10 @@ static int verify(void)
         snprintf(source_file, SIZE, "%s/renamed_%d.data", source_scratch, i);
         struct stat blah;
         int stat_r = stat(source_file, &blah);
-        assert(stat_r == 0);
+        check(stat_r == 0);
         snprintf(destination_file, SIZE,  "%s/renamed_%d.data", destination_scratch, i);
         stat_r = stat(destination_file, &blah);
-        assert(stat_r == 0);
+        check(stat_r == 0);
     }
 
     struct stat buf;
@@ -93,7 +93,7 @@ static void my_rename(int i)
     snprintf(old_name, PATH_MAX, "%s/my_%d.data", free_me, i);
     snprintf(new_name, PATH_MAX, "%s/renamed_%d.data", free_me, i);
     r = rename(old_name, new_name);
-    assert(r == 0);
+    check(r == 0);
     free((void*) free_me);
 }
 
