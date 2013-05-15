@@ -368,7 +368,7 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
     bool source_exists = true;
     int result = 0;
     struct stat buf;
-    printf("stat'ing file = %s \n", src_info.m_path);
+    TRACE("stat'ing file = ", src_info.m_path);
     int stat_r = lstat(src_info.m_path, &buf);
     if (stat_r == 0) {
         result = src_info.m_file->try_to_create_destination_file(dest_path);
