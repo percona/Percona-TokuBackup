@@ -765,8 +765,10 @@ int manager::unlink(const char *path) throw() {
     const char * full_path = realpath(path, NULL);
     if (full_path == NULL) {
         int error = errno;
+        if (error == ENOMEM) {
+            the_manager.backup_error(error, "Could not unlink path.");
+        }
         user_error = call_real_unlink(path);
-        the_manager.backup_error(error, "Could not unlink path.");
         return user_error;
     }
 
