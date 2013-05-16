@@ -83,7 +83,7 @@ int test_main(int n, const char **p)
 
     int fd = 0;
     char file[PATH_MAX] = {0};
-    const char * src = get_src();
+    char * src = get_src();
     snprintf(file, PATH_MAX, "%s/%s", src, "foo.txt");
     const char * dummy = realpath(file, NULL);
     if (dummy == NULL) {;}
@@ -125,5 +125,6 @@ int test_main(int n, const char **p)
     finish_backup();
 
     cleanup_dirs();
+    free(src);
     return 0;
 }
