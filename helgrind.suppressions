@@ -3,5 +3,4 @@
    Helgrind:Misc
    fun:pthread_cond_destroy_WRK
    fun:pthread_cond_destroy@*
-   fun:_ZN11source_fileD1Ev
 }
