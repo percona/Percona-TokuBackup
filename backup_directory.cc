@@ -25,8 +25,8 @@ backup_session::backup_session(const char* source, const char *dest, backup_call
     // instead of later in what used to be the set_directories() method.  BTW, the google style guide prohibits using constructors.
 
     int r = 0;
-    m_source_dir = realpath(source, NULL);
-    m_dest_dir   = realpath(dest,   NULL);
+    m_source_dir = call_real_realpath(source, NULL);
+    m_dest_dir   = call_real_realpath(dest,   NULL);
     if (!m_dest_dir) {
         char *str = malloc_snprintf(strlen(dest) + 100, "This backup destination directory does not exist: %s", dest);
         calls->report_error(ENOENT, str); 
@@ -74,7 +74,7 @@ int backup_session::do_copy() throw() {
 //
 bool backup_session::is_prefix(const char *file) throw() {
     // mallocing this to make memcheck happy.  I don't like the extra malloc, but I'm more worried about testability than speed right now. -Bradley
-    char *absfile = realpath(file, NULL);
+    char *absfile = call_real_realpath(file, NULL);
     if (absfile==NULL) return false;
     bool result = this->is_prefix_of_realpath(absfile);
     free(absfile);
@@ -187,8 +187,8 @@ out:
 //////////////////////////////////////////////////////////////////////////////
 // Effect: See backup_directory.h
 char* backup_session::translate_prefix(const char *file) throw() {
-    char *absfile = realpath(file, NULL);
-    // TODO: What if realpath returns a NULL?  It would segfault.  See #6605.
+    char *absfile = call_real_realpath(file, NULL);
+    // TODO: What if call_real_realpath() returns a NULL?  It would segfault.  See #6605.
     char *result = translate_prefix_of_realpath(absfile);
     free(absfile);
     return result;

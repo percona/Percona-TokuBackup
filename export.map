@@ -8,6 +8,7 @@
     pwrite64;    pwrite;
     read;
     rename;
+    realpath;
     tokubackup_create_backup;
     tokubackup_sql_suffix;
     tokubackup_throttle_backup;

@@ -649,7 +649,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     int error = 0;
     const char * full_new_destination_path = NULL;
     const char * full_new_path = NULL;
-    const char * full_old_path = realpath(oldpath, NULL);
+    const char * full_old_path = call_real_realpath(oldpath, NULL);
     if (full_old_path == NULL) {
         error = errno;
         if (error == ENOMEM) {
@@ -675,7 +675,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     // We could not call this earlier, since the new file path
     // did not exist till AFTER we called the real rename on 
     // the original source file.
-    full_new_path = realpath(newpath, NULL);
+    full_new_path = call_real_realpath(newpath, NULL);
     if (full_new_path == NULL) {
         error = errno;
         this->backup_error(error, "Could not complete rename().");
@@ -762,7 +762,7 @@ int manager::unlink(const char *path) throw() {
     int r = 0;
     int user_error = 0;
     source_file * source = NULL;
-    const char * full_path = realpath(path, NULL);
+    const char * full_path = call_real_realpath(path, NULL);
     if (full_path == NULL) {
         int error = errno;
         if (error == ENOMEM) {
@@ -774,7 +774,7 @@ int manager::unlink(const char *path) throw() {
 
     // We have to call unlink on the source file AFTER we have
     // resolved the given path to the full path.  Otherwise,
-    // realpath will fail saying it cannot find the path.
+    // call_real_realpath() will fail saying it cannot find the path.
     user_error = call_real_unlink(full_path);
 
     m_table.get_or_create_locked(full_path, &source);
@@ -890,7 +890,7 @@ int manager::truncate(const char *path, off_t length) throw() {
     int r;
     int user_error = 0;
     int error = 0;
-    const char * full_path = realpath(path, NULL);
+    const char * full_path = call_real_realpath(path, NULL);
     if (full_path == NULL) {
         error = errno;
         the_manager.backup_error(error, "Failed to truncate backup file.");
@@ -1062,7 +1062,7 @@ int manager::setup_description_and_source_file(int fd, const char *file) throw()
     
     // Resolve the given, possibly relative, file path to
     // the full path. 
-    const char * full_source_file_path = realpath(file, NULL);
+    const char * full_source_file_path = call_real_realpath(file, NULL);
     if (full_source_file_path == NULL) {
         error = errno;
         // This error is not recoverable, because we can't guarantee 

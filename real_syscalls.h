@@ -22,6 +22,7 @@ int call_real_truncate(const char *path, off_t length) throw() __attribute__((__
 int call_real_unlink(const char *path) throw() __attribute__((__nonnull__ (1)))  __attribute__((warn_unused_result));
 int call_real_rename(const char* oldpath, const char* newpath) throw() __attribute__((warn_unused_result));
 int call_real_mkdir(const char *pathname, mode_t mode) throw() __attribute__((__nonnull__ (1))) __attribute__((warn_unused_result));
+char *call_real_realpath(const char *file_name, char *resolved_name) throw() __attribute__((__nonnull__ (1))) __attribute__((warn_unused_result));
 
 typedef int (*open_fun_t)(const char *, int, ...);
 open_fun_t register_open(open_fun_t new_open) throw();
@@ -52,5 +53,8 @@ mkdir_fun_t register_mkdir(mkdir_fun_t new_mkdir) throw();
 
 typedef int (*close_fun_t)(int);
 close_fun_t register_close(close_fun_t new_close) throw();
+
+typedef char* (*realpath_fun_t)(const char *, char *);
+realpath_fun_t register_realpath(realpath_fun_t new_realpath) throw();
 
 #endif // end of header guardian.

@@ -37,6 +37,25 @@ template <class T> static void dlsym_set(T *ptr, const char *name)
     }
 }
 
+template <class T> static void dlvsym_set(T *ptr, const char *name, const char *libname)
+// Effect: lookup up NAME using dlsym, and store the result into *PTR.  Do it atomically, using dlsym_mutex for mutual exclusion.
+// Rationale:  There were a whole bunch of these through this code, and they all are the same except the type.  Rather than
+//   programming it with macros, I do it in a type-safe way with templates. -Bradley
+{
+    VALGRIND_HG_DISABLE_CHECKING(ptr, sizeof(*ptr));
+    if (*ptr==NULL) {
+        pmutex_lock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.
+        if (*ptr==NULL) {
+            // the pointer is still NULL, so do the set,  otherwise someone else changed it while I held the pointer.
+            T ptr_local = (T)(dlvsym(RTLD_NEXT, name, libname));
+            // If an error occured, we are hosed, and the system cannot run.  We cannot run even in a degraded mode.  I guess we'll just take the segfault when the call takes place.
+            bool did_it __attribute__((__unused__)) = __sync_bool_compare_and_swap(ptr, NULL, ptr_local);
+            // If the did_it is false, what can we do.  Try to continue.
+        }
+        pmutex_unlock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.    Try to continue.
+    }
+}
+
 // **************************************************************************
 //
 // These are wrappers for the file system calls.  Our library
@@ -184,4 +203,17 @@ mkdir_fun_t register_mkdir(mkdir_fun_t f) throw() {
     mkdir_fun_t r = real_mkdir;
     real_mkdir = f;
     return r;
+}
+
+static realpath_fun_t real_realpath = NULL;
+realpath_fun_t register_realpath(realpath_fun_t f) throw() {
+    dlvsym_set(&real_realpath, "realpath", "GLIBC_2.3");
+    realpath_fun_t r = real_realpath;
+    real_realpath = f;
+    return r;
+}
+
+char *call_real_realpath(const char *pathname, char *result) throw() {
+    dlvsym_set(&real_realpath, "realpath", "GLIBC_2.3");
+    return real_realpath(pathname, result);
 }

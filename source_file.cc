@@ -161,7 +161,7 @@ void source_file::name_unlock(void) throw() {
 int source_file::rename(const char * new_name) throw() {
     int r = 0;
     free(m_full_path);
-    m_full_path = realpath(new_name, NULL);
+    m_full_path = call_real_realpath(new_name, NULL);
     if (m_full_path == NULL) {
         r = errno;
     }

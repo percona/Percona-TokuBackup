@@ -10,11 +10,13 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <valgrind/helgrind.h>
 
-#include "realpath_library.h"
 #include "backup_test_helpers.h"
+#include "real_syscalls.h"
 
-static int expect_error = REALPATH::ERROR_TO_INJECT;
+static const int expect_error = ENOMEM;
+static const int realpath_error_to_inject = expect_error;
 static pthread_t backup_thread;
 
 static void my_error_fun(int e, const char *s, void *ignore) 
@@ -74,8 +76,22 @@ void call_unlink(const char * const file)
     }
 }
 
+static realpath_fun_t original_realpath = NULL;
+volatile static bool inject_realpath_error = false;
+char *my_realpath(const char *path, char *result) {
+    if (inject_realpath_error) {
+        errno = realpath_error_to_inject;
+        return NULL;
+    } else {
+        return original_realpath(path, result);
+    }
+}
+
 int test_main(int n, const char **p)
 {
+    VALGRIND_HG_DISABLE_CHECKING(&inject_realpath_error, sizeof(inject_realpath_error));
+    original_realpath = register_realpath(my_realpath);
+
     n++;
     p++;
     setup_source();
@@ -85,24 +101,24 @@ int test_main(int n, const char **p)
     char file[PATH_MAX] = {0};
     char * src = get_src();
     snprintf(file, PATH_MAX, "%s/%s", src, "foo.txt");
-    const char * dummy = realpath(file, NULL);
+    const char * dummy = call_real_realpath(file, NULL);
     if (dummy == NULL) {;}
 
     // 1. create
     printf("create...\n");
     start_backup();
-    REALPATH::inject_error(true);
+    inject_realpath_error = true;
     fd = call_create(file);
-    REALPATH::inject_error(false);
+    inject_realpath_error = false;
     close(fd);
     finish_backup();
 
     // 2. open
     start_backup();
     printf("open...\n");
-    REALPATH::inject_error(true);
+    inject_realpath_error = true;
     fd = call_open(file);
-    REALPATH::inject_error(false);
+    inject_realpath_error = false;
     finish_backup();
     close(fd);
 
@@ -110,18 +126,18 @@ int test_main(int n, const char **p)
     printf("rename...\n");
     setup_destination();
     start_backup();
-    REALPATH::inject_error(true);
+    inject_realpath_error = true;
     call_rename(file, file);
-    REALPATH::inject_error(false);
+    inject_realpath_error = false;
     finish_backup();
 
     // 4. unlink
     printf("unlink...\n");
     setup_destination();
     start_backup();
-    REALPATH::inject_error(true);
+    inject_realpath_error = true;
     call_unlink(file);
-    REALPATH::inject_error(false);
+    inject_realpath_error = false;
     finish_backup();
 
     cleanup_dirs();
