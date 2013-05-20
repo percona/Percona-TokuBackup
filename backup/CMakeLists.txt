@@ -116,7 +116,7 @@ if (USE_CTAGS AND
       COMMAND touch "${CMAKE_CURRENT_BINARY_DIR}/ctags-stamp"
       DEPENDS ${all_srcs} ${all_hdrs}
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-    add_custom_target(build_ctags ALL DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tags" ctags-stamp)
+    add_custom_target(build_backup_ctags ALL DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tags" ctags-stamp)
   endif ()
 endif ()
 
@@ -131,7 +131,7 @@ if (USE_ETAGS)
       COMMAND touch "${CMAKE_CURRENT_BINARY_DIR}/etags-stamp"
       DEPENDS ${all_srcs} ${all_hdrs}
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-    add_custom_target(build_etags ALL DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/TAGS" etags-stamp)
+    add_custom_target(build_backup_etags ALL DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/TAGS" etags-stamp)
   endif ()
 endif ()
 
