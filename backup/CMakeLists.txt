@@ -94,11 +94,9 @@ IF (NOT DEFINED INSTALL_LIBDIR)
 ENDIF()
 install(TARGETS HotBackup          DESTINATION ${INSTALL_LIBDIR} COMPONENT Server)
 
+option(BACKUP_HAS_PARENT "Don't set this by hand.  It's used to tell the subcmake not to set things" ON)
 if (BACKUP_HAS_PARENT)
   set(HOT_BACKUP_LIBS HotBackup PARENT_SCOPE)
-  message(STATUS "backup has parent")
-else()
-  message(STATUS "backup has no parent")
 endif (BACKUP_HAS_PARENT)
 
 option(USE_CTAGS "Build the ctags database." ON)
