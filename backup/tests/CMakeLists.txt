@@ -62,6 +62,7 @@ set(glassboxtests
   open_injection_6476
   rename
   rename_injection
+  soft_barrier_test
   unlink
   unlink_copy_race
   unlink_during_copy_test6515c

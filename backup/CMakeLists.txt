@@ -11,9 +11,10 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
 set(CMAKE_CXX_FLAGS "-Werror -W -Wall -Wshadow ${CMAKE_CXX_FLAGS}")
 
 set(BACKUP_SOURCES
+	backup.cc
+	backup_callbacks.cc
 	backup_debug.cc
 	backup_directory.cc
-        check.cc
 	copier.cc
 	description.cc
 	destination_file.cc
@@ -24,10 +25,10 @@ set(BACKUP_SOURCES
 	mutex.cc
 	real_syscalls.cc
 	rwlock.cc
+	soft_barrier.cc
 	source_file.cc
-	backup.cc
-	backup_callbacks.cc
         MurmurHash3.cc
+	check.cc
 )
 
 add_library(HotBackup          SHARED ${BACKUP_SOURCES})

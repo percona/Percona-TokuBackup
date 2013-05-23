@@ -33,6 +33,7 @@ foreach(test
  range_locks
  read_and_seek
  rename
+ soft_barrier_test
  test6128
  test6361
  test6415_enospc_injection
