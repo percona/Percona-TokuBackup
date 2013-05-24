@@ -10,6 +10,7 @@
 #include "mutex.h"
 #include "real_syscalls.h"
 #include "rwlock.h"
+#include "soft_barrier.h"
 #include "source_file.h"
 
 #include <errno.h>
@@ -203,8 +204,8 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
     if (r != 0) {
         goto disable_out;
     }
-
     this->enable_capture();
+    soft_barrier::set_capture_mode_and_wait(); // do this after enable_capture, so that all captures that started before enabling the capture are known to be done.
     this->enable_copy();
 
     prwlock_unlock(&m_session_rwlock);
@@ -234,6 +235,7 @@ disable_out: // preserves r if r!=0
 
     m_backup_is_running = false;
     this->disable_capture();
+    soft_barrier::clear_capture_mode_and_wait(); // do this after capture disable, so that all captures that started before disable capture are known to be done.
     this->disable_descriptions();
     WHEN_GLASSBOX(m_is_capturing = false);
     print_time("Toku Hot Backup: Finished:");
@@ -644,9 +646,10 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) throw() {
 //
 int manager::rename(const char *oldpath, const char *newpath) throw() {
     TRACE("entering rename() with oldpath = ", oldpath);
+    bool sb = soft_barrier::enter_operation();
     int r = 0;
     int user_error = 0;
-    int error = 0;
+    int error;;
     const char * full_new_destination_path = NULL;
     const char * full_new_path = NULL;
     const char * full_old_path = call_real_realpath(oldpath, NULL);
@@ -656,7 +659,12 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
             the_manager.backup_error(error, "Could not rename file.");
         }
 
-        return call_real_rename(oldpath, newpath);
+
+        int res = call_real_rename(oldpath, newpath);
+        int en = errno;
+        soft_barrier::finish_operation(sb);
+        errno = en;
+        return res;
     }
 
     // We need the newpath to exist to finish our own rename work.
@@ -748,6 +756,8 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     free((void*)full_new_path);
 source_free_out:
     free((void*)full_old_path);
+    soft_barrier::finish_operation(sb);
+    if (user_error) errno = error;
     return user_error;
 }
 

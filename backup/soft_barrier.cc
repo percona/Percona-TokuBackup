@@ -4,7 +4,7 @@
 #ident "$Id: fmap.cc 55798 2013-04-20 12:33:47Z christianrober $"
 
 #include "soft_barrier.h"
-#include <assert.h>
+#include "check.h"
 
 pthread_mutex_t soft_barrier::mutex        = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  soft_barrier::cond         = PTHREAD_COND_INITIALIZER;
@@ -13,27 +13,27 @@ uint64_t        soft_barrier::counts[2]    = {0,0};
 
 static void plock(pthread_mutex_t *m) {
     int r = pthread_mutex_lock(m);
-    assert(r==0);
+    check(r==0);
 }
 
 static void punlock(pthread_mutex_t *m) {
     int r = pthread_mutex_unlock(m);
-    assert(r==0);
+    check(r==0);
 }
 
 static void pwait(pthread_cond_t *c, pthread_mutex_t *m) {
     int r = pthread_cond_wait(c, m);
-    assert(r==0);
+    check(r==0);
 }
 
 static void psignal(pthread_cond_t *c) {
     int r = pthread_cond_signal(c);
-    assert(r==0);
+    check(r==0);
 }
 
 void soft_barrier::set_capture_mode_and_wait(void) {
     plock(&mutex);
-    assert(!capture_mode);
+    check(!capture_mode);
     capture_mode = true;
     while (counts[0]>0) {
         pwait(&cond, &mutex);
@@ -43,7 +43,7 @@ void soft_barrier::set_capture_mode_and_wait(void) {
 
 void soft_barrier::clear_capture_mode_and_wait(void) {
     plock(&mutex);
-    assert(capture_mode);
+    check(capture_mode);
     capture_mode = false;
     while (counts[1]>0) {
         pwait(&cond, &mutex);
@@ -62,7 +62,7 @@ bool soft_barrier::enter_operation(void) {
 void soft_barrier::finish_operation(bool mode) {
     plock(&mutex);
     int idx = mode ? 1 : 0;
-    assert(counts[idx]>0);
+    check(counts[idx]>0);
     counts[idx]--;
     if (counts[idx]==0) {
         psignal(&cond);
