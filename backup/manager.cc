@@ -779,7 +779,10 @@ int manager::unlink(const char *path) throw() {
     // We have to call unlink on the source file AFTER we have
     // resolved the given path to the full path.  Otherwise,
     // call_real_realpath() will fail saying it cannot find the path.
-    user_error = call_real_unlink(full_path);
+    user_error = call_real_unlink(path);
+    if (user_error != 0) {
+        goto free_out;
+    }
 
     m_table.get_or_create_locked(full_path, &source);
 
