@@ -55,7 +55,7 @@ fmap::~fmap() throw() {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Description:  See fmap.h.
-int fmap::get(int fd, description** resultp) throw() {
+void fmap::get(int fd, description** resultp) throw() {
     if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
@@ -63,7 +63,6 @@ int fmap::get(int fd, description** resultp) throw() {
     description *result = this->get_unlocked(fd);
     unlock_fmap();
     *resultp = result;
-    return 0;
 }
 
 description* fmap::get_unlocked(int fd) throw() {

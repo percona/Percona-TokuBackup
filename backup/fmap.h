@@ -21,12 +21,11 @@ public:
     fmap() throw();
     ~fmap() throw();
 
-    int get(int fd, description**result) throw() __attribute__((warn_unused_result));
+    void get(int fd, description**result) throw();
     // Effect:   Returns pointer (in *result) to the file description object that matches the
     //   given file descriptor.  This will return NULL if the given file
     //   descriptor has not been added to this map.
-    // If an error occurs, report it to the backup manager (fatal_error or backup_error) and return the error number.
-    // If an error occurs *result is not changed.
+    // No errors can occur.
 
     void put_unlocked(int fd, description *file) throw();
     // Effect: simply adds given description pointer to array, no locks acquired.

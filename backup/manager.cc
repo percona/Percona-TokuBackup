@@ -376,11 +376,7 @@ int manager::open(int fd, const char *file) throw() {
     char * backup_file_name = NULL;
     // First, get the description and source_file objects associated
     // with the given fd.
-    result = m_map.get(fd, &description);
-    if (result != 0) {
-        // fatal error encountered...
-        goto out;
-    }
+    m_map.get(fd, &description);
     
     source = description->get_source_file();
     source->name_read_lock();
@@ -423,11 +419,7 @@ out:
 void manager::close(int fd) {
     TRACE("entering close() with fd = ", fd);
     description * file = NULL;
-    int r = m_map.get(fd, &file);
-    if (r != 0) {
-        the_manager.fatal_error(r, "Pthread locking failure trying to close file.");
-        return;
-    }
+    m_map.get(fd, &file);
     
     if (file == NULL) {
         return;
@@ -470,8 +462,8 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte) throw() {
     bool ok = true;
     description *description;
     if (ok) {
-        int r = m_map.get(fd, &description);
-        if (r!=0 || description == NULL) ok = false;
+        m_map.get(fd, &description);
+        if (description == NULL) ok = false;
     }
     bool have_description_lock = false;
     if (ok && description) {
@@ -539,8 +531,8 @@ ssize_t manager::read(int fd, void *buf, size_t nbyte) throw() {
     TRACE("entering write() with fd = ", fd);
     ssize_t r = 0;
     description *description;
-    int rr = m_map.get(fd, &description);
-    if (rr!=0 || description == NULL) {
+    m_map.get(fd, &description);
+    if (description == NULL) {
         r = call_real_read(fd, buf, nbyte);
     } else {
         description->lock();
@@ -571,8 +563,8 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset) thr
     bool is_capture_mode = soft_barrier::enter_operation();
     description *description;
     {
-        int r = m_map.get(fd, &description);
-        if (r!=0 || description == NULL) {
+        m_map.get(fd, &description);
+        if (description == NULL) {
             int res = call_real_pwrite(fd, buf, nbyte, offset);
             soft_barrier::finish_operation(is_capture_mode);
             return res;
@@ -620,8 +612,8 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) throw() {
     description *description;
     bool ok = true;
     {
-        int r = m_map.get(fd, &description);
-        if (r!=0 || description==NULL) ok = false;
+        m_map.get(fd, &description);
+        if (description==NULL) ok = false;
     }
     if (ok) {
         description->lock();
@@ -859,8 +851,8 @@ int manager::ftruncate(int fd, off_t length) throw() {
     // always have a description and a source_file.
     description *description;
     {
-        int r = m_map.get(fd, &description);
-        if (r!=0 || description == NULL) {
+        m_map.get(fd, &description);
+        if (description == NULL) {
             int res = call_real_ftruncate(fd, length);
             soft_barrier::finish_operation(is_capture_mode);
             return res;
