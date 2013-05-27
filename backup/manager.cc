@@ -793,6 +793,8 @@ int manager::unlink(const char *path) throw() {
 
     m_table.lock();
 
+    printf("%s:%d\n", __FILE__, __LINE__);
+
     if (m_session != NULL && this->capture_is_enabled() && m_session->is_prefix_of_realpath(full_path)) {
         // 1. Find source file, unlink it.
         // 2. Get destination file from source file.

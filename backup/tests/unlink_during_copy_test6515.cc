@@ -15,11 +15,11 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     setup_dirs();
     pthread_t thread;
     const int N = 2;
-    char fname[N][1000];
-    int fds[N];
+    char fname[N+1][1000];
+    int fds[N+1];
     unsigned char buf[1024];
     for (size_t i=0; i<sizeof(buf); i++) buf[i]=i%256;
-    for (int i=0; i<N; i++) {
+    for (int i=0; i<N+1; i++) {
         {
             int r = snprintf(fname[i], sizeof(fname[i]), "%s/f%d", src, i);
             printf("r=%d fname[%d]=%s\n", r, i, fname[i]);
@@ -32,14 +32,15 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
             check(r==sizeof(buf));
         }
     }
-    tokubackup_throttle_backup(1L<<19); // half a mebibyte per second, so that's 2 seconds.
+    tokubackup_throttle_backup(1L<<18); // 1L<<18 is half a mebibyte per second, so that's 4 seconds.
     start_backup_thread(&thread);
+    usleep(100000);
     for (int i=0; i<N; i++) {
         int r = unlink(fname[i]);
         check(r==0);
     }
     finish_backup_thread(thread);
-    for (int i=0; i<N; i++) {
+    for (int i=0; i<N+1; i++) {
         int r = close(fds[i]);
         check(r==0);
     }
