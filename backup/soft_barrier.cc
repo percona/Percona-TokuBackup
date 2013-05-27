@@ -59,6 +59,11 @@ bool soft_barrier::enter_operation(void) {
     return result;
 }
 
+bool soft_barrier::enter_operation(barrier_location *bloc) {
+    bloc->increment(1);
+    return enter_operation();
+}
+
 void soft_barrier::finish_operation(bool mode) {
     plock(&mutex);
     int idx = mode ? 1 : 0;
@@ -70,3 +75,8 @@ void soft_barrier::finish_operation(bool mode) {
     punlock(&mutex);
 }
     
+
+void soft_barrier::finish_operation(bool mode, barrier_location *bloc) {
+    bloc->increment(-1);
+    return finish_operation(mode);
+}

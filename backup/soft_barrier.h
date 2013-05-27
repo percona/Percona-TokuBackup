@@ -35,6 +35,17 @@
 //    clear_capture_mode_and_wait();
 //    do operations assuming that all client operations that are in flight know that capturing is false.
 
+class barrier_location {
+  private:
+    const char *file;
+    int   line;
+    int   count;
+  public:
+    barrier_location(const char *f, int l) throw() : file(f), line(l), count(0) {}
+    void increment(int inc) { __sync_fetch_and_add(&count, inc); }
+};
+        
+
 class soft_barrier {
 public:
     static void set_capture_mode_and_wait(void);
@@ -47,6 +58,9 @@ public:
 
     static bool enter_operation(void); // enter, and return true if we are in capture mode, false if we are not.
     static void finish_operation(bool); // exit, pass in which mode we were in.
+
+    static bool enter_operation(barrier_location *bloc);
+    static void finish_operation(bool, barrier_location *bloc);
 private:
     static pthread_mutex_t   mutex;
     static pthread_cond_t    cond;

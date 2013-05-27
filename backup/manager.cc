@@ -51,7 +51,6 @@ static void print_time(const char *toku_string) throw() {
 }
 
 pthread_mutex_t manager::m_mutex         = PTHREAD_MUTEX_INITIALIZER;
-pthread_rwlock_t manager::m_session_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 pthread_mutex_t manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -193,8 +192,6 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         }
     }
 
-    prwlock_wrlock(&m_session_rwlock);
-
     pmutex_lock(&copier::m_todo_mutex);
     m_session = new backup_session(source, dest, calls, &m_table, &r);
     pmutex_unlock(&copier::m_todo_mutex);
@@ -207,8 +204,6 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
     this->enable_capture();
     soft_barrier::set_capture_mode_and_wait(); // do this after enable_capture, so that all captures that started before enabling the capture are known to be done.
     this->enable_copy();
-
-    prwlock_unlock(&m_session_rwlock);
 
     WHEN_GLASSBOX( ({
                 m_done_copying = false;
@@ -231,11 +226,10 @@ disable_out: // preserves r if r!=0
         while (m_keep_capturing) sched_yield();
             }) );
 
-    prwlock_wrlock(&m_session_rwlock);
-
     m_backup_is_running = false;
     this->disable_capture();
     soft_barrier::clear_capture_mode_and_wait(); // do this after capture disable, so that all captures that started before disable capture are known to be done.
+
     this->disable_descriptions();
     WHEN_GLASSBOX(m_is_capturing = false);
     print_time("Toku Hot Backup: Finished:");
@@ -244,8 +238,6 @@ disable_out: // preserves r if r!=0
     m_session->cleanup();
     delete m_session;
     m_session = NULL;
-
-    prwlock_unlock(&m_session_rwlock);
 
 unlock_out: // preserves r if r!0
 
@@ -369,8 +361,9 @@ int manager::open(int fd, const char *file) throw() {
         return result;
     }
 
-    // If there is no session, or we can't lock it, just return.
-    if (this->try_to_enter_session_and_lock() == false) {
+    bool is_capture_mode = soft_barrier::enter_operation(); // from here we care about whether we are in a backup session.
+    if (!is_capture_mode) {
+        soft_barrier::finish_operation(is_capture_mode);
         return 0;
     }
 
@@ -414,7 +407,7 @@ int manager::open(int fd, const char *file) throw() {
     source->name_unlock();
 
 out:
-    this->exit_session_and_unlock_or_die();
+    soft_barrier::finish_operation(is_capture_mode);
     return result;
 }
 
@@ -441,11 +434,11 @@ void manager::close(int fd) {
     }
     
     source_file * source = file->get_source_file();
-    if (this->try_to_enter_session_and_lock()) {
+    bool is_capture_mode = soft_barrier::enter_operation();
+    if (is_capture_mode) {
         m_table.lock();
         source->try_to_remove_destination();
         m_table.unlock();
-        this->exit_session_and_unlock_or_die();
     }
 
     // This will remove both the source file and destination file
@@ -453,6 +446,7 @@ void manager::close(int fd) {
     m_table.try_to_remove_locked(source);
     
     int r1 = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
+    soft_barrier::finish_operation(is_capture_mode);
     if (r1!=0) {
         return;  // Any errors have been reported.  The caller doesn't care.
     }
@@ -472,6 +466,7 @@ void manager::close(int fd) {
 //
 ssize_t manager::write(int fd, const void *buf, size_t nbyte) throw() {
     TRACE("entering write() with fd = ", fd);
+    bool is_capture_mode = soft_barrier::enter_operation();
     bool ok = true;
     description *description;
     if (ok) {
@@ -509,7 +504,7 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte) throw() {
     }
 
     // We still have the lock range, with which we do the pwrite.
-    if (ok && this->try_to_enter_session_and_lock()) {
+    if (ok && is_capture_mode) {
         TRACE("write() captured with fd = ", fd);
         destination_file * dest_file = file->get_destination();
         if (dest_file != NULL) {
@@ -520,7 +515,6 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte) throw() {
             }
         }
 
-        this->exit_session_and_unlock_or_die();
     }
 
     if (have_range_lock) { // Release the range lock if if not OK.
@@ -529,6 +523,7 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte) throw() {
         // The error has been reported.
         if (r!=0) ok = false;
     }
+    soft_barrier::finish_operation(is_capture_mode);
     return n_wrote;
 }
 
@@ -573,11 +568,14 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset) thr
 // Note: If the backup destination gets a short write, that's an error.
 {
     TRACE("entering pwrite() with fd = ", fd);
+    bool is_capture_mode = soft_barrier::enter_operation();
     description *description;
     {
         int r = m_map.get(fd, &description);
         if (r!=0 || description == NULL) {
-            return call_real_pwrite(fd, buf, nbyte, offset);
+            int res = call_real_pwrite(fd, buf, nbyte, offset);
+            soft_barrier::finish_operation(is_capture_mode);
+            return res;
         }
     }
 
@@ -587,13 +585,12 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset) thr
     ssize_t nbytes_written = call_real_pwrite(fd, buf, nbyte, offset);
     int e = 0;
     if (nbytes_written>0) {
-        if (this->try_to_enter_session_and_lock()) {
+        if (is_capture_mode) {
             destination_file * dest_file = file->get_destination();
             if (dest_file != NULL) {
                 ignore(dest_file->pwrite(buf, nbyte, offset)); // nothing more to do.  It's been reported.
             }
 
-            this->exit_session_and_unlock_or_die();
         }
     } else if (nbytes_written<0) {
         e = errno; // save the errno
@@ -604,6 +601,7 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset) thr
         errno = e; // restore errno
     }
 
+    soft_barrier::finish_operation(is_capture_mode);
     return nbytes_written;
 }
 
@@ -646,7 +644,12 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) throw() {
 //
 int manager::rename(const char *oldpath, const char *newpath) throw() {
     TRACE("entering rename() with oldpath = ", oldpath);
-    bool sb = soft_barrier::enter_operation();
+    bool is_capture_mode = soft_barrier::enter_operation();
+    if (!is_capture_mode) {
+        int r = call_real_rename(oldpath, newpath);
+        soft_barrier::finish_operation(is_capture_mode); // don't need to worry about soft_barrier modified errno.  If errno is set, then soft_barrier doesn't return.
+        return r;
+    }
     int r = 0;
     int user_error = 0;
     int error;;
@@ -661,9 +664,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
 
 
         int res = call_real_rename(oldpath, newpath);
-        int en = errno;
-        soft_barrier::finish_operation(sb);
-        errno = en;
+        soft_barrier::finish_operation(is_capture_mode); // don't need to worry that soft_barrier modified errno.
         return res;
     }
 
@@ -688,9 +689,6 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
 
         goto source_free_out;
     }
-    
-    // Grab the session lock.
-    prwlock_rdlock(&m_session_rwlock);
     
     // If the rename succeeded and backup is running...
     if (m_session != NULL && this->capture_is_enabled()) {
@@ -747,8 +745,6 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
         }
     }
 
-    prwlock_unlock(&m_session_rwlock);
-
     if (full_new_destination_path != NULL) {
         free((void*)full_new_destination_path);
     }
@@ -756,7 +752,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     free((void*)full_new_path);
 source_free_out:
     free((void*)full_old_path);
-    soft_barrier::finish_operation(sb);
+    soft_barrier::finish_operation(is_capture_mode);
     if (user_error) errno = error;
     return user_error;
 }
@@ -768,6 +764,12 @@ source_free_out:
 //
 int manager::unlink(const char *path) throw() {
     TRACE("entering unlink with path = ", path);
+    bool is_capture_mode = soft_barrier::enter_operation();
+    if (!is_capture_mode) {
+        int r = call_real_unlink(path);
+        soft_barrier::finish_operation(is_capture_mode); // soft_barrier doesn't modify errno.
+        return r;
+    }
     int r = 0;
     int user_error = 0;
     source_file * source = NULL;
@@ -778,6 +780,7 @@ int manager::unlink(const char *path) throw() {
             the_manager.backup_error(error, "Could not unlink path.");
         }
         user_error = call_real_unlink(path);
+        soft_barrier::finish_operation(is_capture_mode); // soft_barrier doesn't modify errno.
         return user_error;
     }
 
@@ -787,8 +790,6 @@ int manager::unlink(const char *path) throw() {
     user_error = call_real_unlink(full_path);
 
     m_table.get_or_create_locked(full_path, &source);
-
-    prwlock_rdlock(&m_session_rwlock);
 
     m_table.lock();
 
@@ -833,10 +834,10 @@ int manager::unlink(const char *path) throw() {
 
     m_table.unlock();
     m_table.try_to_remove_locked(source);
-    prwlock_unlock(&m_session_rwlock);
 
 free_out:
     free((void*)full_path);
+    soft_barrier::finish_operation(is_capture_mode); // soft_barrier doesn't modify errno.
     return user_error;
 }
 
@@ -850,13 +851,17 @@ free_out:
 //
 int manager::ftruncate(int fd, off_t length) throw() {
     TRACE("entering ftruncate with fd = ", fd);
+    bool is_capture_mode = soft_barrier::enter_operation();
+
     // TODO: Remove the logic for null descriptions, since we will
     // always have a description and a source_file.
     description *description;
     {
         int r = m_map.get(fd, &description);
         if (r!=0 || description == NULL) {
-            return call_real_ftruncate(fd, length);
+            int res = call_real_ftruncate(fd, length);
+            soft_barrier::finish_operation(is_capture_mode);
+            return res;
         }
     }
 
@@ -866,7 +871,7 @@ int manager::ftruncate(int fd, off_t length) throw() {
     int user_result = call_real_ftruncate(fd, length);
     int e = 0;
     if (user_result==0) {
-        if (this->try_to_enter_session_and_lock()) {
+        if (is_capture_mode) {
             destination_file * dest_file = file->get_destination();
             if (dest_file != NULL) {
                  // the error from truncate been reported, so there's
@@ -874,8 +879,6 @@ int manager::ftruncate(int fd, off_t length) throw() {
                  // to unlock the range.
                 ignore(dest_file->truncate(length));
             }
-
-            this->exit_session_and_unlock_or_die();
         }
     } else {
         e = errno; // save errno
@@ -884,6 +887,7 @@ int manager::ftruncate(int fd, off_t length) throw() {
     if (user_result!=0) {
         errno = e; // restore errno
     }
+    soft_barrier::finish_operation(is_capture_mode);
     return user_result;
 }
 
@@ -896,18 +900,24 @@ int manager::ftruncate(int fd, off_t length) throw() {
 //     TBD...
 //
 int manager::truncate(const char *path, off_t length) throw() {
-    int r;
+    bool is_capture_mode = soft_barrier::enter_operation();
+    if (!is_capture_mode) {
+        int r = call_real_truncate(path, length);
+        soft_barrier::finish_operation(is_capture_mode);
+        return r;
+    }
     int user_error = 0;
     int error = 0;
     const char * full_path = call_real_realpath(path, NULL);
     if (full_path == NULL) {
         error = errno;
         the_manager.backup_error(error, "Failed to truncate backup file.");
-        return call_real_truncate(path, length);
+        int r = call_real_truncate(path, length);
+        soft_barrier::finish_operation(is_capture_mode);
+        return r;
     }
+    int r;
 
-    prwlock_rdlock(&m_session_rwlock);
-    
     if (m_session != NULL && m_session->is_prefix_of_realpath(full_path)) {
         const char * destination_file = NULL;
         destination_file = m_session->translate_prefix_of_realpath(full_path);
@@ -947,13 +957,14 @@ int manager::truncate(const char *path, off_t length) throw() {
         }
     }
 
-    prwlock_unlock(&m_session_rwlock);
-    
 free_out:
     free((void*) full_path);
+    soft_barrier::finish_operation(is_capture_mode);
     return user_error;
 
 }
+
+static barrier_location mkdir_b(__FILE__, __LINE__);
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -963,18 +974,26 @@ free_out:
 //
 //     TBD...
 //
-void manager::mkdir(const char *pathname) throw() {
-    prwlock_rdlock(&m_session_rwlock);
-
-    if(m_session != NULL) {
-        int r = m_session->capture_mkdir(pathname);
-        if (r != 0) {
-            the_manager.backup_error(r, "failed mkdir creating %s", pathname);
-            // proceed to unlocking below
-        }
+int manager::mkdir(const char *pathname, mode_t mode) throw() {
+    bool is_capture_mode = soft_barrier::enter_operation(&mkdir_b);
+    if (!is_capture_mode) {
+        int r = call_real_mkdir(pathname, mode);
+        soft_barrier::finish_operation(is_capture_mode, &mkdir_b);
+        return r;
     }
 
-    prwlock_unlock(&m_session_rwlock);
+    int user_result = call_real_mkdir(pathname, mode);
+    if (user_result==0) {
+        if(m_session != NULL) {
+            int r = m_session->capture_mkdir(pathname);
+            if (r != 0) {
+                the_manager.backup_error(r, "failed mkdir creating %s", pathname);
+                // proceed to unlocking below
+            }
+        }
+    }
+    soft_barrier::finish_operation(is_capture_mode, &mkdir_b);
+    return user_result;
 }
 
 
@@ -1041,25 +1060,6 @@ void manager::set_error_internal(int errnum, const char *format_string, va_list 
         m_an_error_happened = true; // set this last so that it will be OK.
     }
     pmutex_unlock(&m_error_mutex);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//
-bool manager::try_to_enter_session_and_lock(void) throw() {
-    prwlock_rdlock(&m_session_rwlock);
-
-    if (m_session == NULL) {
-        prwlock_unlock(&m_session_rwlock);
-        return false;
-    }
-
-    return true;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//
-void manager::exit_session_and_unlock_or_die(void) throw() {
-    prwlock_unlock(&m_session_rwlock);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

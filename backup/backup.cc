@@ -276,10 +276,10 @@ extern "C" int rename(const char *oldpath, const char *newpath) {
 int mkdir(const char *pathname, mode_t mode) {
     int r = 0;
     TRACE("mkidr() intercepted", pathname);
-    r = call_real_mkdir(pathname, mode);
-    if (r == 0 && the_manager.is_alive()) {
-        // Don't try to write if there was an error in the application.
-        the_manager.mkdir(pathname);
+    if (the_manager.is_alive()) {
+        r = the_manager.mkdir(pathname, mode);
+    } else {
+        r = call_real_mkdir(pathname, mode);
     }
     return r;
 }

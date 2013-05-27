@@ -41,7 +41,6 @@ private:
     //bool m_capture_enabled;
 
     backup_session *m_session;
-    static pthread_rwlock_t m_session_rwlock;
 
     volatile unsigned long m_throttle;
 
@@ -69,7 +68,7 @@ public:
     int unlink(const char *path) throw();
     int ftruncate(int fd, off_t length) throw();                  // Actually performs the trunate (so a lock can be obtained).
     int truncate(const char *path, off_t length) throw();
-    void mkdir(const char *pathname) throw();
+    int mkdir(const char *pathname, mode_t mode) throw();
     
     void set_throttle(unsigned long bytes_per_second) throw(); // This is thread-safe.
     unsigned long get_throttle(void) const throw();                 // This is thread-safe.
@@ -98,8 +97,6 @@ public:
 
 private:
     // Backup session control methods.
-    bool try_to_enter_session_and_lock(void) throw();
-    void exit_session_and_unlock_or_die(void) throw();
     int prepare_directories_for_backup(backup_session *session) throw();
     void disable_descriptions(void) throw();
     void set_error_internal(int errnum, const char *format, va_list ap) throw();
