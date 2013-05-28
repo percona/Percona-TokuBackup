@@ -145,13 +145,13 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         if (r!=0) {
             r = errno;
             backup_error(r, "Problem stat()ing backup directory %s", dest);
-            pmutex_unlock(&m_mutex);
+            pmutex_unlock(&m_mutex, BACKTRACE(NULL));
             goto error_out;
         }
         if (!S_ISDIR(sbuf.st_mode)) {
             r = EINVAL;
             backup_error(EINVAL,"Backup destination %s is not a directory", dest);
-            pmutex_unlock(&m_mutex);
+            pmutex_unlock(&m_mutex, BACKTRACE(NULL));
             goto error_out;
         }
         {
@@ -192,12 +192,12 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         }
     }
 
-    pmutex_lock(&copier::m_todo_mutex);
+    pmutex_lock(&copier::m_todo_mutex, BACKTRACE(NULL));
     m_session = new backup_session(source, dest, calls, &m_table, &r);
-    pmutex_unlock(&copier::m_todo_mutex);
+    pmutex_unlock(&copier::m_todo_mutex, BACKTRACE(NULL));
     print_time("Toku Hot Backup: Started:");    
 
-    r = this->prepare_directories_for_backup(m_session);
+    r = this->prepare_directories_for_backup(m_session, BACKTRACE(NULL));
     if (r != 0) {
         goto disable_out;
     }
@@ -241,7 +241,7 @@ disable_out: // preserves r if r!=0
 
 unlock_out: // preserves r if r!0
 
-    pmutex_unlock(&m_mutex);
+    pmutex_unlock(&m_mutex, BACKTRACE(NULL));
     if (m_an_error_happened) {
         calls->report_error(m_errnum, m_errstring);
         if (r==0) {
@@ -256,11 +256,11 @@ error_out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int manager::prepare_directories_for_backup(backup_session *session) throw() {
+int manager::prepare_directories_for_backup(backup_session *session, backtrace bt) throw() {
     int r = 0;
     // Loop through all the current file descriptions and prepare them
     // for backup.
-    lock_fmap(); // TODO: #6532 This lock is much too coarse.  Need to refine it.  This lock deals with a race between file->create() and a close() call from the application.  We aren't using the m_refcount in file_description (which we should be) and we even if we did, the following loop would be racy since m_map.size could change while we are running, and file descriptors could come and go in the meanwhile.  So this really must be fixed properly to refine this lock.
+    lock_fmap(backtrace(bt)); // TODO: #6532 This lock is much too coarse.  Need to refine it.  This lock deals with a race between file->create() and a close() call from the application.  We aren't using the m_refcount in file_description (which we should be) and we even if we did, the following loop would be racy since m_map.size could change while we are running, and file descriptors could come and go in the meanwhile.  So this really must be fixed properly to refine this lock.
     for (int i = 0; i < m_map.size(); ++i) {
         description *file = m_map.get_unlocked(i);
         if (file == NULL) {
@@ -296,14 +296,14 @@ int manager::prepare_directories_for_backup(backup_session *session) throw() {
     }
     
 out:
-    unlock_fmap();
+    unlock_fmap(BACKTRACE(&bt));
     return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 void manager::disable_descriptions(void) throw() {
-    lock_fmap();
+    lock_fmap(BACKTRACE(NULL));
     const int size = m_map.size();
     const int middle __attribute__((unused)) = size / 2; // used only in glassbox mode.
     for (int i = 0; i < size; ++i) {
@@ -325,7 +325,7 @@ void manager::disable_descriptions(void) throw() {
         }
     }
 
-    unlock_fmap();
+    unlock_fmap(BACKTRACE(NULL));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -376,11 +376,7 @@ int manager::open(int fd, const char *file) throw() {
     char * backup_file_name = NULL;
     // First, get the description and source_file objects associated
     // with the given fd.
-    result = m_map.get(fd, &description);
-    if (result != 0) {
-        // fatal error encountered...
-        goto out;
-    }
+    m_map.get(fd, &description, BACKTRACE(NULL));
     
     source = description->get_source_file();
     source->name_read_lock();
@@ -423,11 +419,7 @@ out:
 void manager::close(int fd) {
     TRACE("entering close() with fd = ", fd);
     description * file = NULL;
-    int r = m_map.get(fd, &file);
-    if (r != 0) {
-        the_manager.fatal_error(r, "Pthread locking failure trying to close file.");
-        return;
-    }
+    m_map.get(fd, &file, BACKTRACE(NULL));
     
     if (file == NULL) {
         return;
@@ -445,7 +437,7 @@ void manager::close(int fd) {
     // objects, if they exist.
     m_table.try_to_remove_locked(source);
     
-    int r1 = m_map.erase(fd); // If the fd exists in the map, close it and remove it from the mmap.
+    int r1 = m_map.erase(fd, BACKTRACE(NULL)); // If the fd exists in the map, close it and remove it from the mmap.
     soft_barrier::finish_operation(is_capture_mode);
     if (r1!=0) {
         return;  // Any errors have been reported.  The caller doesn't care.
@@ -470,12 +462,12 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte) throw() {
     bool ok = true;
     description *description;
     if (ok) {
-        int r = m_map.get(fd, &description);
-        if (r!=0 || description == NULL) ok = false;
+        m_map.get(fd, &description, BACKTRACE(NULL));
+        if (description == NULL) ok = false;
     }
     bool have_description_lock = false;
     if (ok && description) {
-        description->lock();
+        description->lock(BACKTRACE(NULL));
         have_description_lock = true;
     }
     source_file *file = NULL;
@@ -500,7 +492,7 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte) throw() {
     }
     // Now we can release the description lock, since the offset is calculated.  Release it even if not OK.
     if (have_description_lock) {
-        description->unlock();
+        description->unlock(BACKTRACE(NULL));
     }
 
     // We still have the lock range, with which we do the pwrite.
@@ -539,16 +531,16 @@ ssize_t manager::read(int fd, void *buf, size_t nbyte) throw() {
     TRACE("entering write() with fd = ", fd);
     ssize_t r = 0;
     description *description;
-    int rr = m_map.get(fd, &description);
-    if (rr!=0 || description == NULL) {
+    m_map.get(fd, &description, BACKTRACE(NULL));
+    if (description == NULL) {
         r = call_real_read(fd, buf, nbyte);
     } else {
-        description->lock();
+        description->lock(BACKTRACE(NULL));
         r = call_real_read(fd, buf, nbyte);
         if (r>0) {
             description->increment_offset(r); //moves the offset
         }
-        description->unlock();
+        description->unlock(BACKTRACE(NULL));
     }
     
     return r;
@@ -571,8 +563,8 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset) thr
     bool is_capture_mode = soft_barrier::enter_operation();
     description *description;
     {
-        int r = m_map.get(fd, &description);
-        if (r!=0 || description == NULL) {
+        m_map.get(fd, &description, BACKTRACE(NULL));
+        if (description == NULL) {
             int res = call_real_pwrite(fd, buf, nbyte, offset);
             soft_barrier::finish_operation(is_capture_mode);
             return res;
@@ -620,16 +612,16 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) throw() {
     description *description;
     bool ok = true;
     {
-        int r = m_map.get(fd, &description);
-        if (r!=0 || description==NULL) ok = false;
+        m_map.get(fd, &description, BACKTRACE(NULL));
+        if (description==NULL) ok = false;
     }
     if (ok) {
-        description->lock();
+        description->lock(BACKTRACE(NULL));
     }
     off_t new_offset = call_real_lseek(fd, nbyte, whence);
     if (ok) {
         description->lseek(new_offset);
-        description->unlock();
+        description->unlock(BACKTRACE(NULL));
     }
     return new_offset;
 }
@@ -862,8 +854,8 @@ int manager::ftruncate(int fd, off_t length) throw() {
     // always have a description and a source_file.
     description *description;
     {
-        int r = m_map.get(fd, &description);
-        if (r!=0 || description == NULL) {
+        m_map.get(fd, &description, BACKTRACE(NULL));
+        if (description == NULL) {
             int res = call_real_ftruncate(fd, length);
             soft_barrier::finish_operation(is_capture_mode);
             return res;
@@ -1053,7 +1045,7 @@ void manager::backup_error(int errnum, const char *format_string, ...)  throw() 
 //
 void manager::set_error_internal(int errnum, const char *format_string, va_list ap) throw() {
     m_backup_is_running = false;
-    pmutex_lock(&m_error_mutex);
+    pmutex_lock(&m_error_mutex, BACKTRACE(NULL));
     if (!m_an_error_happened) {
         int len = 2*PATH_MAX + strlen(format_string) + 1000; // should be big enough for all our errors
         char *string = (char*)malloc(len);
@@ -1064,7 +1056,7 @@ void manager::set_error_internal(int errnum, const char *format_string, va_list 
         m_errnum = errnum;
         m_an_error_happened = true; // set this last so that it will be OK.
     }
-    pmutex_unlock(&m_error_mutex);
+    pmutex_unlock(&m_error_mutex, BACKTRACE(NULL));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1094,9 +1086,9 @@ int manager::setup_description_and_source_file(int fd, const char *file) throw()
     // source file object.
     file_description = new description();
     file_description->set_source_file(source);
-    lock_fmap();
+    lock_fmap(BACKTRACE(NULL));
     m_map.put_unlocked(fd, file_description);
-    unlock_fmap();
+    unlock_fmap(BACKTRACE(NULL));
 
  error_out:
     return error;

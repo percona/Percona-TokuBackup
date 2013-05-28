@@ -6,6 +6,7 @@ foreach(test
  backup_no_ft2
  cannotopen_dest_dir
  check_check
+ check_check2
  closedirfails_dest_dir
  copy_files
  debug_coverage
@@ -44,6 +45,7 @@ foreach(test
  test6483_mkdir_injection
  throttle_6564
  unlink
+ unlink_create_close_race_6727
  unlink_copy_race
  unlink_during_copy_test6515
  unlink_during_copy_test6515b

@@ -7,10 +7,13 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-void check_fun(long predicate, const char *expr, const char *file, int line) throw();
+#include "backtrace.h"
+
+void check_fun(long predicate, const char *expr, const backtrace bt) throw();
 
 // Like assert, except it doesn't go away under NDEBUG.
 // Do this with a function so that we don't get false answers on branch coverage.
-#define check(x) check_fun((long)(x), #x, __FILE__, __LINE__)
+#define check(x) check_fun((long)(x), #x, BACKTRACE(NULL))
+#define check_bt(x, bt) check_fun((long)(x), #x, BACKTRACE(&bt))
 
 #endif

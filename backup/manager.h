@@ -97,7 +97,7 @@ public:
 
 private:
     // Backup session control methods.
-    int prepare_directories_for_backup(backup_session *session) throw();
+    int prepare_directories_for_backup(backup_session *session, const backtrace bt) throw();
     void disable_descriptions(void) throw();
     void set_error_internal(int errnum, const char *format, va_list ap) throw();
     int setup_description_and_source_file(int fd, const char *file) throw();
