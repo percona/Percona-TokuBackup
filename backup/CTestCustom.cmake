@@ -6,6 +6,7 @@ foreach(test
  backup_no_ft2
  cannotopen_dest_dir
  check_check
+ check_check2
  closedirfails_dest_dir
  copy_files
  debug_coverage

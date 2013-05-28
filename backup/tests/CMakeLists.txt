@@ -41,6 +41,7 @@ set(glassboxtests
   backup_no_fractal_tree_threaded ## Needs the keep_capturing API
   backup_no_ft2                   ## Needs the keep_capturing API
   check_check
+  check_check2
   debug_coverage
   failed_rename_kills_backup_6703 ## Needs the keep_capturing API
   failed_unlink_kills_backup_6704 ## Needs the keep_capturing API
