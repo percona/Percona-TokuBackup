@@ -52,14 +52,14 @@ source_file * description::get_source_file(void) const throw()
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void description::lock(void) throw() {
-    pmutex_lock(&m_mutex);
+void description::lock(const backtrace bt) throw() {
+    pmutex_lock(&m_mutex, BACKTRACE(&bt));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void description::unlock(void) throw() {
-    pmutex_unlock(&m_mutex);
+void description::unlock(const backtrace bt) throw() {
+    pmutex_unlock(&m_mutex, BACKTRACE(&bt));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

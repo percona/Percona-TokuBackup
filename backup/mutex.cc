@@ -11,12 +11,20 @@
 #include "mutex.h"
 #include "check.h"
 
-void pmutex_lock(pthread_mutex_t *mutex) throw() {
+void pmutex_lock(pthread_mutex_t *mutex, const backtrace bt) throw() {
     int r = pthread_mutex_lock(mutex);
-    check(r==0);
+    check_bt(r==0, bt);
+}
+
+void pmutex_unlock(pthread_mutex_t *mutex, const backtrace bt) throw() {
+    int r = pthread_mutex_unlock(mutex);
+    check_bt(r==0, bt);
+}
+
+void pmutex_lock(pthread_mutex_t *mutex) throw() {
+    pmutex_lock(mutex, BACKTRACE(NULL));
 }
 
 void pmutex_unlock(pthread_mutex_t *mutex) throw() {
-    int r = pthread_mutex_unlock(mutex);
-    check(r==0);
+    pmutex_unlock(mutex, BACKTRACE(NULL));
 }

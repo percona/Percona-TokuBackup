@@ -55,13 +55,13 @@ fmap::~fmap() throw() {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Description:  See fmap.h.
-int fmap::get(int fd, description** resultp) throw() {
+int fmap::get(int fd, description** resultp, const backtrace bt) throw() {
     if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
-    lock_fmap();
+    lock_fmap(BACKTRACE(&bt));
     description *result = this->get_unlocked(fd);
-    unlock_fmap();
+    unlock_fmap(BACKTRACE(&bt));
     *resultp = result;
     return 0;
 }
@@ -95,16 +95,16 @@ void fmap::put_unlocked(int fd, description *file) throw() {
 //
 // Requires: the fd is something currently mapped.
 
-int fmap::erase(int fd) throw() {
-    lock_fmap();
+int fmap::erase(int fd, const backtrace bt) throw() {
+    lock_fmap(BACKTRACE(&bt));
     if ((size_t)fd  >= m_map.size()) {
-        unlock_fmap();
+        unlock_fmap(BACKTRACE(&bt));
         return 0;
     } else {
         description *description = m_map[fd];
         m_map[fd] = NULL;
         {
-            unlock_fmap();
+            unlock_fmap(BACKTRACE(&bt));
             if (description) {
                 // Do this after releasing the lock
                 //                source_file * src_file = description->get_source_file();
@@ -149,12 +149,12 @@ void fmap::grow_array(int fd) throw() {
     }
 }
 
-void lock_fmap(void) throw() {
-    pmutex_lock(&get_put_mutex);
+void lock_fmap(const backtrace bt) throw() {
+    pmutex_lock(&get_put_mutex, BACKTRACE(&bt));
 }
 
-void unlock_fmap(void) throw() {
-    pmutex_unlock(&get_put_mutex);
+void unlock_fmap(const backtrace bt) throw() {
+    pmutex_unlock(&get_put_mutex, BACKTRACE(&bt));
 }
 
 // Instantiate the templates we need
