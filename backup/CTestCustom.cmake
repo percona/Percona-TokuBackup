@@ -43,6 +43,7 @@ foreach(test
  test6483_mkdir_injection
  throttle_6564
  unlink
+ unlink_create_close_race_6727
  unlink_copy_race
  unlink_during_copy_test6515
  unlink_during_copy_test6515b
