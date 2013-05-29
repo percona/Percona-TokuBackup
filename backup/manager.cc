@@ -438,11 +438,10 @@ void manager::close(int fd) {
         this->exit_session_and_unlock_or_die();
     }
 
+    int r1 = m_map.erase(fd, BACKTRACE(NULL)); // If the fd exists in the map, close it and remove it from the mmap.
     // This will remove both the source file and destination file
     // objects, if they exist.
     m_table.try_to_remove_locked(source);
-    
-    int r1 = m_map.erase(fd, BACKTRACE(NULL)); // If the fd exists in the map, close it and remove it from the mmap.
     if (r1!=0) {
         return;  // Any errors have been reported.  The caller doesn't care.
     }

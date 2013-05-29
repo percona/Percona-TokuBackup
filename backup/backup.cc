@@ -91,10 +91,11 @@ out:
 extern "C" int close(int fd) {
     int r = 0;
     TRACE("close() intercepted, fd = ", fd);
-    r = call_real_close(fd);
     if (the_manager.is_alive()) {
         the_manager.close(fd); // The application doesn't want to hear about problems. The backup manager has been notified.
     }
+
+    r = call_real_close(fd);
     return r;
 }
 
