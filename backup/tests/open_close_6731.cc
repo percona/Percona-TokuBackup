@@ -12,14 +12,14 @@
 
 #include "backup_test_helpers.h"
 
-const int N=10;
-int N_BACKUP_ITERATIONS = 100;
-int N_OP_ITERATIONS = 1000000;
-const int N_FNAMES = 8;
+static const int N=10;
+static int N_BACKUP_ITERATIONS = 100;
+static int N_OP_ITERATIONS = 1000000;
+static const int N_FNAMES = 8;
 
-volatile long counter = N+1;
+static volatile long counter = N+1;
 
-void* do_backups(void *v) {
+static void* do_backups(void *v) {
     check(v==NULL);
     for (int i=0; i<N_BACKUP_ITERATIONS; i++) {
         setup_destination();
@@ -29,19 +29,21 @@ void* do_backups(void *v) {
     }
     __sync_fetch_and_add(&counter, -1);
     while (counter>0) {
+        fprintf(stderr, "Doing a backup waiting for clients\n");
         pthread_t thread;
         start_backup_thread(&thread);
         finish_backup_thread(thread);
         sched_yield();
+        if (RUNNING_ON_VALGRIND) usleep(100); // do some more resting to ease up on the valgrind time.
     }
     return v;
 }
 
-volatile int open_results[2];
+static volatile int open_results[2];
 
-char *fnames[N_FNAMES];
+static char *fnames[N_FNAMES];
 
-void do_client_once(std::vector<int> *fds) {
+static void do_client_once(std::vector<int> *fds) {
     const int casesize = 2;
     switch(random()%casesize) {
         case 0: {
@@ -70,7 +72,7 @@ void do_client_once(std::vector<int> *fds) {
     }
 }
 
-void* do_client(void *v) {
+static void* do_client(void *v) {
     int me = *(int*)v;
     check(0<=me && me<N);
     std::vector<int> fds;
@@ -79,12 +81,13 @@ void* do_client(void *v) {
     fds.pop_back();
     for (int i=0; i<N_OP_ITERATIONS; i++) {
         do_client_once(&fds);
+        if (RUNNING_ON_VALGRIND) { fprintf(stderr, "."); } // For some reason, printing something makes drd stop getting stuck. 
     }
     fprintf(stderr, "Client %d done, doing more work till the others are done (fds.size=%ld)\n", me, fds.size());
     __sync_fetch_and_add(&counter, -1);
     while (counter>0) {
         do_client_once(&fds);
-        if (RUNNING_ON_VALGRIND) usleep(10); // do some more resting to ease up on the valgrind time.
+        if (RUNNING_ON_VALGRIND) sched_yield(); // do some more resting to ease up on the valgrind time.
     }
     while (fds.size()>0) {
         int fd = fds[fds.size()-1];
@@ -97,7 +100,7 @@ void* do_client(void *v) {
 
 int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
     if (RUNNING_ON_VALGRIND) {
-        N_OP_ITERATIONS = std::max(N_OP_ITERATIONS/2000,500); // do less work if we are in valgrind
+        N_OP_ITERATIONS = std::max(N_OP_ITERATIONS/5000,200); // do less work if we are in valgrind
         N_BACKUP_ITERATIONS = std::max(N_BACKUP_ITERATIONS/10, 10);
     }
     fprintf(stderr, "N_OP_ITERATIONS=%d N_BACKUP_ITERATIONS=%d\n", N_OP_ITERATIONS, N_BACKUP_ITERATIONS);
