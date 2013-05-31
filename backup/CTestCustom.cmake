@@ -22,6 +22,7 @@ foreach(test
  ftruncate_injection_6480
  multiple_backups
  open_injection_6476
+ open_close_6731
  open_prepare_race_6610
  open_write_close
  no_dest_dir_6317b

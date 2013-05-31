@@ -19,6 +19,7 @@ set(blackboxtests
   closedirfails_dest_dir
   empty_dest
   multiple_backups
+  open_close_6731
   open_write_close
   open_prepare_race_6610
   read_and_seek
