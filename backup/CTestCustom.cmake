@@ -10,6 +10,7 @@ foreach(test
  closedirfails_dest_dir
  copy_files
  debug_coverage
+ dest_no_permissions_10
  disable_race
  empty_dest
  end_race_open_6668
@@ -35,6 +36,7 @@ foreach(test
  range_locks
  read_and_seek
  rename
+ source_no_permissions_10 
  test6128
  test6361
  test6415_enospc_injection
