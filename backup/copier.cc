@@ -358,28 +358,29 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
 
     // Try to create the destination file, using the file hash table
     // lock to help serialize access.
-    m_table->lock();
-
-    src_info.m_file->name_write_lock();
-
-    // Check to see if the real source file still exists.  If it
-    // doesn't, it has been unlinked and we should NOT create the
-    // destination file.  We are protected by the table lock here.
     bool source_exists = true;
     int result = 0;
-    struct stat buf;
-    TRACE("stat'ing file = ", src_info.m_path);
-    int stat_r = lstat(src_info.m_path, &buf);
-    if (stat_r == 0) {
-        result = src_info.m_file->try_to_create_destination_file(dest_path);
-    } else {
-        free(dest_path);
-        source_exists = false;
+    {
+        with_file_hash_table_mutex mtl(m_table);
+
+        src_info.m_file->name_write_lock();
+
+        // Check to see if the real source file still exists.  If it
+        // doesn't, it has been unlinked and we should NOT create the
+        // destination file.  We are protected by the table lock here.
+        struct stat buf;
+        TRACE("stat'ing file = ", src_info.m_path);
+        int stat_r = lstat(src_info.m_path, &buf);
+        if (stat_r == 0) {
+            result = src_info.m_file->try_to_create_destination_file(dest_path);
+        } else {
+            free(dest_path);
+            source_exists = false;
+        }
+
+        src_info.m_file->name_unlock();
     }
 
-    src_info.m_file->name_unlock();
-
-    m_table->unlock();
     if (result != 0) { return result; }
 
     if (source_exists) {
@@ -391,11 +392,11 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
     }
 
     // Try to destroy the destination file.
-    m_table->lock();
+    {
+        with_file_hash_table_mutex mtl(m_table);
 
-    src_info.m_file->try_to_remove_destination();
-
-    m_table->unlock();
+        src_info.m_file->try_to_remove_destination();
+    }
 
     return 0;
 }

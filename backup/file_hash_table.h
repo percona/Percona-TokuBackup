@@ -30,8 +30,11 @@ public:
     int rename_locked(const char *old_name, const char *new_name, const char *dest) throw(); // On success return 0, otherwise return error number (not in errno).
     int rename(source_file * const target, const char *new_name, const char *dest) throw(); // On success return 0, otherwise return error number (not in errno).
 
+  private:
     void lock(void) throw(); // no return results since we assume that mutexes work.
     void unlock(void) throw();
+    
+    friend class with_file_hash_table_mutex;
 private:
     size_t m_count;
     source_file **m_array;

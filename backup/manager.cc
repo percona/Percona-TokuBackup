@@ -432,9 +432,8 @@ void manager::close(int fd) {
     
     source_file * source = file->get_source_file();
     if (this->try_to_enter_session_and_lock()) {
-        m_table.lock();
+        with_file_hash_table_mutex mtl(&m_table);
         source->try_to_remove_destination();
-        m_table.unlock();
         this->exit_session_and_unlock_or_die();
     }
 
@@ -899,11 +898,13 @@ int manager::truncate(const char *path, off_t length) throw() {
         const char * destination_file = NULL;
         destination_file = m_session->translate_prefix_of_realpath(full_path);
         // Find and lock the associated source file.
-        m_table.lock();
+        source_file *file;
+        {
+            with_file_hash_table_mutex mtl(&m_table);
 
-        source_file * file = m_table.get(destination_file);
-        file->add_reference();
-        m_table.unlock();
+            file = m_table.get(destination_file);
+            file->add_reference();
+        }
         
         file->lock_range(length, LLONG_MAX);
         
