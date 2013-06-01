@@ -40,5 +40,17 @@ private:
     void maybe_resize(void) throw();
 };
 
+class with_file_hash_table_mutex {
+  private:
+    file_hash_table *ht;
+  public:
+    with_file_hash_table_mutex(file_hash_table *h): ht(h) {
+        ht->lock();
+    }
+    ~with_file_hash_table_mutex(void) {
+        ht->unlock();
+    }
+};
+
 
 #endif // End of header guardian.

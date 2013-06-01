@@ -775,49 +775,50 @@ int manager::unlink(const char *path) throw() {
 
     prwlock_rdlock(&m_session_rwlock);
 
-    m_table.lock();
+    {
+        with_file_hash_table_mutex mtl(&m_table);
 
-    if (m_session != NULL && this->capture_is_enabled() && m_session->is_prefix_of_realpath(full_path)) {
-        // 1. Find source file, unlink it.
-        // 2. Get destination file from source file.
-        destination_file * dest = source->get_destination();
-        if (dest == NULL) {
-            // The destination object may not exist in one of three cases:
-            // 1.  The copier hasn't yet gotten to copying the file.
-            // 2.  The copier has finished copying the file.
-            // 3.  There is no open fd associated with this file.
-            char *dest_path = m_session->translate_prefix_of_realpath(full_path);
-            r = source->try_to_create_destination_file(dest_path);
-            if (r != 0) {
-                free((void*)dest_path);
-                goto free_out;
+        if (m_session != NULL && this->capture_is_enabled() && m_session->is_prefix_of_realpath(full_path)) {
+            // 1. Find source file, unlink it.
+            // 2. Get destination file from source file.
+            destination_file * dest = source->get_destination();
+            if (dest == NULL) {
+                // The destination object may not exist in one of three cases:
+                // 1.  The copier hasn't yet gotten to copying the file.
+                // 2.  The copier has finished copying the file.
+                // 3.  There is no open fd associated with this file.
+                char *dest_path = m_session->translate_prefix_of_realpath(full_path);
+                r = source->try_to_create_destination_file(dest_path);
+                if (r != 0) {
+                    free((void*)dest_path);
+                    goto free_out;
+                }
+
+                dest = source->get_destination();
             }
 
-            dest = source->get_destination();
-        }
-
-        // 3. Unlink the destination file.
-        r = dest->unlink();
-        if (r != 0) {
-            int error = errno;
-            this->backup_error(error, "Could not unlink backup copy.");
-        }
+            // 3. Unlink the destination file.
+            r = dest->unlink();
+            if (r != 0) {
+                int error = errno;
+                this->backup_error(error, "Could not unlink backup copy.");
+            }
         
-        // If it does not exist, and if backup is running,
-        // it may be in the todo list. Since we have the hash 
-        // table lock, the copier can't add it, and rename() threads
-        // can't alter the name and re-hash it till we are done.
+            // If it does not exist, and if backup is running,
+            // it may be in the todo list. Since we have the hash 
+            // table lock, the copier can't add it, and rename() threads
+            // can't alter the name and re-hash it till we are done.
+        }
+
+        // We have to unlink the source file, regardless of whether ther
+        // is a backup session in progress or not.
+        source->name_write_lock();
+        source->unlink();
+        source->try_to_remove_destination();
+        source->name_unlock();
+
+        m_table.try_to_remove(source);
     }
-
-    // We have to unlink the source file, regardless of whether ther
-    // is a backup session in progress or not.
-    source->name_write_lock();
-    source->unlink();
-    source->try_to_remove_destination();
-    source->name_unlock();
-
-    m_table.unlock();
-    m_table.try_to_remove_locked(source);
     prwlock_unlock(&m_session_rwlock);
 
 free_out:
