@@ -31,6 +31,7 @@ set(blackboxtests
   null_dest_dir_6317
   nondir_dest_dir_6317
   readdirfails_dest_dir
+  open_write_race
   source_no_permissions_10
   test6361
   throttle_6564

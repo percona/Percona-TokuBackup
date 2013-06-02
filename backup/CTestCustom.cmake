@@ -26,6 +26,7 @@ foreach(test
  open_close_6731
  open_prepare_race_6610
  open_write_close
+ open_write_race
  no_dest_dir_6317b
  notinsource_6570
  notinsource_6570b
