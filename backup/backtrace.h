@@ -13,6 +13,7 @@ public:
     const int line;
     const char *fun;
     const backtrace *prev;
+    backtrace(void): file(0), line(-1), fun(0), prev(0) {}
     backtrace(const char *fi, int l, const char *fu, const backtrace *p) throw() : file(fi), line(l), fun(fu), prev(p) {}
 };
 

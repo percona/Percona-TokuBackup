@@ -309,7 +309,7 @@ out:
 ///////////////////////////////////////////////////////////////////////////////
 //
 void manager::disable_descriptions(void) throw() {
-    lock_fmap(BACKTRACE(NULL));
+    with_fmap_locked(BACKTRACE(NULL));
     const int size = m_map.size();
     const int middle __attribute__((unused)) = size / 2; // used only in glassbox mode.
     for (int i = 0; i < size; ++i) {
@@ -331,7 +331,6 @@ void manager::disable_descriptions(void) throw() {
         }
     }
 
-    unlock_fmap(BACKTRACE(NULL));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1077,9 +1076,7 @@ int manager::setup_description_and_source_file(int fd, const char *file) throw()
     // source file object.
     file_description = new description();
     file_description->set_source_file(source);
-    lock_fmap(BACKTRACE(NULL));
-    m_map.put_unlocked(fd, file_description);
-    unlock_fmap(BACKTRACE(NULL));
+    m_map.put(fd, file_description);
 
  error_out:
     return error;

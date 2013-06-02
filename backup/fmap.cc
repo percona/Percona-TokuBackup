@@ -59,9 +59,8 @@ void fmap::get(int fd, description** resultp, const backtrace bt) throw() {
     if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
-    lock_fmap(BACKTRACE(&bt));
+    with_fmap_locked ml(BACKTRACE(&bt));
     description *result = this->get_unlocked(fd);
-    unlock_fmap(BACKTRACE(&bt));
     *resultp = result;
 }
 
@@ -77,7 +76,8 @@ description* fmap::get_unlocked(int fd) throw() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void fmap::put_unlocked(int fd, description *file) throw() {
+void fmap::put(int fd, description *file) throw() {
+    with_fmap_locked ml(BACKTRACE(NULL));
     this->grow_array(fd);
     glass_assert(m_map[fd] == NULL);
     m_map[fd] = file;
@@ -95,15 +95,13 @@ void fmap::put_unlocked(int fd, description *file) throw() {
 // Requires: the fd is something currently mapped.
 
 int fmap::erase(int fd, const backtrace bt) throw() {
-    lock_fmap(BACKTRACE(&bt));
+    with_fmap_locked ml(BACKTRACE(&bt));
     if ((size_t)fd  >= m_map.size()) {
-        unlock_fmap(BACKTRACE(&bt));
         return 0;
     } else {
         description *description = m_map[fd];
         m_map[fd] = NULL;
         {
-            unlock_fmap(BACKTRACE(&bt));
             if (description) {
                 // Do this after releasing the lock
                 //                source_file * src_file = description->get_source_file();
