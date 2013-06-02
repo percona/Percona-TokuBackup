@@ -309,7 +309,7 @@ out:
 ///////////////////////////////////////////////////////////////////////////////
 //
 void manager::disable_descriptions(void) throw() {
-    with_fmap_locked(BACKTRACE(NULL));
+    with_fmap_locked ml(BACKTRACE(NULL));
     const int size = m_map.size();
     const int middle __attribute__((unused)) = size / 2; // used only in glassbox mode.
     for (int i = 0; i < size; ++i) {
