@@ -363,7 +363,7 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
     {
         with_file_hash_table_mutex mtl(m_table);
 
-        src_info.m_file->name_write_lock();
+        with_source_file_name_write_lock sfl(src_info.m_file);
 
         // Check to see if the real source file still exists.  If it
         // doesn't, it has been unlinked and we should NOT create the
@@ -377,8 +377,6 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
             free(dest_path);
             source_exists = false;
         }
-
-        src_info.m_file->name_unlock();
     }
 
     if (result != 0) { return result; }

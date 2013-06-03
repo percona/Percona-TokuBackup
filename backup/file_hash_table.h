@@ -27,7 +27,9 @@ public:
     // These methods rename at least the source_file object and
     // reinsert it into our hash table.  If there is a
     // destination_file object, that file is also renamed.
-    int rename_locked(const char *old_name, const char *new_name, const char *dest) throw(); // On success return 0, otherwise return error number (not in errno).
+    int rename_locked(const char *old_name, const char *new_name, const char *dest) throw(); // On success return 0, otherwise return error number (not in errno), having reported the error to the manager.
+  private:
+    // The rename method (without a lock) is private to the file_hash_table.
     int rename(source_file * const target, const char *new_name, const char *dest) throw(); // On success return 0, otherwise return error number (not in errno).
 
   private:

@@ -89,7 +89,7 @@ int destination_file::unlink(void) const throw() {
     int r = call_real_unlink(m_path);
     if (r != 0) {
         r = errno;
-        the_manager.backup_error(r, "Unlink of backup file failed.");
+        the_manager.backup_error(r, "Failed unlink of backup file %s", m_path);
     }
 
     return r;

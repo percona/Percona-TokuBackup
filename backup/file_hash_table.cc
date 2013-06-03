@@ -194,12 +194,16 @@ int file_hash_table::rename_locked(const char *old_path, const char *new_path, c
 //
 int file_hash_table::rename(source_file * target, const char *new_source_name, const char *dest) throw() {
     destination_file * dest_file = NULL;
-    target->name_write_lock();
+    with_source_file_name_write_lock sfl(target);
     
     this->remove(target);
-    int r = target->rename(new_source_name);
-    if (r != 0) {
-        goto unlock_out;
+    {
+        int r = target->rename(new_source_name);
+        if (r != 0) {
+            // We report our own errors.
+            the_manager.backup_error(r, "Could not do target->rename to %s", new_source_name);
+            return r;
+        }
     }
 
     // If the destination file is NOT NULL, then there is an active
@@ -211,18 +215,16 @@ int file_hash_table::rename(source_file * target, const char *new_source_name, c
     // so there is no need to rename a file that does not yet exist.
     dest_file = target->get_destination();
     if (dest_file != NULL) {
-        r = dest_file->rename(dest);
+        int r = dest_file->rename(dest);
         if (r != 0) {
-            goto unlock_out;
+            the_manager.backup_error(r, "Could not do dest_file->rename to %s", dest);
+            return r;
         }
     } else {
     }
 
     this->put(target);
-
-unlock_out:
-    target->name_unlock();
-    return r;
+    return 0;
 }
 
 ////////////////////////////////////////////////////////

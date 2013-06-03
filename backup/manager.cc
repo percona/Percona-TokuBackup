@@ -274,10 +274,9 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
         }
         
         source_file * source = file->get_source_file();
-        source->name_read_lock();
+        with_source_file_name_read_lock sfl(source);
 
         if (!session->is_prefix_of_realpath(source->name())) {
-            source->name_unlock();
             continue;
         }
 
@@ -285,7 +284,6 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
         r = open_path(file_name);
         if (r != 0) {
             backup_error(r, "Failed to open path");
-            source->name_unlock();
             free(file_name);
             goto out;
         }
@@ -293,12 +291,10 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
         r = source->try_to_create_destination_file(file_name);
         if (r != 0) {
             backup_error(r, "Could not create backup file.");
-            source->name_unlock();
             free(file_name);
             goto out;
         }
 
-        source->name_unlock();
     }
     
 out:
@@ -383,7 +379,7 @@ int manager::open(int fd, const char *file) throw() {
     m_map.get(fd, &description, BACKTRACE(NULL));
     
     source = description->get_source_file();
-    source->name_read_lock();
+    with_source_file_name_read_lock sfl(source);
 
     // Next, determine the full path of the backup file.
     result = m_session->capture_open(file, &backup_file_name);
@@ -399,12 +395,9 @@ int manager::open(int fd, const char *file) throw() {
             // TODO: Refactor this free().  This string should be
             // freed by the owner: the destination file object.
             free(backup_file_name);
-            source->name_unlock();
             goto out;
         }
     }
-
-    source->name_unlock();
 
 out:
     this->exit_session_and_unlock_or_die();
@@ -708,8 +701,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
             // session.
             r = m_table.rename_locked(full_old_path, full_new_path, full_new_destination_path);
             if (r != 0) {
-                error = r;
-                this->backup_error(error, "Could not rename(%s, %s).", full_new_path, full_new_destination_path);
+                // Nothing.  The error has been reported in rename_locked.
             } else {
                 // If the copier has already copied or is copying the
                 // file, this will succceed.  If the copier has not yet
@@ -738,6 +730,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     free((void*)full_new_path);
 source_free_out:
     free((void*)full_old_path);
+    if (user_error) errno = error;
     return user_error;
 }
 
@@ -810,10 +803,11 @@ int manager::unlink(const char *path) throw() {
 
         // We have to unlink the source file, regardless of whether ther
         // is a backup session in progress or not.
-        source->name_write_lock();
-        source->unlink();
-        source->try_to_remove_destination();
-        source->name_unlock();
+        {
+            with_source_file_name_write_lock sfl(source);
+            source->unlink();
+            source->try_to_remove_destination();
+        }
 
         m_table.try_to_remove(source);
     }
@@ -1063,7 +1057,7 @@ int manager::setup_description_and_source_file(int fd, const char *file) throw()
         error = errno;
         // This error is not recoverable, because we can't guarantee 
         // that we can CAPTURE any calls on the given fd or file.
-        this->backup_error(errno, "Could not allocate space for backup.");
+        this->backup_error(errno, "realpath failed on %s", file);
         goto error_out;
     }
 
