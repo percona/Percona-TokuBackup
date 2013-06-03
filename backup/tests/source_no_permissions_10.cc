@@ -28,7 +28,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     setup_destination();
     setup_dirs();
     {
-        int r = systemf("chmod ugo-w %s", src);
+        int r = systemf("chmod ugo-r %s", src);
         check(r==0);
     }
     {
