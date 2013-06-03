@@ -266,7 +266,7 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
     int r = 0;
     // Loop through all the current file descriptions and prepare them
     // for backup.
-    fmap::lock_fmap(backtrace(bt)); // TODO: #6532 This lock is much too coarse.  Need to refine it.  This lock deals with a race between file->create() and a close() call from the application.  We aren't using the m_refcount in file_description (which we should be) and we even if we did, the following loop would be racy since m_map.size could change while we are running, and file descriptors could come and go in the meanwhile.  So this really must be fixed properly to refine this lock.
+    with_fmap_locked fm(BACKTRACE(&bt)); // TODO: #6532 This lock is much too coarse.  Need to refine it.  This lock deals with a race between file->create() and a close() call from the application.  We aren't using the m_refcount in file_description (which we should be) and we even if we did, the following loop would be racy since m_map.size could change while we are running, and file descriptors could come and go in the meanwhile.  So this really must be fixed properly to refine this lock.
     for (int i = 0; i < m_map.size(); ++i) {
         description *file = m_map.get_unlocked(i);
         if (file == NULL) {
@@ -298,7 +298,6 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
     }
     
 out:
-    fmap::unlock_fmap(BACKTRACE(&bt));
     return r;
 }
 
