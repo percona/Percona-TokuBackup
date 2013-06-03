@@ -21,8 +21,8 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     char *src = get_src();
     char *dst = get_dst();
     {
-        int r = systemf("chmod ugo+rwx %s", src);
-        check(r==0);
+        int r = systemf("chmod ugo+rwx %s 2> /dev/null", src);
+        ignore(r);
     }
     setup_source();
     setup_destination();
