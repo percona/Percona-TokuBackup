@@ -34,26 +34,29 @@ public:
     description* get_unlocked(int fd) throw(); // use this one instead of get() when you already have the lock.
     int erase(int fd, const backtrace bt) throw() __attribute__((warn_unused_result)); // returns 0 or an error number.
     int size(void) throw();
+
+    // Global locks used when the file descriptor map is updated.   Sometimes the backup system needs to hold the lock for several operations.
+    // No errors are countenanced.
+    static void lock_fmap(backtrace bt) throw();
+    static void unlock_fmap(backtrace bt) throw();
+    friend class with_fmap_locked;
+
 private:
     void grow_array(int fd) throw();
     
-friend class fmap_unit_test;
+    friend class fmap_unit_test;
 };
 
-// Global locks used when the file descriptor map is updated.   Sometimes the backup system needs to hold the lock for several operations.
-// No errors are countenanced.
-void lock_fmap(backtrace bt) throw();
-void unlock_fmap(backtrace bt) throw();
 
 class with_fmap_locked {
   private:
     const backtrace m_bt;
   public:
     with_fmap_locked(backtrace bt): m_bt(bt) {
-        lock_fmap(m_bt);
+        fmap::lock_fmap(m_bt);
     }
     ~with_fmap_locked(void) {
-        unlock_fmap(m_bt);
+        fmap::unlock_fmap(m_bt);
     }
 };
 

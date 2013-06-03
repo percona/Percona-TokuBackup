@@ -146,11 +146,11 @@ void fmap::grow_array(int fd) throw() {
     }
 }
 
-void lock_fmap(const backtrace bt) throw() {
+void fmap::lock_fmap(const backtrace bt) throw() {
     pmutex_lock(&get_put_mutex, BACKTRACE(&bt));
 }
 
-void unlock_fmap(const backtrace bt) throw() {
+void fmap::unlock_fmap(const backtrace bt) throw() {
     pmutex_unlock(&get_put_mutex, BACKTRACE(&bt));
 }
 
