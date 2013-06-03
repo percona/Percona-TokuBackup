@@ -33,6 +33,7 @@ foreach(test
  null_dest_dir_6317
  nondir_dest_dir_6317
  readdirfails_dest_dir
+ realpath_error_injection
  rename_injection
  range_locks
  read_and_seek
