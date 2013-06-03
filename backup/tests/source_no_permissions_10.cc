@@ -18,11 +18,15 @@ static void expect_eacces_error_fun(int error_number, const char *error_string, 
 }
 
 int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+    char *src = get_src();
+    char *dst = get_dst();
+    {
+        int r = systemf("chmod ugo+rwx %s", src);
+        check(r==0);
+    }
     setup_source();
     setup_destination();
     setup_dirs();
-    char *src = get_src();
-    char *dst = get_dst();
     {
         int r = systemf("chmod ugo-w %s", src);
         check(r==0);
@@ -35,6 +39,10 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
                                          expect_eacces_error_fun, NULL);
         check(r==EACCES);
         check(saw_error);
+    }
+    {
+        int r = systemf("chmod ugo+rwx %s", src);
+        check(r==0);
     }
     cleanup_dirs();
     free(src);
