@@ -372,6 +372,8 @@ int manager::open(int fd, const char *file) throw() {
         return 0;
     }
 
+    PAUSE(HotBackup::OPEN_DESTINATION_FILE);
+
     // Since there is an active backup session, we need to create the
     // destination file object.  This will also create the actual
     // backup copy of the corresponding file in the user's source
@@ -740,6 +742,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     free((void*)full_new_path);
 source_free_out:
     free((void*)full_old_path);
+    TRACE("rename() exiting...", oldpath);
     return user_error;
 }
 
