@@ -9,6 +9,7 @@
 #include "file_hash_table.h"
 #include "manager.h"
 #include "mutex.h"
+#include "raii-malloc.h"
 #include "real_syscalls.h"
 #include "source_file.h"
 
@@ -354,8 +355,8 @@ int copier::copy_using_source_info(source_info src_info, const char *path) throw
 //
 int copier::create_destination_and_copy(source_info src_info,  const char *path) throw() {
     TRACE("Creating new destination file", path);
-    char * dest_path = strdup(path);
-    if (dest_path == NULL) {
+    with_object_to_free<char*> dest_path(strdup(path));
+    if (dest_path.value == NULL) {
         int r = errno;
         return r;
     }
@@ -376,9 +377,8 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
         TRACE("stat'ing file = ", src_info.m_path);
         int stat_r = lstat(src_info.m_path, &buf);
         if (stat_r == 0) {
-            result = src_info.m_file->try_to_create_destination_file(dest_path);
+            result = src_info.m_file->try_to_create_destination_file(dest_path.value);
         } else {
-            free(dest_path);
             source_exists = false;
         }
     }

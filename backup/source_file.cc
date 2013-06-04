@@ -225,15 +225,13 @@ void source_file::try_to_remove_destination(void) throw() {
 
 ////////////////////////////////////////////////////////
 //
-int source_file::try_to_create_destination_file(const char * full_path) throw() {
+int source_file::try_to_create_destination_file(const char *full_path) throw() {
     int r = 0;
     if (m_unlinked == true) {
-        free((void*)full_path);
         return r;
     }
 
     if (m_destination_file != NULL) {
-        free((void*)full_path);
         return r;
     }
 
@@ -243,14 +241,12 @@ int source_file::try_to_create_destination_file(const char * full_path) throw() 
     if (fd < 0) {
         r = errno;
         if (r != EEXIST) {
-            free((void*)full_path);
             return r;
         }
 
         fd = call_real_open(full_path, O_RDWR, 0777);
         if (fd < 0) {
             r = errno;
-            free((void*)full_path);
             return r;
         }
     }

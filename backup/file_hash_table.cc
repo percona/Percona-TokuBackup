@@ -181,9 +181,9 @@ void file_hash_table::try_to_remove(source_file * const file) throw() {
 
 ////////////////////////////////////////////////////////
 //
-int file_hash_table::rename_locked(const char *old_path, const char *new_path, const char *dest_path) throw() {
+int file_hash_table::rename_locked(const char * const old_path, const char *new_path, const char *dest_path) throw() {
     int r = 0;
-    this->lock();
+    with_file_hash_table_mutex ht(this);
     source_file * target = this->get_or_create(old_path);
 
     // This path should only be called during an active backup
@@ -195,7 +195,6 @@ int file_hash_table::rename_locked(const char *old_path, const char *new_path, c
         this->try_to_remove(target);
     }
 
-    this->unlock();
     return r;
 }
 

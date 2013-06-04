@@ -284,15 +284,14 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
             continue;
         }
 
-        char * file_name = session->translate_prefix_of_realpath(source->name());
-        r = open_path(file_name);
+        with_object_to_free<char*> file_name(session->translate_prefix_of_realpath(source->name()));
+        r = open_path(file_name.value);
         if (r != 0) {
             backup_error(r, "Failed to open path");
-            free(file_name);
             goto out;
         }
 
-        r = source->try_to_create_destination_file(file_name);
+        r = source->try_to_create_destination_file(file_name.value);
         if (r != 0) {
             backup_error(r, "Could not create backup file.");
             // Don't need to free file_name, since try_to_create_destination_file takes ownership (having deleted it if an error happened).
@@ -397,9 +396,9 @@ int manager::open(int fd, const char *file) throw() {
         result = source->try_to_create_destination_file(backup_file_name);
         if (result != 0) {
             backup_error(result, "Could not open backup file %s", backup_file_name);
-            // Don't need to free file_name, since try_to_create_destination_file takes ownership (having deleted it if an error happened).
             goto out;
         }
+        free((void*)backup_file_name);
     }
 
 out:
@@ -662,12 +661,6 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
 {
     int error = 0;
     int r = 0;
-    const char * copy_of_old_path = strdup(full_old_path);
-    if (copy_of_old_path == NULL) {
-        error = errno;
-        this->backup_error(error, "Could not copy file path.");
-        return;
-    }
 
     // Get the full path of the recently renanmed file.
     // We could not call this earlier, since the new file path
@@ -705,11 +698,7 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
             // object with the new name.  We must also update the
             // destination_file object because we are inside of a
             // session.
-            r = m_table.rename_locked(copy_of_old_path, full_new_path.value, full_new_destination_path.value);
-
-            // Setting this to NULL helps us track whether the string
-            // was used/consumed by the inner rename calls.
-            copy_of_old_path = NULL;
+            r = m_table.rename_locked(full_old_path, full_new_path.value, full_new_destination_path.value);
 
             if (r != 0) {
                 // Nothing.  The error has been reported in rename_locked.
@@ -735,11 +724,6 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
         if (error == ENOMEM) {
             the_manager.backup_error(error, "Could not rename user file: %s", newpath);
         }
-    }
-
-    if (copy_of_old_path != NULL)
-    {
-        free((void*)copy_of_old_path);
     }
 }
 
@@ -787,10 +771,9 @@ int manager::unlink(const char *path) throw() {
                 // 1.  The copier hasn't yet gotten to copying the file.
                 // 2.  The copier has finished copying the file.
                 // 3.  There is no open fd associated with this file.
-                char *dest_path = m_session->translate_prefix_of_realpath(full_path.value);
-                r = source->try_to_create_destination_file(dest_path);
+                with_object_to_free<char*> dest_path(m_session->translate_prefix_of_realpath(full_path.value));
+                r = source->try_to_create_destination_file(dest_path.value);
                 if (r != 0) {
-                    // Don't need to free file_name, since try_to_create_destination_file takes ownership (having deleted it if an error happened).
                     goto free_out;
                 }
 
