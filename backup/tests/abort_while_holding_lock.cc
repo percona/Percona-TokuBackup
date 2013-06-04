@@ -25,10 +25,16 @@
 
 rename_fun_t real_rename = NULL;
 
+__thread int stack_depth = 0;
+
 int my_rename(const char *a, const char *b) {
     printf("Doing rename\n");
     int r = real_rename(a, b);
-    check_fun(0, "call check fun to make sure it fails properly", BACKTRACE(NULL));
+    stack_depth++;
+    if (stack_depth==1) {
+        check_fun(0, "call check fun to make sure it fails properly", BACKTRACE(NULL));
+    }
+    stack_depth--;
     return r;
 }
 
