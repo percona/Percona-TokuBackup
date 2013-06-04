@@ -34,7 +34,7 @@
 #endif
 
 #if PAUSE_POINTS_ON
-#define PAUSE(number) while(HotBackup::should_pause(number)) { sleep(2); } printf("Resuming from Pause Point.\n");
+#define PAUSE(number) while(HotBackup::should_pause(number)) { sleep(2); } //printf("Resuming from Pause Point.\n");
 #else
 #define PAUSE(number)
 #endif
