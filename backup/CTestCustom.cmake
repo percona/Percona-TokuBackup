@@ -12,6 +12,7 @@ foreach(test
  create_rename_race
  debug_coverage
  dest_no_permissions_10
+ dest_no_permissions_with_open_10
  disable_race
  empty_dest
  end_race_open_6668
