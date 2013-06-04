@@ -1,3 +1,14 @@
+# Don't run memcheck on these functions
+foreach(test
+ abort_while_holding_lock
+ )
+    list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE
+      ${test}
+      helgrind/${test}
+      drd/${test}
+      )
+endforeach(test)
+
 # Don't run helgrind and drd when we are running valgrind
 foreach(test 
  abort_while_holding_lock 

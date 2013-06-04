@@ -41,7 +41,6 @@ set(blackboxtests
   )
 
 set(glassboxtests
-  abort_while_holding_lock        ## needs to register a rename function.
   backup_directory_tests
   backup_no_fractal_tree          ## Needs the keep_capturing API
   backup_no_fractal_tree_threaded ## Needs the keep_capturing API
@@ -79,22 +78,25 @@ set(glassboxtests
   write_race
   )
 
+set(glassboxtests_no_grind
+  abort_while_holding_lock        ## needs to register a rename function.  This function won't work well under helgrind or memcheck since it exits out of a signal handler.
+  )
+
 foreach(test ${blackboxtests})
   add_executable(${test} ${test} backup_test_helpers)
   target_link_libraries(${test} HotBackup ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
   add_test(${test} ${test} --testname ${test})
-  if (USE_GRIND)
-    add_valgrind_tool_test(helgrind ${test})
-    add_valgrind_tool_test(drd ${test})
-  endif (USE_GRIND)
 endforeach(test)
 
-foreach(test ${glassboxtests})
+foreach(test ${glassboxtests} ${glassboxtests_no_grind})
   add_executable(${test} ${test} backup_test_helpers)
   target_link_libraries(${test} HotBackupGlassbox ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
   add_test(${test} ${test} --testname ${test})
+endforeach(test)
+
+foreach(test ${blackboxtests} ${glassboxtests})
   if (USE_GRIND)
     add_valgrind_tool_test(helgrind ${test})
     add_valgrind_tool_test(drd ${test})
   endif (USE_GRIND)
-endforeach(test)
+endforeach(test)  
