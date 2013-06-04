@@ -643,17 +643,14 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     // We need the newpath to exist to finish our own rename work.
     // So just call it now, regardless of CAPTURE state.
     user_error = call_real_rename(oldpath, newpath);
-    if (user_error != 0) {
-        free((void*)full_old_path);
-    } else {
+    if (user_error == 0) {
         if (this->try_to_enter_session_and_lock()) {
             this->capture_rename(full_old_path, newpath);
             this->exit_session_and_unlock_or_die();
-        } else {
-            free((void*)full_old_path);
         }
     }
 
+    free((void*)full_old_path);
     TRACE("rename() exiting...", oldpath);
     return user_error;
 }
@@ -664,6 +661,12 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
 {
     int error = 0;
     int r = 0;
+    const char * copy_of_old_path = strdup(full_old_path);
+    if (copy_of_old_path == NULL) {
+        error = errno;
+        this->backup_error(error, "Could not copy file path.");
+        return;
+    }
 
     // Get the full path of the recently renanmed file.
     // We could not call this earlier, since the new file path
@@ -702,7 +705,11 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
             // object with the new name.  We must also update the
             // destination_file object because we are inside of a
             // session.
-            r = m_table.rename_locked(full_old_path, full_new_path, full_new_destination_path);
+            r = m_table.rename_locked(copy_of_old_path, full_new_path, full_new_destination_path);
+
+            // Setting this to NULL helps us track whether the string
+            // was used/consumed by the inner rename calls.
+            copy_of_old_path = NULL;
             if (r != 0) {
                 // Nothing.  The error has been reported in rename_locked.
             } else {
@@ -734,6 +741,11 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
         if (error == ENOMEM) {
             the_manager.backup_error(error, "Could not rename user file: %s", newpath);
         }
+    }
+
+    if (copy_of_old_path != NULL)
+    {
+        free((void*)copy_of_old_path);
     }
 }
 
