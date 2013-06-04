@@ -193,22 +193,24 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         }
     }
 
-    prwlock_wrlock(&m_session_rwlock);
+    {
+        with_rwlock_wrlocked ms(&m_session_rwlock, BACKTRACE(NULL));
 
-    pmutex_lock(&copier::m_todo_mutex, BACKTRACE(NULL));
-    m_session = new backup_session(source, dest, calls, &m_table, &r);
-    pmutex_unlock(&copier::m_todo_mutex, BACKTRACE(NULL));
-    print_time("Toku Hot Backup: Started:");    
+        {
+            with_mutex_locked mt(&copier::m_todo_mutex, BACKTRACE(NULL));
+            m_session = new backup_session(source, dest, calls, &m_table, &r);
+        }
+        print_time("Toku Hot Backup: Started:");    
 
-    r = this->prepare_directories_for_backup(m_session, BACKTRACE(NULL));
-    if (r != 0) {
-        goto disable_out;
+        r = this->prepare_directories_for_backup(m_session, BACKTRACE(NULL));
+        if (r != 0) {
+            // RAII saves the day.  We weren't unlocking the mutex properly.
+            goto disable_out;
+        }
+
+        this->enable_capture();
+        this->enable_copy();
     }
-
-    this->enable_capture();
-    this->enable_copy();
-
-    prwlock_unlock(&m_session_rwlock);
 
     WHEN_GLASSBOX( ({
                 m_done_copying = false;
@@ -231,20 +233,20 @@ disable_out: // preserves r if r!=0
         while (m_keep_capturing) sched_yield();
             }) );
 
-    prwlock_wrlock(&m_session_rwlock);
+    {
+        with_rwlock_wrlocked ms(&m_session_rwlock, BACKTRACE(NULL));
 
-    m_backup_is_running = false;
-    this->disable_capture();
-    this->disable_descriptions();
-    WHEN_GLASSBOX(m_is_capturing = false);
-    print_time("Toku Hot Backup: Finished:");
-    // We need to remove any extra renamed files that may have made it
-    // to the backup session just after copy finished.
-    m_session->cleanup();
-    delete m_session;
-    m_session = NULL;
-
-    prwlock_unlock(&m_session_rwlock);
+        m_backup_is_running = false;
+        this->disable_capture();
+        this->disable_descriptions();
+        WHEN_GLASSBOX(m_is_capturing = false);
+        print_time("Toku Hot Backup: Finished:");
+        // We need to remove any extra renamed files that may have made it
+        // to the backup session just after copy finished.
+        m_session->cleanup();
+        delete m_session;
+        m_session = NULL;
+    }
 
 unlock_out: // preserves r if r!0
 
