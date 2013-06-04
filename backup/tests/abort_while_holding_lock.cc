@@ -15,15 +15,20 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "backtrace.h"
 #include "backup_test_helpers.h"
 #include "real_syscalls.h"
+
+// Get rid of the check in backup_test_helpers, in favor of the one that the rest of the backup library uses.
+#undef check
+#include "../check.h"
 
 rename_fun_t real_rename = NULL;
 
 int my_rename(const char *a, const char *b) {
     printf("Doing rename\n");
     int r = real_rename(a, b);
-    abort();
+    check_fun(0, "call check fun to make sure it fails properly", BACKTRACE(NULL));
     return r;
 }
 

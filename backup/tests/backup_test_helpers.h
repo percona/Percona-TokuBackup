@@ -72,7 +72,7 @@ static inline double tdiff(const struct timespec start, const struct timespec en
 
 #include <stdlib.h>
 #include <stdio.h>
-static inline void check_fun(long predicate, const char *expr, const char *file, int line) throw() {
+static inline void check_fun_in_test_helpers(long predicate, const char *expr, const char *file, int line) throw() {
     if (!predicate) {
         fprintf(stderr, "check(%s) failed at %s:%d\n", expr, file, line);
         abort();
@@ -81,6 +81,6 @@ static inline void check_fun(long predicate, const char *expr, const char *file,
 
 // Like assert, except it doesn't go away under NDEBUG.
 // Do this with a function so that we don't get false answers on branch coverage.
-#define check(x) check_fun((long)(x), #x, __FILE__, __LINE__)
+#define check(x) check_fun_in_test_helpers((long)(x), #x, __FILE__, __LINE__)
 
 #endif // End of header guardian.
