@@ -42,7 +42,7 @@ char *A, *B, *C, *D;
 
 void handler(int i __attribute__((unused))) {
     int r = rename(C, D);
-    if (r!=0) raise(SIGKILL);
+    if (0) printf("%s:%d r=%d\n", __FILE__, __LINE__, r);
     exit(0); // want to exit gracefully.
 }
 
