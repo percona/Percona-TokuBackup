@@ -5,6 +5,7 @@
 
 #include <fcntl.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "backup_test_helpers.h"

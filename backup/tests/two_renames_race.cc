@@ -3,10 +3,11 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
-#include <errno.h>
 
 #include "backup_test_helpers.h"
 #include "backup_debug.h"
