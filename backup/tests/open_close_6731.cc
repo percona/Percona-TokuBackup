@@ -30,6 +30,7 @@ static void* do_backups(void *v) {
     __sync_fetch_and_add(&counter, -1);
     while (counter>0) {
         fprintf(stderr, "Doing a backup waiting for clients\n");
+        setup_destination();
         pthread_t thread;
         start_backup_thread(&thread);
         finish_backup_thread(thread);
