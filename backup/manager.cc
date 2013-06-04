@@ -370,7 +370,7 @@ int manager::open(int fd, const char *file) throw() {
         return 0;
     }
 
-    PAUSE(HotBackup::OPEN_DESTINATION_FILE);
+    PAUSE(HotBackup::CAPTURE_OPEN);
 
     // Since there is an active backup session, we need to create the
     // destination file object.  This will also create the actual
