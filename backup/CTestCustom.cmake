@@ -9,6 +9,7 @@ foreach(test
  check_check2
  closedirfails_dest_dir
  copy_files
+ create_rename_race
  debug_coverage
  dest_no_permissions_10
  disable_race
@@ -48,6 +49,7 @@ foreach(test
  test6478_read_injection
  test6483_mkdir_injection
  throttle_6564
+ two_renames_race
  unlink
  unlink_create_close_race_6727
  unlink_copy_race
