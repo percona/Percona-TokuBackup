@@ -24,6 +24,7 @@ void* do_backups(void *v) {
 char *fnames[N_FNAMES];
 
 void* do_create(void *p) {
+    printf("do_create() started\n");
     check(p == NULL);
     char * name0 = fnames[0];
     int fd = open(name0, O_RDWR | O_CREAT, 0777);
@@ -31,15 +32,19 @@ void* do_create(void *p) {
         int r = close(fd);
         check(r == 0);
     }
+
+    printf("do_create() finished, created file = %s\n", name0);
     return p;
 }
 
 void* do_rename(void *p) {
+    printf("do_rename() started\n");
     check(p == NULL);
     char * name0 = fnames[0];
     char * name1 = fnames[1];
     int r = rename(name0, name1);
     check(r == 0);
+    printf("do_rename() finished, renamed file = %s to %s\n", name0, name1);
     return p;
 }
 
@@ -70,6 +75,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     pthread_t create_thread;
     r = pthread_create(&create_thread, NULL, do_create, NULL);
     check(r == 0);
+    sleep(1);
     
     // 5. Start rename() thread. (Should block, in fixed version).
     pthread_t rename_thread;
@@ -106,6 +112,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     if (r != 0) {
         fail();
         perror("Destination file could not be stat()'d");
+        printf("deat_name = %s\n", dest_name);
     } else {
         pass(); printf("\n");
     }
@@ -118,7 +125,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         free(fnames[i]);
     }
 
-    cleanup_dirs();
+    //    cleanup_dirs();
     free((void*)src);
     return r;
 }

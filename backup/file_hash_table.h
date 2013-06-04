@@ -16,6 +16,7 @@ public:
     file_hash_table() throw();
     ~file_hash_table() throw();
     void get_or_create_locked(const char * const file_name, source_file **file) throw();
+    source_file * get_or_create(const char * const file_name);
     source_file* get(const char *full_file_path) const throw();
     void put(source_file * const file) throw();
     int hash(const char * const file) const throw();

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <malloc.h>
+#include <stdio.h>
 
 #include "source_file.h"
 #include "file_hash_table.h"
@@ -41,20 +42,23 @@ file_hash_table::~file_hash_table() throw() {
 ////////////////////////////////////////////////////////
 //
 void file_hash_table::get_or_create_locked(const char * const file_name, source_file **file) throw() {
-    source_file * source = NULL;
     this->lock();
+    source_file * source = this->get_or_create(file_name);
+    this->unlock();
+    *file = source;
+}
 
-    source = this->get(file_name);
+////////////////////////////////////////////////////////
+//
+source_file * file_hash_table::get_or_create(const char * const file_name) {
+    source_file * source = this->get(file_name);
     if (source == NULL) {
         source = new source_file(file_name);
         this->put(source);
     }
-    
+
     source->add_reference();
-
-    this->unlock();
-
-    *file = source;
+    return source;
 }
 
 ////////////////////////////////////////////////////////
@@ -179,13 +183,18 @@ void file_hash_table::try_to_remove(source_file * const file) throw() {
 //
 int file_hash_table::rename_locked(const char *old_path, const char *new_path, const char *dest_path) throw() {
     int r = 0;
-    source_file * target = NULL;
     this->lock();
+    source_file * target = this->get_or_create(old_path);
 
-    target = this->get(old_path);
-    if (target != NULL) {
+    // This path should only be called during an active backup
+    // session.  So, there MUST be a destination object by this point
+    // in the rename path.
+    r = target->try_to_create_destination_file(old_path);
+    if (r == 0) {
         r = this->rename(target, new_path, dest_path);
+        this->try_to_remove(target);
     }
+
     this->unlock();
     return r;
 }
@@ -195,27 +204,23 @@ int file_hash_table::rename_locked(const char *old_path, const char *new_path, c
 int file_hash_table::rename(source_file * target, const char *new_source_name, const char *dest) throw() {
     destination_file * dest_file = NULL;
     target->name_write_lock();
-    
+
+    // Since we hash on the file name, we have to remove the
+    // soon-to-be-renamed file from the hash table, before we can
+    // actually 'rename' the object itself.
     this->remove(target);
+
+    // Now we can change the name of the source_file object.
     int r = target->rename(new_source_name);
     if (r != 0) {
         goto unlock_out;
     }
 
-    // If the destination file is NOT NULL, then there is an active
-    // backup session in progress.  The session, or a session-enabled
-    // open()/create() call, will have allocated the destination_file
-    // object in the source_file object already.  If this
-    // destination_file object reference is NULL, we do not need to
-    // update the destination file; no backup session is in progress,
-    // so there is no need to rename a file that does not yet exist.
+    // The destination_file should NOT be NULL at this point.
     dest_file = target->get_destination();
-    if (dest_file != NULL) {
-        r = dest_file->rename(dest);
-        if (r != 0) {
-            goto unlock_out;
-        }
-    } else {
+    r = dest_file->rename(dest);
+    if (r != 0) {
+        goto unlock_out;
     }
 
     this->put(target);

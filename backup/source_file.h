@@ -54,7 +54,7 @@ public:
     destination_file * get_destination(void) const throw();
     void set_destination(destination_file * destination) throw();
     void try_to_remove_destination(void) throw();
-    int try_to_create_destination_file(char*) throw();
+    int try_to_create_destination_file(const char*) throw();
 
 private:
     char * m_full_path; // the source_file owns this.

@@ -52,6 +52,7 @@ static void print_time(const char *toku_string) throw() {
 pthread_mutex_t manager::m_mutex         = PTHREAD_MUTEX_INITIALIZER;
 pthread_rwlock_t manager::m_session_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 pthread_mutex_t manager::m_error_mutex   = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t manager::m_atomic_file_op_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -638,14 +639,10 @@ off_t manager::lseek(int fd, size_t nbyte, int whence) throw() {
 //
 int manager::rename(const char *oldpath, const char *newpath) throw() {
     TRACE("entering rename() with oldpath = ", oldpath);
-    int r = 0;
     int user_error = 0;
-    int error = 0;
-    const char * full_new_destination_path = NULL;
-    const char * full_new_path = NULL;
     const char * full_old_path = call_real_realpath(oldpath, NULL);
     if (full_old_path == NULL) {
-        error = errno;
+        int error = errno;
         if (error == ENOMEM) {
             the_manager.backup_error(error, "Could not rename file.");
         }
@@ -657,30 +654,35 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     // So just call it now, regardless of CAPTURE state.
     user_error = call_real_rename(oldpath, newpath);
     if (user_error != 0) {
-        error = errno;
-        goto source_free_out;
+        free((void*)full_old_path);
+    } else {
+        if (this->try_to_enter_session_and_lock()) {
+            this->capture_rename(full_old_path, newpath);
+            this->exit_session_and_unlock_or_die();
+        } else {
+            free((void*)full_old_path);
+        }
     }
+
+    TRACE("rename() exiting...", oldpath);
+    return user_error;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+void manager::capture_rename(const char * full_old_path, const char * newpath)
+{
+    int error = 0;
+    int r = 0;
 
     // Get the full path of the recently renanmed file.
     // We could not call this earlier, since the new file path
     // did not exist till AFTER we called the real rename on 
     // the original source file.
-    full_new_path = call_real_realpath(newpath, NULL);
-    if (full_new_path == NULL) {
-        error = errno;
-        if (error == ENOMEM) {
-            the_manager.backup_error(error, "Could not rename user file: %s", oldpath);
-        }
-
-        goto source_free_out;
-    }
-    
-    // Grab the session lock.
-    prwlock_rdlock(&m_session_rwlock);
-    
-    // If the rename succeeded and backup is running...
-    if (m_session != NULL && this->capture_is_enabled()) {
-
+    const char * full_new_path = call_real_realpath(newpath, NULL);
+    if (full_new_path != NULL) {
+        const char * full_new_destination_path = NULL;
+        TRACE("renaming backup copy", full_new_path);
         bool original_present = m_session->is_prefix_of_realpath(full_old_path);
         bool new_present = m_session->is_prefix_of_realpath(full_new_path);
 
@@ -731,19 +733,19 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
                 m_session->add_to_copy_todo_list(full_new_destination_path);
             }
         }
+
+        if (full_new_destination_path != NULL) {
+            free((void*)full_new_destination_path);
+        }
+
+        free((void*)full_new_path);
+
+    } else {
+        error = errno;
+        if (error == ENOMEM) {
+            the_manager.backup_error(error, "Could not rename user file: %s", newpath);
+        }
     }
-
-    prwlock_unlock(&m_session_rwlock);
-
-    if (full_new_destination_path != NULL) {
-        free((void*)full_new_destination_path);
-    }
-
-    free((void*)full_new_path);
-source_free_out:
-    free((void*)full_old_path);
-    TRACE("rename() exiting...", oldpath);
-    return user_error;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1084,6 +1086,16 @@ int manager::setup_description_and_source_file(int fd, const char *file) throw()
 
  error_out:
     return error;
+}
+
+void manager::lock_file_op(void)
+{
+    pmutex_lock(&m_atomic_file_op_mutex);
+}
+
+void manager::unlock_file_op(void)
+{
+    pmutex_unlock(&m_atomic_file_op_mutex);
 }
 
 #ifdef GLASSBOX
