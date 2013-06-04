@@ -109,6 +109,9 @@ bool should_pause(int flag) throw() {
         case COPIER_AFTER_OPEN_SOURCE:
             result = COPIER_AFTER_OPEN_SOURCE & PAUSE_POINTS;
             break;
+        case OPEN_DESTINATION_FILE:
+            result = OPEN_DESTINATION_FILE & PAUSE_POINTS;
+            break;
         default:
             break;
     }

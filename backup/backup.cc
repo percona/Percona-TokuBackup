@@ -54,10 +54,13 @@ extern "C" int open(const char* file, int oflag, ...) {
         va_start(ap, oflag);
         mode_t mode = va_arg(ap, mode_t);
         va_end(ap);
+        the_manager.lock_file_op();
         fd = call_real_open(file, oflag, mode);
         if (fd >= 0 && the_manager.is_alive()) { 
             int ignore __attribute__((unused)) = the_manager.open(fd, file); // if there's an error in this call, it's been reported.  The application doesn't want to see the error.
         }
+
+        the_manager.unlock_file_op();
     } else {
         fd = call_real_open(file, oflag);
         if (fd >= 0) {
@@ -260,7 +263,9 @@ extern "C" int rename(const char *oldpath, const char *newpath) {
     TRACE("-> newpath = ", newpath);
     
     if (the_manager.is_alive()) {
+        the_manager.lock_file_op();
         r = the_manager.rename(oldpath, newpath);
+        the_manager.unlock_file_op();
     } else {
         r = call_real_rename(oldpath, newpath);
     }

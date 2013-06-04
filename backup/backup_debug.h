@@ -55,6 +55,7 @@ const int COPIER_AFTER_WRITE                = 0x04;
 const int MANAGER_IN_PREPARE                = 0x08;
 const int MANAGER_IN_DISABLE                = 0x10;
 const int COPIER_AFTER_OPEN_SOURCE          = 0x20;
+const int OPEN_DESTINATION_FILE             = 0x40;
 
 bool should_pause(int) throw();
 void toggle_pause_point(int) throw();

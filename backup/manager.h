@@ -50,7 +50,7 @@ private:
     volatile bool m_an_error_happened; // True if an error has happened.  This can be read without the mutex.
     volatile int m_errnum;                      // The error number to be passed to the polling function.  This can be read without the mutex.
     char * volatile m_errstring;                 // The error string to be passed to the polling function.  This string is malloc'd and owned by the manager.  This can be read without the mutex.
-
+    static pthread_mutex_t m_atomic_file_op_mutex; // Used to serialize open(), rename() and unlink()  
 public:
     manager(void) throw();
     ~manager(void) throw();
@@ -95,9 +95,12 @@ public:
     bool is_done_copying(void) throw();                      // Is the manager done copying (true sometime after is_capturing)
     void set_start_copying(bool start_copying) throw();     // Tell the manager not to start copying (by passing false) and then to start copying (by passing true). This is thread safe.
     // end of test interface
+    void lock_file_op(void);
+    void unlock_file_op(void);
 
 private:
     // Backup session control methods.
+    void capture_rename(const char *, const char *);
     bool try_to_enter_session_and_lock(void) throw();
     void exit_session_and_unlock_or_die(void) throw();
     int prepare_directories_for_backup(backup_session *session, const backtrace bt) throw();
