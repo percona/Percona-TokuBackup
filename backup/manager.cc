@@ -294,7 +294,7 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
         r = source->try_to_create_destination_file(file_name);
         if (r != 0) {
             backup_error(r, "Could not create backup file.");
-            free(file_name);
+            // Don't need to free file_name, since try_to_create_destination_file takes ownership (having deleted it if an error happened).
             goto out;
         }
 
@@ -396,9 +396,7 @@ int manager::open(int fd, const char *file) throw() {
         result = source->try_to_create_destination_file(backup_file_name);
         if (result != 0) {
             backup_error(result, "Could not open backup file %s", backup_file_name);
-            // TODO: Refactor this free().  This string should be
-            // freed by the owner: the destination file object.
-            free(backup_file_name);
+            // Don't need to free file_name, since try_to_create_destination_file takes ownership (having deleted it if an error happened).
             goto out;
         }
     }
@@ -786,7 +784,7 @@ int manager::unlink(const char *path) throw() {
                 char *dest_path = m_session->translate_prefix_of_realpath(full_path);
                 r = source->try_to_create_destination_file(dest_path);
                 if (r != 0) {
-                    free((void*)dest_path);
+                    // Don't need to free file_name, since try_to_create_destination_file takes ownership (having deleted it if an error happened).
                     goto free_out;
                 }
 
