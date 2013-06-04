@@ -107,8 +107,24 @@ private:
     void disable_descriptions(void) throw();
     void set_error_internal(int errnum, const char *format, va_list ap) throw();
     int setup_description_and_source_file(int fd, const char *file) throw();
+
+    friend class with_manager_enter_session_and_lock;
 };
 
 extern manager the_manager;
+
+class with_manager_enter_session_and_lock {
+  private:
+    manager *m_manager;
+  public:
+    const bool  entered;
+    with_manager_enter_session_and_lock(manager *m): m_manager(m), entered(m_manager->try_to_enter_session_and_lock()) {
+    }
+    ~with_manager_enter_session_and_lock(void) {
+        if (entered) {
+            m_manager->exit_session_and_unlock_or_die();
+        }
+    }
+};
 
 #endif // End of header guardian.

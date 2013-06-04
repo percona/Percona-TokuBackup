@@ -365,7 +365,8 @@ int manager::open(int fd, const char *file) throw() {
     }
 
     // If there is no session, or we can't lock it, just return.
-    if (this->try_to_enter_session_and_lock() == false) {
+    with_manager_enter_session_and_lock msl(this);
+    if (!msl.entered) {
         return 0;
     }
 
@@ -402,7 +403,6 @@ int manager::open(int fd, const char *file) throw() {
     }
 
 out:
-    this->exit_session_and_unlock_or_die();
     return result;
 }
 
@@ -425,10 +425,12 @@ void manager::close(int fd) {
     }
     
     source_file * source = file->get_source_file();
-    if (this->try_to_enter_session_and_lock()) {
-        with_file_hash_table_mutex mtl(&m_table);
-        source->try_to_remove_destination();
-        this->exit_session_and_unlock_or_die();
+    {
+        with_manager_enter_session_and_lock msl(this);
+        if (msl.entered) {
+            with_file_hash_table_mutex mtl(&m_table);
+            source->try_to_remove_destination();
+        }
     }
 
     int r1 = m_map.erase(fd, BACKTRACE(NULL)); // If the fd exists in the map, close it and remove it from the mmap.
@@ -491,18 +493,19 @@ ssize_t manager::write(int fd, const void *buf, size_t nbyte) throw() {
     }
 
     // We still have the lock range, with which we do the pwrite.
-    if (ok && this->try_to_enter_session_and_lock()) {
-        TRACE("write() captured with fd = ", fd);
-        destination_file * dest_file = file->get_destination();
-        if (dest_file != NULL) {
-            int r = dest_file->pwrite(buf, nbyte, lock_start);
-            if (r!=0) {
-                // The error has been reported.
-                ok = false;
+    if (ok) {
+        with_manager_enter_session_and_lock msl(this);
+        if (msl.entered) {
+            TRACE("write() captured with fd = ", fd);
+            destination_file * dest_file = file->get_destination();
+            if (dest_file != NULL) {
+                int r = dest_file->pwrite(buf, nbyte, lock_start);
+                if (r!=0) {
+                    // The error has been reported.
+                    ok = false;
+                }
             }
         }
-
-        this->exit_session_and_unlock_or_die();
     }
 
     if (have_range_lock) { // Release the range lock if if not OK.
@@ -570,13 +573,12 @@ ssize_t manager::pwrite(int fd, const void *buf, size_t nbyte, off_t offset) thr
     ssize_t nbytes_written = call_real_pwrite(fd, buf, nbyte, offset);
     int e = 0;
     if (nbytes_written>0) {
-        if (this->try_to_enter_session_and_lock()) {
+        with_manager_enter_session_and_lock msl(this);
+        if (msl.entered) {
             destination_file * dest_file = file->get_destination();
             if (dest_file != NULL) {
                 ignore(dest_file->pwrite(buf, nbyte, offset)); // nothing more to do.  It's been reported.
             }
-
-            this->exit_session_and_unlock_or_die();
         }
     } else if (nbytes_written<0) {
         e = errno; // save the errno
@@ -644,9 +646,9 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     // So just call it now, regardless of CAPTURE state.
     user_error = call_real_rename(oldpath, newpath);
     if (user_error == 0) {
-        if (this->try_to_enter_session_and_lock()) {
+        with_manager_enter_session_and_lock msl(this);
+        if (msl.entered) {
             this->capture_rename(full_old_path, newpath); // takes ownership of the full_old_path, so tough to make RAII.
-            this->exit_session_and_unlock_or_die();
         }
     }
 
@@ -757,9 +759,8 @@ int manager::unlink(const char *path) throw() {
 
     m_table.get_or_create_locked(full_path.value, &source);
 
-    prwlock_rdlock(&m_session_rwlock);
-
     {
+        with_rwlock_rdlocked ms(&m_session_rwlock);
         with_file_hash_table_mutex mtl(&m_table);
 
         if (m_session != NULL && this->capture_is_enabled() && m_session->is_prefix_of_realpath(full_path.value)) {
@@ -774,6 +775,7 @@ int manager::unlink(const char *path) throw() {
                 with_object_to_free<char*> dest_path(m_session->translate_prefix_of_realpath(full_path.value));
                 r = source->try_to_create_destination_file(dest_path.value);
                 if (r != 0) {
+                    // RAII to the rescue.  Forgot to release the session_rwlock.
                     goto free_out;
                 }
 
@@ -803,7 +805,6 @@ int manager::unlink(const char *path) throw() {
 
         m_table.try_to_remove(source);
     }
-    prwlock_unlock(&m_session_rwlock);
 
 free_out:
     return user_error;
@@ -836,7 +837,8 @@ int manager::ftruncate(int fd, off_t length) throw() {
     int user_result = call_real_ftruncate(fd, length);
     int e = 0;
     if (user_result==0) {
-        if (this->try_to_enter_session_and_lock()) {
+        with_manager_enter_session_and_lock msl(this);
+        if (msl.entered) {
             destination_file * dest_file = file->get_destination();
             if (dest_file != NULL) {
                  // the error from truncate been reported, so there's
@@ -844,8 +846,6 @@ int manager::ftruncate(int fd, off_t length) throw() {
                  // to unlock the range.
                 ignore(dest_file->truncate(length));
             }
-
-            this->exit_session_and_unlock_or_die();
         }
     } else {
         e = errno; // save errno
@@ -932,7 +932,7 @@ free_out:
 //     TBD...
 //
 void manager::mkdir(const char *pathname) throw() {
-    prwlock_rdlock(&m_session_rwlock);
+    with_rwlock_rdlocked ml(&m_session_rwlock);
 
     if(m_session != NULL) {
         int r = m_session->capture_mkdir(pathname);
@@ -941,8 +941,6 @@ void manager::mkdir(const char *pathname) throw() {
             // proceed to unlocking below
         }
     }
-
-    prwlock_unlock(&m_session_rwlock);
 }
 
 
