@@ -105,18 +105,20 @@ int copier::do_copy(void) throw() {
     int r = 0;
     char *fname = 0;
     size_t n_known = 0;
-    pmutex_lock(&m_todo_mutex, BACKTRACE(NULL));
-    // Start with "."
-    m_todo.push_back(strdup("."));
-    n_known = m_todo.size();
-    pmutex_unlock(&m_todo_mutex, BACKTRACE(NULL));
+    {
+        with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
+        // Start with "."
+        m_todo.push_back(strdup("."));
+        n_known = m_todo.size();
+    }
     while (n_known != 0) {
 
         if (!the_manager.copy_is_enabled()) goto out;
         
-        pmutex_lock(&m_todo_mutex, BACKTRACE(NULL));
-        fname = m_todo.back();
-        pmutex_unlock(&m_todo_mutex, BACKTRACE(NULL));
+        {
+            with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
+            fname = m_todo.back();
+        }
         TRACE("Copying: ", fname);
         
         char *msg = malloc_snprintf(strlen(fname)+100, "Backup progress %ld bytes, %ld files.  %ld files known of. Copying file %s",  m_total_bytes_backed_up, m_total_files_backed_up, n_known, fname);
@@ -129,9 +131,10 @@ int copier::do_copy(void) throw() {
             goto out;
         }
 
-        pmutex_lock(&m_todo_mutex, BACKTRACE(NULL));
-        m_todo.pop_back();
-        pmutex_unlock(&m_todo_mutex, BACKTRACE(NULL));
+        {
+            with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
+            m_todo.pop_back();
+        }
         
         r = this->copy_stripped_file(fname);
         free((void*)fname);
@@ -142,9 +145,10 @@ int copier::do_copy(void) throw() {
         }
         m_total_files_backed_up++;
         
-        pmutex_lock(&m_todo_mutex, BACKTRACE(NULL));
-        n_known = m_todo.size();
-        pmutex_unlock(&m_todo_mutex, BACKTRACE(NULL));
+        {
+            with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
+            n_known = m_todo.size();
+        }
     }
 
 out:
@@ -358,28 +362,27 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
 
     // Try to create the destination file, using the file hash table
     // lock to help serialize access.
-    m_table->lock();
-
-    src_info.m_file->name_write_lock();
-
-    // Check to see if the real source file still exists.  If it
-    // doesn't, it has been unlinked and we should NOT create the
-    // destination file.  We are protected by the table lock here.
     bool source_exists = true;
     int result = 0;
-    struct stat buf;
-    TRACE("stat'ing file = ", src_info.m_path);
-    int stat_r = lstat(src_info.m_path, &buf);
-    if (stat_r == 0) {
-        result = src_info.m_file->try_to_create_destination_file(dest_path);
-    } else {
-        free(dest_path);
-        source_exists = false;
+    {
+        with_file_hash_table_mutex mtl(m_table);
+
+        with_source_file_name_write_lock sfl(src_info.m_file);
+
+        // Check to see if the real source file still exists.  If it
+        // doesn't, it has been unlinked and we should NOT create the
+        // destination file.  We are protected by the table lock here.
+        struct stat buf;
+        TRACE("stat'ing file = ", src_info.m_path);
+        int stat_r = lstat(src_info.m_path, &buf);
+        if (stat_r == 0) {
+            result = src_info.m_file->try_to_create_destination_file(dest_path);
+        } else {
+            free(dest_path);
+            source_exists = false;
+        }
     }
 
-    src_info.m_file->name_unlock();
-
-    m_table->unlock();
     if (result != 0) { return result; }
 
     if (source_exists) {
@@ -391,11 +394,11 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
     }
 
     // Try to destroy the destination file.
-    m_table->lock();
+    {
+        with_file_hash_table_mutex mtl(m_table);
 
-    src_info.m_file->try_to_remove_destination();
-
-    m_table->unlock();
+        src_info.m_file->try_to_remove_destination();
+    }
 
     return 0;
 }
@@ -567,7 +570,7 @@ out:
 int copier::add_dir_entries_to_todo(DIR *dir, const char *file) throw() {
     TRACE("--Adding all entries in this directory to todo list: ", file);
     int error = 0;
-    pmutex_lock(&m_todo_mutex, BACKTRACE(NULL));
+    with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
     struct dirent const *e = NULL;
     while((e = readdir(dir)) != NULL) {
         if (!the_manager.copy_is_enabled()) break;
@@ -595,17 +598,14 @@ int copier::add_dir_entries_to_todo(DIR *dir, const char *file) throw() {
     }
     
 out:
-    pmutex_unlock(&m_todo_mutex, BACKTRACE(NULL));
-
     return error;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 void copier::add_file_to_todo(const char *file) throw() {
-    pmutex_lock(&m_todo_mutex, BACKTRACE(NULL));
+    with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
     m_todo.push_back(strdup(file));
-    pmutex_unlock(&m_todo_mutex, BACKTRACE(NULL));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -621,7 +621,7 @@ void copier::add_file_to_todo(const char *file) throw() {
 //     This should only be called if there is no future copy work.
 //
 void copier::cleanup(void) throw() {
-    pmutex_lock(&m_todo_mutex, BACKTRACE(NULL));
+    with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
     for(std::vector<char *>::size_type i = 0; i < m_todo.size(); ++i) {
         char *file = m_todo[i];
         if (file == NULL) {
@@ -631,5 +631,4 @@ void copier::cleanup(void) throw() {
         free((void*)file);
         m_todo[i] = NULL;
     }
-    pmutex_unlock(&m_todo_mutex, BACKTRACE(NULL));
 }

@@ -17,8 +17,10 @@ endfunction(add_valgrind_tool_test)
 set(blackboxtests
   cannotopen_dest_dir
   closedirfails_dest_dir
+  dest_no_permissions_10
   empty_dest
   multiple_backups
+  open_close_6731
   open_write_close
   open_prepare_race_6610
   read_and_seek
@@ -29,6 +31,8 @@ set(blackboxtests
   null_dest_dir_6317
   nondir_dest_dir_6317
   readdirfails_dest_dir
+  open_write_race
+  source_no_permissions_10
   test6361
   throttle_6564
   unlink_during_copy_test6515

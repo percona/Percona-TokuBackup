@@ -34,9 +34,11 @@ public:
     //  This function does not acquire any locks.  We expose it for testing purposes (it should not be used by production code).x
 
     // Name locking and associated rename call.
+  private: // use the RAII-style with_source_file_name_write_lock to grab the lock.
     void name_write_lock(void) throw();
     void name_read_lock(void) throw();
     void name_unlock(void) throw();
+  public:
     int rename(const char * new_name) throw(); // return 0 on success, error number on failure (doesn't set errno)
 
     // Note: These three methods are not inherintly thread safe.
@@ -68,6 +70,33 @@ private:
 
     bool m_unlinked;
     destination_file * m_destination_file;
+
+    friend class with_source_file_name_write_lock;
+    friend class with_source_file_name_read_lock;
+};
+
+class with_source_file_name_write_lock {
+  private:
+    source_file *m_source_file;
+  public:
+    with_source_file_name_write_lock(source_file *sf): m_source_file(sf) {
+        m_source_file->name_write_lock();
+    }
+    ~with_source_file_name_write_lock(void) {
+        m_source_file->name_unlock();
+    }
+};
+
+class with_source_file_name_read_lock {
+  private:
+    source_file *m_source_file;
+  public:
+    with_source_file_name_read_lock(source_file *sf): m_source_file(sf) {
+        m_source_file->name_read_lock();
+    }
+    ~with_source_file_name_read_lock(void) {
+        m_source_file->name_unlock();
+    }
 };
 
 #endif // End of header guardian.

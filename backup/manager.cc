@@ -266,7 +266,7 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
     int r = 0;
     // Loop through all the current file descriptions and prepare them
     // for backup.
-    lock_fmap(backtrace(bt)); // TODO: #6532 This lock is much too coarse.  Need to refine it.  This lock deals with a race between file->create() and a close() call from the application.  We aren't using the m_refcount in file_description (which we should be) and we even if we did, the following loop would be racy since m_map.size could change while we are running, and file descriptors could come and go in the meanwhile.  So this really must be fixed properly to refine this lock.
+    with_fmap_locked fm(BACKTRACE(&bt)); // TODO: #6532 This lock is much too coarse.  Need to refine it.  This lock deals with a race between file->create() and a close() call from the application.  We aren't using the m_refcount in file_description (which we should be) and we even if we did, the following loop would be racy since m_map.size could change while we are running, and file descriptors could come and go in the meanwhile.  So this really must be fixed properly to refine this lock.
     for (int i = 0; i < m_map.size(); ++i) {
         description *file = m_map.get_unlocked(i);
         if (file == NULL) {
@@ -274,10 +274,9 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
         }
         
         source_file * source = file->get_source_file();
-        source->name_read_lock();
+        with_source_file_name_read_lock sfl(source);
 
         if (!session->is_prefix_of_realpath(source->name())) {
-            source->name_unlock();
             continue;
         }
 
@@ -285,7 +284,6 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
         r = open_path(file_name);
         if (r != 0) {
             backup_error(r, "Failed to open path");
-            source->name_unlock();
             free(file_name);
             goto out;
         }
@@ -293,23 +291,20 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
         r = source->try_to_create_destination_file(file_name);
         if (r != 0) {
             backup_error(r, "Could not create backup file.");
-            source->name_unlock();
             free(file_name);
             goto out;
         }
 
-        source->name_unlock();
     }
     
 out:
-    unlock_fmap(BACKTRACE(&bt));
     return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 void manager::disable_descriptions(void) throw() {
-    lock_fmap(BACKTRACE(NULL));
+    with_fmap_locked ml(BACKTRACE(NULL));
     const int size = m_map.size();
     const int middle __attribute__((unused)) = size / 2; // used only in glassbox mode.
     for (int i = 0; i < size; ++i) {
@@ -331,7 +326,6 @@ void manager::disable_descriptions(void) throw() {
         }
     }
 
-    unlock_fmap(BACKTRACE(NULL));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -384,7 +378,7 @@ int manager::open(int fd, const char *file) throw() {
     m_map.get(fd, &description, BACKTRACE(NULL));
     
     source = description->get_source_file();
-    source->name_read_lock();
+    with_source_file_name_read_lock sfl(source);
 
     // Next, determine the full path of the backup file.
     result = m_session->capture_open(file, &backup_file_name);
@@ -400,12 +394,9 @@ int manager::open(int fd, const char *file) throw() {
             // TODO: Refactor this free().  This string should be
             // freed by the owner: the destination file object.
             free(backup_file_name);
-            source->name_unlock();
             goto out;
         }
     }
-
-    source->name_unlock();
 
 out:
     this->exit_session_and_unlock_or_die();
@@ -432,9 +423,8 @@ void manager::close(int fd) {
     
     source_file * source = file->get_source_file();
     if (this->try_to_enter_session_and_lock()) {
-        m_table.lock();
+        with_file_hash_table_mutex mtl(&m_table);
         source->try_to_remove_destination();
-        m_table.unlock();
         this->exit_session_and_unlock_or_die();
     }
 
@@ -710,8 +700,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
             // session.
             r = m_table.rename_locked(full_old_path, full_new_path, full_new_destination_path);
             if (r != 0) {
-                error = r;
-                this->backup_error(error, "Could not rename(%s, %s).", full_new_path, full_new_destination_path);
+                // Nothing.  The error has been reported in rename_locked.
             } else {
                 // If the copier has already copied or is copying the
                 // file, this will succceed.  If the copier has not yet
@@ -740,6 +729,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     free((void*)full_new_path);
 source_free_out:
     free((void*)full_old_path);
+    if (user_error) errno = error;
     return user_error;
 }
 
@@ -775,49 +765,51 @@ int manager::unlink(const char *path) throw() {
 
     prwlock_rdlock(&m_session_rwlock);
 
-    m_table.lock();
+    {
+        with_file_hash_table_mutex mtl(&m_table);
 
-    if (m_session != NULL && this->capture_is_enabled() && m_session->is_prefix_of_realpath(full_path)) {
-        // 1. Find source file, unlink it.
-        // 2. Get destination file from source file.
-        destination_file * dest = source->get_destination();
-        if (dest == NULL) {
-            // The destination object may not exist in one of three cases:
-            // 1.  The copier hasn't yet gotten to copying the file.
-            // 2.  The copier has finished copying the file.
-            // 3.  There is no open fd associated with this file.
-            char *dest_path = m_session->translate_prefix_of_realpath(full_path);
-            r = source->try_to_create_destination_file(dest_path);
-            if (r != 0) {
-                free((void*)dest_path);
-                goto free_out;
+        if (m_session != NULL && this->capture_is_enabled() && m_session->is_prefix_of_realpath(full_path)) {
+            // 1. Find source file, unlink it.
+            // 2. Get destination file from source file.
+            destination_file * dest = source->get_destination();
+            if (dest == NULL) {
+                // The destination object may not exist in one of three cases:
+                // 1.  The copier hasn't yet gotten to copying the file.
+                // 2.  The copier has finished copying the file.
+                // 3.  There is no open fd associated with this file.
+                char *dest_path = m_session->translate_prefix_of_realpath(full_path);
+                r = source->try_to_create_destination_file(dest_path);
+                if (r != 0) {
+                    free((void*)dest_path);
+                    goto free_out;
+                }
+
+                dest = source->get_destination();
             }
 
-            dest = source->get_destination();
-        }
-
-        // 3. Unlink the destination file.
-        r = dest->unlink();
-        if (r != 0) {
-            int error = errno;
-            this->backup_error(error, "Could not unlink backup copy.");
-        }
+            // 3. Unlink the destination file.
+            r = dest->unlink();
+            if (r != 0) {
+                int error = errno;
+                this->backup_error(error, "Could not unlink backup copy.");
+            }
         
-        // If it does not exist, and if backup is running,
-        // it may be in the todo list. Since we have the hash 
-        // table lock, the copier can't add it, and rename() threads
-        // can't alter the name and re-hash it till we are done.
+            // If it does not exist, and if backup is running,
+            // it may be in the todo list. Since we have the hash 
+            // table lock, the copier can't add it, and rename() threads
+            // can't alter the name and re-hash it till we are done.
+        }
+
+        // We have to unlink the source file, regardless of whether ther
+        // is a backup session in progress or not.
+        {
+            with_source_file_name_write_lock sfl(source);
+            source->unlink();
+            source->try_to_remove_destination();
+        }
+
+        m_table.try_to_remove(source);
     }
-
-    // We have to unlink the source file, regardless of whether ther
-    // is a backup session in progress or not.
-    source->name_write_lock();
-    source->unlink();
-    source->try_to_remove_destination();
-    source->name_unlock();
-
-    m_table.unlock();
-    m_table.try_to_remove_locked(source);
     prwlock_unlock(&m_session_rwlock);
 
 free_out:
@@ -898,11 +890,13 @@ int manager::truncate(const char *path, off_t length) throw() {
         const char * destination_file = NULL;
         destination_file = m_session->translate_prefix_of_realpath(full_path);
         // Find and lock the associated source file.
-        m_table.lock();
+        source_file *file;
+        {
+            with_file_hash_table_mutex mtl(&m_table);
 
-        source_file * file = m_table.get(destination_file);
-        file->add_reference();
-        m_table.unlock();
+            file = m_table.get(destination_file);
+            file->add_reference();
+        }
         
         file->lock_range(length, LLONG_MAX);
         
@@ -1062,7 +1056,7 @@ int manager::setup_description_and_source_file(int fd, const char *file) throw()
         error = errno;
         // This error is not recoverable, because we can't guarantee 
         // that we can CAPTURE any calls on the given fd or file.
-        this->backup_error(errno, "Could not allocate space for backup.");
+        this->backup_error(errno, "realpath failed on %s", file);
         goto error_out;
     }
 
@@ -1075,9 +1069,7 @@ int manager::setup_description_and_source_file(int fd, const char *file) throw()
     // source file object.
     file_description = new description();
     file_description->set_source_file(source);
-    lock_fmap(BACKTRACE(NULL));
-    m_map.put_unlocked(fd, file_description);
-    unlock_fmap(BACKTRACE(NULL));
+    m_map.put(fd, file_description);
 
  error_out:
     return error;

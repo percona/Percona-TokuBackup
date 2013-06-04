@@ -10,6 +10,7 @@ foreach(test
  closedirfails_dest_dir
  copy_files
  debug_coverage
+ dest_no_permissions_10
  disable_race
  empty_dest
  end_race_open_6668
@@ -22,18 +23,22 @@ foreach(test
  ftruncate_injection_6480
  multiple_backups
  open_injection_6476
+ open_close_6731
  open_prepare_race_6610
  open_write_close
+ open_write_race
  no_dest_dir_6317b
  notinsource_6570
  notinsource_6570b
  null_dest_dir_6317
  nondir_dest_dir_6317
  readdirfails_dest_dir
+ realpath_error_injection
  rename_injection
  range_locks
  read_and_seek
  rename
+ source_no_permissions_10 
  test6128
  test6361
  test6415_enospc_injection

@@ -9,6 +9,21 @@
 #include "mutex.h"
 #include "rwlock.h"
 
+void prwlock_rdlock(pthread_rwlock_t *lock, const backtrace bt) throw() {
+    int r = pthread_rwlock_rdlock(lock);
+    check_bt(r==0, bt);
+}
+
+void prwlock_wrlock(pthread_rwlock_t *lock, const backtrace bt) throw() {
+    int r = pthread_rwlock_wrlock(lock);
+    check_bt(r==0, bt);
+}
+
+void prwlock_unlock(pthread_rwlock_t *lock, const backtrace bt) throw() {
+    int r = pthread_rwlock_unlock(lock);
+    check_bt(r==0, bt);
+}
+
 void prwlock_rdlock(pthread_rwlock_t *lock) throw() {
     int r = pthread_rwlock_rdlock(lock);
     check(r==0);

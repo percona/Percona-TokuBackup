@@ -28,20 +28,37 @@ public:
     //   descriptor has not been added to this map.
     // No errors can occur.
 
-    void put_unlocked(int fd, description *file) throw();
-    // Effect: simply adds given description pointer to array, no locks acquired.
+    void put(int fd, description *file) throw();
+    // Effect: adds given description pointer to array (acquires a lock)
+
     description* get_unlocked(int fd) throw(); // use this one instead of get() when you already have the lock.
     int erase(int fd, const backtrace bt) throw() __attribute__((warn_unused_result)); // returns 0 or an error number.
     int size(void) throw();
 private:
     void grow_array(int fd) throw();
     
-friend class fmap_unit_test;
+    // Global locks used when the file descriptor map is updated.   Sometimes the backup system needs to hold the lock for several operations.
+    // No errors are countenanced.
+    static void lock_fmap(backtrace bt) throw();
+    static void unlock_fmap(backtrace bt) throw();
+    friend class with_fmap_locked;
+
+    friend class fmap_unit_test;
+
 };
 
-// Global locks used when the file descriptor map is updated.   Sometimes the backup system needs to hold the lock for several operations.
-// If an error occurs, it's reported and the error number is returned.  If no error then returns 0.
-void lock_fmap(backtrace bt) throw();
-void unlock_fmap(backtrace bt) throw();
+
+class with_fmap_locked {
+  private:
+    const backtrace m_bt;
+  public:
+    with_fmap_locked(backtrace bt): m_bt(bt) {
+        fmap::lock_fmap(m_bt);
+    }
+    ~with_fmap_locked(void) {
+        fmap::unlock_fmap(m_bt);
+    }
+};
+
 
 #endif // End of header guardian.

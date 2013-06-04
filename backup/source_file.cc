@@ -102,7 +102,7 @@ bool source_file::lock_range_would_block_unlocked(uint64_t lo, uint64_t hi) cons
 ////////////////////////////////////////////////////////
 //
 void source_file::lock_range(uint64_t lo, uint64_t hi) throw() {
-    pmutex_lock(&m_mutex);
+    with_mutex_locked ml(&m_mutex, BACKTRACE(NULL));
     while (this->lock_range_would_block_unlocked(lo, hi)) {
         int r = pthread_cond_wait(&m_cond, &m_mutex);
         check(r==0);
@@ -110,14 +110,13 @@ void source_file::lock_range(uint64_t lo, uint64_t hi) throw() {
     // Got here, we don't intersect any of the ranges.
     struct range new_range = {lo,hi};
     m_locked_ranges.push_back((struct range)new_range);
-    pmutex_unlock(&m_mutex);
 }
 
 
 ////////////////////////////////////////////////////////
 //
 int source_file::unlock_range(uint64_t lo, uint64_t hi) throw() {
-    pmutex_lock(&m_mutex);
+    with_mutex_locked ml(&m_mutex, BACKTRACE(NULL));
     size_t size = m_locked_ranges.size();
     for (size_t i=0; i<size; i++) {
         if (m_locked_ranges[i].lo == lo &&
@@ -128,13 +127,11 @@ int source_file::unlock_range(uint64_t lo, uint64_t hi) throw() {
                 int r = pthread_cond_broadcast(&m_cond);
                 check(r==0);
             }
-            pmutex_unlock(&m_mutex);
             return 0;
         }
     }
     // No such range.
     the_manager.fatal_error(EINVAL, "Range doesn't exist at %s:%d", __FILE__, __LINE__);
-    pmutex_unlock(&m_mutex);
     return EINVAL;
 }
 
