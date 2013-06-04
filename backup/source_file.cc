@@ -38,7 +38,7 @@ source_file::source_file(const char *path) throw()
         int r = pthread_rwlock_init(&m_name_rwlock, NULL);
         check(r==0);
     }
-};
+}
 
 source_file::~source_file(void) throw() {
     if (m_full_path != NULL) {
@@ -226,33 +226,23 @@ void source_file::try_to_remove_destination(void) throw() {
 ////////////////////////////////////////////////////////
 //
 int source_file::try_to_create_destination_file(const char *full_path) throw() {
-    int r = 0;
     if (m_unlinked == true) {
-        return r;
+        return 0;
     }
 
     if (m_destination_file != NULL) {
-        return r;
+        return 0;
     }
 
     // Create the file on disk using the given path, though it may
     // already exist.
     int fd = call_real_open(full_path, O_RDWR | O_CREAT, 0777);
     if (fd < 0) {
-        r = errno;
-        if (r != EEXIST) {
-            return r;
-        }
-
-        fd = call_real_open(full_path, O_RDWR, 0777);
-        if (fd < 0) {
-            r = errno;
-            return r;
-        }
+        return errno;
     }
 
     m_destination_file = new destination_file(fd, full_path);
-    return r;
+    return 0;
 }
 
 // Instantiate the templates we need
