@@ -11,6 +11,7 @@
 #include "real_syscalls.h"
 #include "rwlock.h"
 #include "source_file.h"
+#include "raii-malloc.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -881,18 +882,18 @@ int manager::truncate(const char *path, off_t length) throw() {
     int r;
     int user_error = 0;
     int error = 0;
-    const char * full_path = call_real_realpath(path, NULL);
-    if (full_path == NULL) {
+    with_object_to_free<char*> full_path(call_real_realpath(path, NULL));
+    if (full_path.value == NULL) {
         error = errno;
         the_manager.backup_error(error, "Failed to truncate backup file.");
         return call_real_truncate(path, length);
     }
 
-    prwlock_rdlock(&m_session_rwlock);
+    with_rwlock_rdlocked ms(&m_session_rwlock);
     
-    if (m_session != NULL && m_session->is_prefix_of_realpath(full_path)) {
+    if (m_session != NULL && m_session->is_prefix_of_realpath(full_path.value)) {
         const char * destination_file = NULL;
-        destination_file = m_session->translate_prefix_of_realpath(full_path);
+        destination_file = m_session->translate_prefix_of_realpath(full_path.value);
         // Find and lock the associated source file.
         source_file *file;
         {
@@ -904,7 +905,7 @@ int manager::truncate(const char *path, off_t length) throw() {
         
         file->lock_range(length, LLONG_MAX);
         
-        user_error = call_real_truncate(full_path, length);
+        user_error = call_real_truncate(full_path.value, length);
         if (user_error == 0 && this->capture_is_enabled()) {
             r = call_real_truncate(destination_file, length);
             if (r != 0) {
@@ -919,6 +920,7 @@ int manager::truncate(const char *path, off_t length) throw() {
         file->remove_reference();
         if (r != 0) {
             user_error = call_real_truncate(path, length);
+            // More RAII-fixed problems (the session rwlock wasn't freed)
             goto free_out;
         }
         
@@ -927,14 +929,12 @@ int manager::truncate(const char *path, off_t length) throw() {
         // No backup is in progress, just truncate the source file.
         user_error = call_real_truncate(path, length);
         if (user_error != 0) {
+            // More RAII-fixed problems (the session rwlock wasn't freed)
             goto free_out;
         }
     }
 
-    prwlock_unlock(&m_session_rwlock);
-    
 free_out:
-    free((void*) full_path);
     return user_error;
 
 }
@@ -980,11 +980,10 @@ void manager::backup_error_ap(int errnum, const char *format_string, va_list ap)
     this->disable_copy();
     if (thread_has_backup_calls) {
         int len = 2*PATH_MAX + strlen(format_string) + 1000;
-        char *string = (char*)malloc(len);
-        int nwrote = vsnprintf(string, len, format_string, ap);
-        snprintf(string+nwrote, len-nwrote, "  error %d (%s)", errnum, strerror(errnum));
-        thread_has_backup_calls->report_error(errnum, string);
-        free(string);
+        with_malloced<char*> string(len);
+        int nwrote = vsnprintf(string.value, len, format_string, ap);
+        snprintf(string.value+nwrote, len-nwrote, "  error %d (%s)", errnum, strerror(errnum));
+        thread_has_backup_calls->report_error(errnum, string.value);
     } else {
         set_error_internal(errnum, format_string, ap);
     }
@@ -1055,17 +1054,18 @@ int manager::setup_description_and_source_file(int fd, const char *file) throw()
     
     // Resolve the given, possibly relative, file path to
     // the full path. 
-    const char * full_source_file_path = call_real_realpath(file, NULL);
-    if (full_source_file_path == NULL) {
-        error = errno;
-        // This error is not recoverable, because we can't guarantee 
-        // that we can CAPTURE any calls on the given fd or file.
-        this->backup_error(errno, "realpath failed on %s", file);
-        goto error_out;
+    {
+        with_object_to_free<char*> full_source_file_path(call_real_realpath(file, NULL));
+        if (full_source_file_path.value == NULL) {
+            error = errno;
+            // This error is not recoverable, because we can't guarantee 
+            // that we can CAPTURE any calls on the given fd or file.
+            this->backup_error(errno, "realpath failed on %s", file);
+            goto error_out;
+        }
+        
+        m_table.get_or_create_locked(full_source_file_path.value, &source);
     }
-
-    m_table.get_or_create_locked(full_source_file_path, &source);
-    free((void*)full_source_file_path);
     
     // Now that we have the source file, regardless of whether we had
     // to create it or not, we can now create the file description
