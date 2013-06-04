@@ -16,6 +16,7 @@
 #include "backup_internal.h"
 #include "glassbox.h"
 #include "manager.h"
+#include "raii-malloc.h"
 #include "real_syscalls.h"
 #include "backup_debug.h"
 
@@ -313,27 +314,22 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
     // Check to make sure that the source and destination directories are
     // actually different.
     {
-        char * full_source = call_real_realpath(source_dirs[0], NULL);
-        if (full_source == NULL) {
+        with_object_to_free<char*> full_source (call_real_realpath(source_dirs[0], NULL));
+        if (full_source.value == NULL) {
             error_fun(ENOENT, "Could not resolve source directory path.", error_extra);
             return ENOENT;
         }
     
-        char * full_destination = call_real_realpath(dest_dirs[0], NULL);
-        if (full_destination == NULL) {
-            free(full_source);
+        with_object_to_free<char*> full_destination(call_real_realpath(dest_dirs[0], NULL));
+        if (full_destination.value == NULL) {
             error_fun(ENOENT, "Could not resolve destination directory path.", error_extra);
             return ENOENT;
         }
 
-        if (strcmp(full_source, full_destination) == 0) {
+        if (strcmp(full_source.value, full_destination.value) == 0) {
             error_fun(EINVAL, "Source and destination directories are the same.", error_extra);
-            free(full_source);
-            free(full_destination);
             return EINVAL;
         }
-        free(full_source);
-        free(full_destination);
     }
 
     backup_callbacks calls(poll_fun, poll_extra, error_fun, error_extra, &get_throttle);

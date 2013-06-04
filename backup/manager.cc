@@ -8,10 +8,10 @@
 #include "glassbox.h"
 #include "manager.h"
 #include "mutex.h"
+#include "raii-malloc.h"
 #include "real_syscalls.h"
 #include "rwlock.h"
 #include "source_file.h"
-#include "raii-malloc.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -648,7 +648,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
         free((void*)full_old_path);
     } else {
         if (this->try_to_enter_session_and_lock()) {
-            this->capture_rename(full_old_path, newpath);
+            this->capture_rename(full_old_path, newpath); // takes ownership of the full_old_path, so tought to make RAII.
             this->exit_session_and_unlock_or_die();
         } else {
             free((void*)full_old_path);
@@ -670,12 +670,11 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
     // We could not call this earlier, since the new file path
     // did not exist till AFTER we called the real rename on 
     // the original source file.
-    const char * full_new_path = call_real_realpath(newpath, NULL);
-    if (full_new_path != NULL) {
-        const char * full_new_destination_path = NULL;
-        TRACE("renaming backup copy", full_new_path);
+    with_object_to_free<char*> full_new_path(call_real_realpath(newpath, NULL));
+    if (full_new_path.value != NULL) {
+        TRACE("renaming backup copy", full_new_path.value);
         bool original_present = m_session->is_prefix_of_realpath(full_old_path);
-        bool new_present = m_session->is_prefix_of_realpath(full_new_path);
+        bool new_present = m_session->is_prefix_of_realpath(full_new_path.value);
 
         // Four cases:
         if ((original_present == false) && (new_present == false)) { 
@@ -696,14 +695,14 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
             // 4. Both in source directory.
             // Get the new full paths of the destination file.
             // NOTE: This string will be owned by the destination file object.
-            full_new_destination_path = m_session->translate_prefix_of_realpath(full_new_path);
+            with_object_to_free<char*> full_new_destination_path(m_session->translate_prefix_of_realpath(full_new_path.value));
 
             // If we got to this point, we have called rename on the
             // source file itself.  So we must update our source_file
             // object with the new name.  We must also update the
             // destination_file object because we are inside of a
             // session.
-            r = m_table.rename_locked(full_old_path, full_new_path, full_new_destination_path);
+            r = m_table.rename_locked(full_old_path, full_new_path.value, full_new_destination_path.value);
             if (r != 0) {
                 // Nothing.  The error has been reported in rename_locked.
             } else {
@@ -720,16 +719,9 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
                 // ENOENT, which we ignore in COPY, and move on to the
                 // next item in the todo list.  Add to the copier's
                 // todo list.
-                m_session->add_to_copy_todo_list(full_new_destination_path);
+                m_session->add_to_copy_todo_list(full_new_destination_path.value);
             }
         }
-
-        if (full_new_destination_path != NULL) {
-            free((void*)full_new_destination_path);
-        }
-
-        free((void*)full_new_path);
-
     } else {
         error = errno;
         if (error == ENOMEM) {
@@ -748,8 +740,8 @@ int manager::unlink(const char *path) throw() {
     int r = 0;
     int user_error = 0;
     source_file * source = NULL;
-    const char * full_path = call_real_realpath(path, NULL);
-    if (full_path == NULL) {
+    with_object_to_free<char*> full_path(call_real_realpath(path, NULL));
+    if (full_path.value == NULL) {
         int error = errno;
         if (error == ENOMEM) {
             the_manager.backup_error(error, "Could not unlink path.");
@@ -766,14 +758,14 @@ int manager::unlink(const char *path) throw() {
         goto free_out;
     }
 
-    m_table.get_or_create_locked(full_path, &source);
+    m_table.get_or_create_locked(full_path.value, &source);
 
     prwlock_rdlock(&m_session_rwlock);
 
     {
         with_file_hash_table_mutex mtl(&m_table);
 
-        if (m_session != NULL && this->capture_is_enabled() && m_session->is_prefix_of_realpath(full_path)) {
+        if (m_session != NULL && this->capture_is_enabled() && m_session->is_prefix_of_realpath(full_path.value)) {
             // 1. Find source file, unlink it.
             // 2. Get destination file from source file.
             destination_file * dest = source->get_destination();
@@ -782,7 +774,7 @@ int manager::unlink(const char *path) throw() {
                 // 1.  The copier hasn't yet gotten to copying the file.
                 // 2.  The copier has finished copying the file.
                 // 3.  There is no open fd associated with this file.
-                char *dest_path = m_session->translate_prefix_of_realpath(full_path);
+                char *dest_path = m_session->translate_prefix_of_realpath(full_path.value);
                 r = source->try_to_create_destination_file(dest_path);
                 if (r != 0) {
                     // Don't need to free file_name, since try_to_create_destination_file takes ownership (having deleted it if an error happened).
@@ -818,7 +810,6 @@ int manager::unlink(const char *path) throw() {
     prwlock_unlock(&m_session_rwlock);
 
 free_out:
-    free((void*)full_path);
     return user_error;
 }
 
@@ -892,14 +883,13 @@ int manager::truncate(const char *path, off_t length) throw() {
     with_rwlock_rdlocked ms(&m_session_rwlock);
     
     if (m_session != NULL && m_session->is_prefix_of_realpath(full_path.value)) {
-        const char * destination_file = NULL;
-        destination_file = m_session->translate_prefix_of_realpath(full_path.value);
+        with_object_to_free<char *> destination_file(m_session->translate_prefix_of_realpath(full_path.value));
         // Find and lock the associated source file.
         source_file *file;
         {
             with_file_hash_table_mutex mtl(&m_table);
 
-            file = m_table.get(destination_file);
+            file = m_table.get(destination_file.value);
             file->add_reference();
         }
         
@@ -907,7 +897,7 @@ int manager::truncate(const char *path, off_t length) throw() {
         
         user_error = call_real_truncate(full_path.value, length);
         if (user_error == 0 && this->capture_is_enabled()) {
-            r = call_real_truncate(destination_file, length);
+            r = call_real_truncate(destination_file.value, length);
             if (r != 0) {
                 error = errno;
                 if (error != ENOENT) {
@@ -920,11 +910,9 @@ int manager::truncate(const char *path, off_t length) throw() {
         file->remove_reference();
         if (r != 0) {
             user_error = call_real_truncate(path, length);
-            // More RAII-fixed problems (the session rwlock wasn't freed)
+            // More RAII-fixed problems (the session rwlock wasn't freed, and the destination_file wasn't freed.
             goto free_out;
         }
-        
-        free((void*) destination_file);
     } else {
         // No backup is in progress, just truncate the source file.
         user_error = call_real_truncate(path, length);

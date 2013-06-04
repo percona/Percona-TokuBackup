@@ -6,6 +6,7 @@
 #include "backup_directory.h"
 #include "description.h"
 #include "backup_debug.h"
+#include "raii-malloc.h"
 #include "real_syscalls.h"
 
 #include <stdio.h>
@@ -28,16 +29,14 @@ backup_session::backup_session(const char* source, const char *dest, backup_call
     m_source_dir = call_real_realpath(source, NULL);
     m_dest_dir   = call_real_realpath(dest,   NULL);
     if (!m_dest_dir) {
-        char *str = malloc_snprintf(strlen(dest) + 100, "This backup destination directory does not exist: %s", dest);
-        calls->report_error(ENOENT, str); 
+        with_object_to_free<char*> str(malloc_snprintf(strlen(dest) + 100, "This backup destination directory does not exist: %s", dest));
+        calls->report_error(ENOENT, str.value); 
         r = ENOENT;
-        free(str);
     }
     if (!m_source_dir) {
-        char *str = malloc_snprintf(strlen(source) + 100, "This backup source directory does not exist: %s", source);
-        calls->report_error(ENOENT, str);
+        with_object_to_free<char*> str(malloc_snprintf(strlen(source) + 100, "This backup source directory does not exist: %s", source));
+        calls->report_error(ENOENT, str.value);
         r = ENOENT;
-        free(str);
     }
     m_copier.set_directories(m_source_dir, m_dest_dir);
     *errnum = r;
@@ -74,10 +73,9 @@ int backup_session::do_copy() throw() {
 //
 bool backup_session::is_prefix(const char *file) throw() {
     // mallocing this to make memcheck happy.  I don't like the extra malloc, but I'm more worried about testability than speed right now. -Bradley
-    char *absfile = call_real_realpath(file, NULL);
-    if (absfile==NULL) return false;
-    bool result = this->is_prefix_of_realpath(absfile);
-    free(absfile);
+    with_object_to_free<char*> absfile(call_real_realpath(file, NULL));
+    if (absfile.value==NULL) return false;
+    bool result = this->is_prefix_of_realpath(absfile.value);
     return result;
 }
 
@@ -126,8 +124,8 @@ int open_path(const char *file_path) throw() {
 //
 int create_subdirectories(const char *path) throw() {
     const char SLASH = '/';
-    char *directory = strdup(path);
-    char *next_slash = directory;
+    with_object_to_free<char*> directory(strdup(path));
+    char *next_slash = directory.value;
     ++next_slash;
 
     int r = 0;
@@ -152,8 +150,8 @@ int create_subdirectories(const char *path) throw() {
         *next_slash = 0;
         
         // 4. mkdir
-        if (*directory) {
-            r = call_real_mkdir(directory, 0777);
+        if (*directory.value) {
+            r = call_real_mkdir(directory.value, 0777);
         
             if(r) {
                 //printf("WARN: <CAPTURE>: %s\n", directory);
@@ -179,7 +177,6 @@ int create_subdirectories(const char *path) throw() {
     }
     
 out:
-    free((void*)directory);
     return r;
 }
 
@@ -260,9 +257,8 @@ int backup_session::capture_mkdir(const char *pathname) throw() {
         return 0;
     }
 
-    char *backup_directory_name = this->translate_prefix(pathname);
-    int r = open_path(backup_directory_name);
-    free((void*)backup_directory_name);
+    with_object_to_free<char*> backup_directory_name(this->translate_prefix(pathname));
+    int r = open_path(backup_directory_name.value);
     return r;
 }
 
