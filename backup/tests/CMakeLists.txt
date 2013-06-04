@@ -65,6 +65,7 @@ set(glassboxtests
   test6477_close_injection
   test6478_read_injection
   test6483_mkdir_injection
+  two_renames_race
   open_injection_6476
   rename
   rename_injection
