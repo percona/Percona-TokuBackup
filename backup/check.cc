@@ -5,9 +5,11 @@
 #include <stdio.h>
 
 #include "check.h"
+#include "manager.h"
 
 void check_fun(long predicate, const char *expr, const backtrace bt) throw() {
     if (!predicate) {
+        the_manager.kill();
         int e = errno;
         fprintf(stderr, "check(%s) failed\n", expr);
         fprintf(stderr, "errno=%d\n", e);
