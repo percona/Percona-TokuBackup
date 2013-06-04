@@ -41,6 +41,7 @@ set(blackboxtests
   )
 
 set(glassboxtests
+  abort_while_holding_lock        ## needs to register a rename function.
   backup_directory_tests
   backup_no_fractal_tree          ## Needs the keep_capturing API
   backup_no_fractal_tree_threaded ## Needs the keep_capturing API

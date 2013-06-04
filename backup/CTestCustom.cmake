@@ -1,5 +1,6 @@
 # Don't run helgrind and drd when we are running valgrind
 foreach(test 
+ abort_while_holding_lock 
  backup_directory_tests
  backup_no_fractal_tree
  backup_no_fractal_tree_threaded
