@@ -278,6 +278,7 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
         }
         
         source_file * source = file->get_source_file();
+        with_file_hash_table_mutex mtl(&m_table); // We think this fixes #34.  Also this must before the source_file_name_read_lock.
         with_source_file_name_read_lock sfl(source);
 
         if (!session->is_prefix_of_realpath(source->name())) {
