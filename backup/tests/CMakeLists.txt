@@ -48,6 +48,7 @@ set(glassboxtests
   check_check
   check_check2
   create_rename_race
+  create_unlink_race
   debug_coverage
   failed_rename_kills_backup_6703 ## Needs the keep_capturing API
   failed_unlink_kills_backup_6704 ## Needs the keep_capturing API

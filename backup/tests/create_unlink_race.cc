@@ -12,7 +12,7 @@
 #include "backup_debug.h"
 
 const int N=10;
-const int N_FNAMES = 2;
+const int N_FNAMES = 1;
 
 void* do_backups(void *v) {
     check(v==NULL);
@@ -30,22 +30,21 @@ void* do_create(void *p) {
     char * name0 = fnames[0];
     int fd = open(name0, O_RDWR | O_CREAT, 0777);
     if (fd >= 0) {
+        printf("do_create() finished, created file = %s\n", name0);
         int r = close(fd);
         check(r == 0);
     }
 
-    printf("do_create() finished, created file = %s\n", name0);
     return p;
 }
 
-void* do_rename(void *p) {
-    printf("do_rename() started\n");
+void* do_unlink(void *p) {
+    printf("do_unlink() started\n");
     check(p == NULL);
     char * name0 = fnames[0];
-    char * name1 = fnames[1];
-    int r = rename(name0, name1);
+    int r = unlink(name0);
     check(r == 0);
-    printf("do_rename() finished, renamed file = %s to %s\n", name0, name1);
+    printf("do_unlink() finished, file = %s\n", name0);
     return p;
 }
 
@@ -62,8 +61,8 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         check(r < len);
     }
 
-    // 1. Set pause point
-    HotBackup::toggle_pause_point(HotBackup::CAPTURE_OPEN);
+    // 1. Set pause points
+    HotBackup::toggle_pause_point(HotBackup::OPEN_DESTINATION_FILE);
     
     // 2. Set backup to keep capturing.
     backup_set_keep_capturing(true);
@@ -71,6 +70,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     // 3. Start backup.
     pthread_t backup_thread;
     start_backup_thread(&backup_thread);
+    sleep(1);
 
     // 4. Start create() thread.
     pthread_t create_thread;
@@ -79,43 +79,43 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     sleep(1);
     
     // 5. Start rename() thread. (Should block, in fixed version).
-    pthread_t rename_thread;
-    r = pthread_create(&rename_thread, NULL, do_rename, NULL);
+    pthread_t unlink_thread;
+    r = pthread_create(&unlink_thread, NULL, do_unlink, NULL);
     check(r == 0);
 
-    // 6. Sleep, then turn off pause point.
-    // sleep(1);
-    HotBackup::toggle_pause_point(HotBackup::CAPTURE_OPEN);
+    // 6. Sleep, then turn off open() pause point.
+    HotBackup::toggle_pause_point(HotBackup::OPEN_DESTINATION_FILE);
 
-    // 7. Wait for create() then rename() threads to finish.
+    // 7. Wait for create() thread to finish.
     r = pthread_join(create_thread, NULL);
     check(r == 0);
-    r = pthread_join(rename_thread, NULL);
+    r = pthread_join(unlink_thread, NULL);
     check(r == 0);
     printf("threads done...\n");
 
-    // 8. allow backup to finish (turn keep_capturing off).
+    // 9. allow backup to finish (turn keep_capturing off).
     backup_set_keep_capturing(false);
 
-    // 9. Wait for backup to finish.
+    // 10. Wait for backup to finish.
     finish_backup_thread(backup_thread);
 
-    // 10. Verify that the source file and destination file 
+    // 11. Verify that the source file and destination file 
     char *dst = get_dst();
     int dst_len = strlen(dst)+10;
     char * dest_name = (char*)malloc(dst_len);
-    char letter = 'B';
+    char letter = 'A';
     r = snprintf(dest_name, dst_len, "%s/%c", dst, letter);
     check(r < len);
 
     struct stat buf;
     r = stat(dest_name, &buf);
     if (r != 0) {
-        fail();
-        perror("Destination file could not be stat()'d");
-        printf("deat_name = %s\n", dest_name);
-    } else {
         pass(); printf("\n");
+        r = 0;
+    } else {
+        fail();
+        printf("destination file should NOT exist:  %s\n", dest_name);
+        r = -1;
     }
 
     // Cleanup.
@@ -126,7 +126,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         free(fnames[i]);
     }
 
-    //    cleanup_dirs();
+    cleanup_dirs();
     free((void*)src);
     return r;
 }
