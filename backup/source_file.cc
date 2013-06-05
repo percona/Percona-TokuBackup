@@ -10,19 +10,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "backup_debug.h"
 #include "check.h"
 #include "manager.h"
 #include "mutex.h"
 #include "real_syscalls.h"
 #include "rwlock.h"
 #include "source_file.h"
-
-#if PAUSE_POINTS_ON
-#define PAUSE(number) while(HotBackup::should_pause(number)) { sleep(2); } //printf("Resuming from Pause Point.\n");
-#else
-#define PAUSE(number)
-#endif
 
 ////////////////////////////////////////////////////////
 //
@@ -248,8 +241,6 @@ int source_file::try_to_create_destination_file(const char *full_path) throw() {
     if (m_destination_file != NULL) {
         return 0;
     }
-
-    PAUSE(HotBackup::OPEN_DESTINATION_FILE);
 
     // Create the file on disk using the given path, though it may
     // already exist.

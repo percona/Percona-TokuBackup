@@ -112,9 +112,6 @@ bool should_pause(int flag) throw() {
         case OPEN_DESTINATION_FILE:
             result = OPEN_DESTINATION_FILE & PAUSE_POINTS;
             break;
-        case CAPTURE_OPEN:
-            result = CAPTURE_OPEN & PAUSE_POINTS;
-            break;
         default:
             break;
     }

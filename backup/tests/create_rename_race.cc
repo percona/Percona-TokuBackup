@@ -63,7 +63,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     }
 
     // 1. Set pause point
-    HotBackup::toggle_pause_point(HotBackup::CAPTURE_OPEN);
+    HotBackup::toggle_pause_point(HotBackup::OPEN_DESTINATION_FILE);
     
     // 2. Set backup to keep capturing.
     backup_set_keep_capturing(true);
@@ -85,7 +85,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
 
     // 6. Sleep, then turn off pause point.
     // sleep(1);
-    HotBackup::toggle_pause_point(HotBackup::CAPTURE_OPEN);
+    HotBackup::toggle_pause_point(HotBackup::OPEN_DESTINATION_FILE);
 
     // 7. Wait for create() then rename() threads to finish.
     r = pthread_join(create_thread, NULL);
