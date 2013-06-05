@@ -8,7 +8,7 @@
 #ident "$Id$"
 
 #ifndef DEBUG_HOTBACKUP
-#define DEBUG_HOTBACKUP 0
+#define DEBUG_HOTBACKUP 1
 #endif
 
 #ifndef PAUSE_POINTS_ON
@@ -56,6 +56,7 @@ const int MANAGER_IN_PREPARE                = 0x08;
 const int MANAGER_IN_DISABLE                = 0x10;
 const int COPIER_AFTER_OPEN_SOURCE          = 0x20;
 const int OPEN_DESTINATION_FILE             = 0x40;
+const int CAPTURE_OPEN                      = 0x80;
 
 bool should_pause(int) throw();
 void toggle_pause_point(int) throw();
