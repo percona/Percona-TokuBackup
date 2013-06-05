@@ -166,10 +166,17 @@ int source_file::rename(const char * new_name) throw() {
     return r;
 }
 
+pthread_mutex_t reflock = PTHREAD_MUTEX_INITIALIZER;
+
 ////////////////////////////////////////////////////////
 //
 void source_file::add_reference(void) throw() {
+#if 1
+    with_mutex_locked rl(&reflock);
+    m_reference_count++;
+#else
     __sync_fetch_and_add(&m_reference_count, 1);
+#endif
 }
 
 ////////////////////////////////////////////////////////
@@ -217,6 +224,7 @@ void source_file::try_to_remove_destination(void) throw() {
     if (m_reference_count > 1) {
         return;
     }
+    usleep(random()%(4*1024));
 
     ignore(m_destination_file->close());
     delete m_destination_file;
