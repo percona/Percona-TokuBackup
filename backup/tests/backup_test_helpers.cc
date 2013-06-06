@@ -11,6 +11,7 @@
 #include <string.h>
 #include <valgrind/helgrind.h>
 
+#include "atomics.h"
 #include "backup_test_helpers.h"
 #include "backup_internal.h"
 #include "backup_callbacks.h"
@@ -120,12 +121,12 @@ static void* start_backup_thread_fun(void *backup_extra_v) {
     check(r==backup_extra->expect_return_result);
     if (backup_extra->src_dir) free(backup_extra->src_dir);
     if (backup_extra->dst_dir) free(backup_extra->dst_dir);
-    backup_is_done = true;
+    atomic_store_strong(&backup_is_done, true);
     return backup_extra_v;
 }
 
 bool backup_thread_is_done(void) {
-    return backup_is_done;
+    return atomic_load_strong(&backup_is_done);
 }
 
 void start_backup_thread_with_funs(pthread_t *thread,
@@ -143,7 +144,7 @@ void start_backup_thread_with_funs(pthread_t *thread,
     p->error_extra = error_extra;
     p->expect_return_result = expect_return_result;
     VALGRIND_HG_DISABLE_CHECKING(&backup_is_done, sizeof(backup_is_done));
-    backup_is_done = false;
+    atomic_store_strong(&backup_is_done, false);
     int r = pthread_create(thread, NULL, start_backup_thread_fun, p);
     check(r==0);
 }

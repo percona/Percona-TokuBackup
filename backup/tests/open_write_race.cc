@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "atomics.h"
 #include "backup_test_helpers.h"
 
 volatile long counter = 2; // so we know that all the work is done.
@@ -18,7 +19,7 @@ void* do_backup(void *v) {
     tokubackup_throttle_backup(1); // very slow
     pthread_t thread;
     start_backup_thread(&thread);
-    while (counter>0) sched_yield();
+    while (atomic_load_strong(&counter)>0) sched_yield();
     tokubackup_throttle_backup(0xFFFFFFFFF); // reasonably fast
     finish_backup_thread(thread);
     return v;
@@ -29,7 +30,7 @@ void* do_writes(void *v) {
     int fd = openf(O_RDWR | O_CREAT, 0777, "%s/wfile", src);
     check(fd>=0);
     int wcount=0;
-    while (counter>1) { // do until all the opens are done
+    while (atomic_load_strong(&counter)>1) { // do until all the opens are done
         char buf[100];
         int l = snprintf(buf, sizeof(buf), "%d\n", wcount);
         check((size_t)l<sizeof(buf));

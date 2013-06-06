@@ -3,6 +3,7 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
+#include "atomics.h"
 #include "backup_debug.h"
 #include "file_hash_table.h"
 #include "glassbox.h"
@@ -117,8 +118,11 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         backup_error(r, "Backup system is dead");
         goto error_out;
     }
-    m_an_error_happened = false;
-    m_backup_is_running = true;
+    {
+        with_mutex_locked ml(&m_error_mutex, BACKTRACE(NULL));
+        m_an_error_happened = false;
+    }
+    atomic_store_strong(&m_backup_is_running, true);
     r = calls->poll(0, "Preparing backup");
     if (r != 0) {
         backup_error(r, "User aborted backup");
@@ -214,9 +218,9 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
     }
 
     WHEN_GLASSBOX( ({
-                m_done_copying = false;
-                m_is_capturing = true;
-                while (!m_start_copying) sched_yield();
+                atomic_store_strong(&m_done_copying, false);
+                atomic_store_strong(&m_is_capturing, true);
+                while (!atomic_load_strong(&m_start_copying)) sched_yield();
             }) );
 
     r = m_session->do_copy();
@@ -229,18 +233,24 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
 disable_out: // preserves r if r!=0
 
     WHEN_GLASSBOX( ({
-        m_done_copying = true;
+	atomic_store_strong(&m_done_copying, true);
         // If the client asked us to keep capturing till they tell us to stop, then do what they said.
-        while (m_keep_capturing) sched_yield();
+        while (1) {
+            bool is_keep;
+            __atomic_load(&m_keep_capturing, &is_keep, __ATOMIC_SEQ_CST);
+            if (!is_keep) break;
+            sched_yield();
+        }
+        //while (m_keep_capturing) sched_yield();
             }) );
 
     {
         with_rwlock_wrlocked ms(&m_session_rwlock, BACKTRACE(NULL));
 
-        m_backup_is_running = false;
+        atomic_store_strong(&m_backup_is_running, false);
         this->disable_capture();
         this->disable_descriptions();
-        WHEN_GLASSBOX(m_is_capturing = false);
+        WHEN_GLASSBOX(atomic_store_strong(&m_is_capturing, false));
         print_time("Toku Hot Backup: Finished:");
         // We need to remove any extra renamed files that may have made it
         // to the backup session just after copy finished.
@@ -252,10 +262,13 @@ disable_out: // preserves r if r!=0
 unlock_out: // preserves r if r!0
 
     pmutex_unlock(&m_mutex, BACKTRACE(NULL));
-    if (m_an_error_happened) {
-        calls->report_error(m_errnum, m_errstring);
-        if (r==0) {
-            r = m_errnum; // if we already got an error then keep it.
+    {
+        with_mutex_locked ml(&m_error_mutex, BACKTRACE(NULL));
+        if (m_an_error_happened) {
+            calls->report_error(m_errnum, m_errstring);
+            if (r==0) {
+                r = m_errnum; // if we already got an error then keep it.
+            }
         }
     }
 
@@ -315,7 +328,7 @@ void manager::disable_descriptions(void) throw() {
         WHEN_GLASSBOX( ({
                     if (middle == i) {
                         TRACE("Pausing on i = ", i); 
-                        while (m_pause_disable) { sched_yield(); }
+                        while (atomic_load_strong(&m_pause_disable)) { sched_yield(); }
                         TRACE("Done Pausing on i = ", i);
                     }
                 }) );
@@ -949,13 +962,16 @@ void manager::mkdir(const char *pathname) throw() {
 //
 void manager::set_throttle(unsigned long bytes_per_second) throw() {
     VALGRIND_HG_DISABLE_CHECKING(&m_throttle, sizeof(m_throttle));
-    m_throttle = bytes_per_second;
+    //m_throttle = bytes_per_second;
+    __atomic_store(&m_throttle, &bytes_per_second, __ATOMIC_SEQ_CST);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 unsigned long manager::get_throttle(void) const throw() {
-    return m_throttle;
+    unsigned long result;
+    __atomic_load(&m_throttle, &result, __ATOMIC_SEQ_CST);
+    return result;
 }
 
 void manager::backup_error_ap(int errnum, const char *format_string, va_list ap) throw() {
@@ -994,8 +1010,8 @@ void manager::backup_error(int errnum, const char *format_string, ...)  throw() 
 ///////////////////////////////////////////////////////////////////////////////
 //
 void manager::set_error_internal(int errnum, const char *format_string, va_list ap) throw() {
-    m_backup_is_running = false;
-    pmutex_lock(&m_error_mutex, BACKTRACE(NULL));
+    atomic_store_strong(&m_backup_is_running, false);
+    with_mutex_locked ml(&m_error_mutex, BACKTRACE(NULL));
     if (!m_an_error_happened) {
         int len = 2*PATH_MAX + strlen(format_string) + 1000; // should be big enough for all our errors
         char *string = (char*)malloc(len);
@@ -1006,7 +1022,6 @@ void manager::set_error_internal(int errnum, const char *format_string, va_list 
         m_errnum = errnum;
         m_an_error_happened = true; // set this last so that it will be OK.
     }
-    pmutex_unlock(&m_error_mutex, BACKTRACE(NULL));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1076,23 +1091,24 @@ void manager::unlock_file_op(void)
 // Test routines.
 void manager::pause_disable(bool pause) throw() {
     VALGRIND_HG_DISABLE_CHECKING(&m_pause_disable, sizeof(m_pause_disable));
-    m_pause_disable = pause;
+    atomic_store_strong(&m_pause_disable, pause);
 }
 
 void manager::set_keep_capturing(bool keep_capturing) throw() {
     VALGRIND_HG_DISABLE_CHECKING(&m_keep_capturing, sizeof(m_keep_capturing));
-    m_keep_capturing = keep_capturing;
+    atomic_store_strong(&m_keep_capturing, keep_capturing);
+    //m_keep_capturing = keep_capturing;
 }
 
 bool manager::is_done_copying(void) throw() {
-    return m_done_copying;
+    return atomic_load_strong(&m_done_copying);
 }
 bool manager::is_capturing(void) throw() {
-    return m_is_capturing;
+    return atomic_load_strong(&m_is_capturing);
 }
 
 void manager::set_start_copying(bool start_copying) throw() {
     VALGRIND_HG_DISABLE_CHECKING(&m_start_copying, sizeof(m_start_copying));
-    m_start_copying = start_copying;
+    atomic_store_strong(&m_start_copying, start_copying);
 }
 #endif /*GLASSBOX*/

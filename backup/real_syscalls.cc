@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <valgrind/helgrind.h>
 
+#include "atomics.h"
 #include "real_syscalls.h"
 #include "mutex.h"
 
@@ -24,14 +25,18 @@ template <class T> static void dlsym_set(T *ptr, const char *name)
 //   programming it with macros, I do it in a type-safe way with templates. -Bradley
 {
     VALGRIND_HG_DISABLE_CHECKING(ptr, sizeof(*ptr));
-    if (*ptr==NULL) {
+    if (atomic_load_weak(ptr)==NULL) {
         pmutex_lock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.
         if (*ptr==NULL) {
             // the pointer is still NULL, so do the set,  otherwise someone else changed it while I held the pointer.
             T ptr_local = (T)(dlsym(RTLD_NEXT, name));
             // If an error occured, we are hosed, and the system cannot run.  We cannot run even in a degraded mode.  I guess we'll just take the segfault when the call takes place.
+#ifdef __clang__
+            atomic_store_weak(ptr, ptr_local);
+#else
             bool did_it __attribute__((__unused__)) = __sync_bool_compare_and_swap(ptr, NULL, ptr_local);
             // If the did_it is false, what can we do.  Try to continue.
+#endif
         }
         pmutex_unlock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.    Try to continue.
     }
@@ -43,15 +48,18 @@ template <class T> static void dlvsym_set(T *ptr, const char *name, const char *
 //   programming it with macros, I do it in a type-safe way with templates. -Bradley
 {
     VALGRIND_HG_DISABLE_CHECKING(ptr, sizeof(*ptr));
-    if (*ptr==NULL) {
+    if (atomic_load_weak(ptr)==NULL) {
         pmutex_lock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.
         if (*ptr==NULL) {
             // the pointer is still NULL, so do the set,  otherwise someone else changed it while I held the pointer.
             T ptr_local = (T)(dlvsym(RTLD_NEXT, name, libname));
             // If an error occured, we are hosed, and the system cannot run.  We cannot run even in a degraded mode.  I guess we'll just take the segfault when the call takes place.
-            *ptr = ptr_local;
-            //bool did_it __attribute__((__unused__)) = __sync_bool_compare_and_swap(ptr, NULL, ptr_local);
+#ifdef __CLANG__
+            atomic_store_weak(ptr, ptr_local);
+#else
+            bool did_it __attribute__((__unused__)) = __sync_bool_compare_and_swap(ptr, NULL, ptr_local);
             // If the did_it is false, what can we do.  Try to continue.
+#endif
         }
         pmutex_unlock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.    Try to continue.
     }

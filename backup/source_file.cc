@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include "atomics.h"
 #include "backup_debug.h"
 #include "check.h"
 #include "manager.h"
@@ -189,8 +190,8 @@ void source_file::remove_reference(void) throw() {
 
 ////////////////////////////////////////////////////////
 //
-unsigned int source_file::get_reference_count(void) const throw() {
-    return m_reference_count;
+unsigned int source_file::get_reference_count(void) throw() {
+    return atomic_load_strong(&m_reference_count);
 }
 
 ////////////////////////////////////////////////////////
@@ -221,7 +222,7 @@ void source_file::try_to_remove_destination(void) throw() {
         return;
     }
 
-    if (m_reference_count > 1) {
+    if (get_reference_count() > 1) {
         return;
     }
 
