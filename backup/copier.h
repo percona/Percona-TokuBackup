@@ -50,6 +50,7 @@ public:
 private:
     uint64_t m_total_bytes_backed_up;
     uint64_t m_total_files_backed_up;
+    double   m_total_known_or_backed_up; // the number of files (as a double) that have been backed up or are in the todo list.  This is used for teh callback.
     int copy_regular_file(const char *source, const char *dest, off_t file_size) throw()  __attribute__((warn_unused_result));
     int copy_using_source_info(source_info src_info, const char *dest) throw();
     int create_destination_and_copy(source_info src_info, const char *dest) throw();
