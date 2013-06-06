@@ -381,6 +381,13 @@ int copier::create_destination_and_copy(source_info src_info,  const char *path)
         } else {
             source_exists = false;
         }
+
+        // If the source file was unlinked since the respective
+        // source_file object was created and since the stat
+        // succeeded, we should not proceed.
+        if (src_info.m_file->get_destination() == NULL) {
+            source_exists = false;
+        }
     }
 
     if (result != 0) { return result; }
