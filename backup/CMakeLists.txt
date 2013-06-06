@@ -17,6 +17,7 @@ set(BACKUP_SOURCES
 	copier.cc
 	description.cc
 	destination_file.cc
+	dirsum.cc
 	file_hash_table.cc
 	fmap.cc
 	manager.cc

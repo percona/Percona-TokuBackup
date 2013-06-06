@@ -62,6 +62,7 @@ foreach(test
  test6477_close_injection
  test6478_read_injection
  test6483_mkdir_injection
+ test_dirsum
  throttle_6564
  two_renames_race
  unlink

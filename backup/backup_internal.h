@@ -57,4 +57,6 @@ void backup_set_keep_capturing(bool b) throw();
 
 static inline void ignore(int a __attribute__((unused))) throw() {}
 
+long long dirsum(const char*dname) throw();
+
 #endif // end of header guardian.
