@@ -22,6 +22,7 @@ foreach(test
  closedirfails_dest_dir
  copy_files
  create_rename_race
+ create_unlink_race
  debug_coverage
  dest_no_permissions_10
  dest_no_permissions_with_open_10
