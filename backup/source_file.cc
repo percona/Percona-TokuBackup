@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include "atomics.h"
 #include "check.h"
 #include "manager.h"
 #include "mutex.h"
@@ -166,17 +167,10 @@ int source_file::rename(const char * new_name) throw() {
     return r;
 }
 
-pthread_mutex_t reflock = PTHREAD_MUTEX_INITIALIZER;
-
 ////////////////////////////////////////////////////////
 //
 void source_file::add_reference(void) throw() {
-#if 1
-    with_mutex_locked rl(&reflock);
-    m_reference_count++;
-#else
     __sync_fetch_and_add(&m_reference_count, 1);
-#endif
 }
 
 ////////////////////////////////////////////////////////
@@ -189,8 +183,8 @@ void source_file::remove_reference(void) throw() {
 
 ////////////////////////////////////////////////////////
 //
-unsigned int source_file::get_reference_count(void) const throw() {
-    return m_reference_count;
+unsigned int source_file::get_reference_count(void) throw() {
+    return atomic_load_strong(&m_reference_count);
 }
 
 ////////////////////////////////////////////////////////
@@ -221,7 +215,7 @@ void source_file::try_to_remove_destination(void) throw() {
         return;
     }
 
-    if (m_reference_count > 1) {
+    if (get_reference_count() > 1) {
         return;
     }
     usleep(random()%(4*1024));

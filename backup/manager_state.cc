@@ -7,6 +7,7 @@
 
 #include <valgrind/helgrind.h>
 
+#include "atomics.h"
 #include "manager_state.h"
 
 manager_state::manager_state() throw()
@@ -20,38 +21,38 @@ manager_state::manager_state() throw()
 }
 
 bool manager_state::is_dead(void) throw() {
-    return m_is_dead;
+    return atomic_load_strong(&m_is_dead);
 }
 
 bool manager_state::is_alive(void) throw() {
-    return !m_is_dead;
+    return !atomic_load_strong(&m_is_dead);
 }
 
 void manager_state::kill(void) throw() {
-    m_is_dead = true;
+    atomic_store_strong(&m_is_dead, true);
 }
 
 bool manager_state::capture_is_enabled(void) throw() {
-    return m_capture_enabled;
+    return atomic_load_strong(&m_capture_enabled);
 }
 
 void manager_state::enable_capture(void) throw() {
-    m_capture_enabled = true;
+    atomic_store_strong(&m_capture_enabled, true);
 }
 
 void manager_state::disable_capture(void) throw() {
-    m_capture_enabled = false;
+    atomic_store_strong(&m_capture_enabled, false);
 }
 
 bool manager_state::copy_is_enabled(void) throw() {
-    return m_copy_enabled;
+    return atomic_load_strong(&m_copy_enabled);
 }
 
 void manager_state::enable_copy(void) throw() {
-    m_copy_enabled = true;
+    atomic_store_strong(&m_copy_enabled, true);
 }
 
 void manager_state::disable_copy(void) throw() {
-    m_copy_enabled = false;
+    atomic_store_strong(&m_copy_enabled, false);
 }
 

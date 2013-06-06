@@ -3,6 +3,7 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
+#include "atomics.h"
 #include "backup_debug.h"
 #include <stdio.h>
 #include <valgrind/helgrind.h>
@@ -86,19 +87,19 @@ void InterposeError(const char *s, const char *arg) throw() {
     }
 }
 
-static int PAUSE_POINTS = 0x00;
+static volatile int PAUSE_POINTS = 0x00;
 
 bool should_pause(int flag) throw() {
     bool result = false;
     switch (flag) {
         case COPIER_BEFORE_READ:
-            result = COPIER_BEFORE_READ & PAUSE_POINTS;
+            result = COPIER_BEFORE_READ & atomic_load_strong(&PAUSE_POINTS);
             break;
         case COPIER_AFTER_READ_BEFORE_WRITE:
-            result = COPIER_AFTER_READ_BEFORE_WRITE & PAUSE_POINTS;
+            result = COPIER_AFTER_READ_BEFORE_WRITE & atomic_load_strong(&PAUSE_POINTS);
             break;
         case COPIER_AFTER_WRITE:
-            result = COPIER_AFTER_WRITE & PAUSE_POINTS;
+            result = COPIER_AFTER_WRITE & atomic_load_strong(&PAUSE_POINTS);
             break;
         case MANAGER_IN_PREPARE:
             result = MANAGER_IN_PREPARE;
@@ -107,10 +108,10 @@ bool should_pause(int flag) throw() {
             result = MANAGER_IN_DISABLE;
             break;
         case COPIER_AFTER_OPEN_SOURCE:
-            result = COPIER_AFTER_OPEN_SOURCE & PAUSE_POINTS;
+            result = COPIER_AFTER_OPEN_SOURCE & atomic_load_strong(&PAUSE_POINTS);
             break;
         case OPEN_DESTINATION_FILE:
-            result = OPEN_DESTINATION_FILE & PAUSE_POINTS;
+            result = OPEN_DESTINATION_FILE & atomic_load_strong(&PAUSE_POINTS);
             break;
         default:
             break;
@@ -121,7 +122,8 @@ bool should_pause(int flag) throw() {
 
 void toggle_pause_point(int flag) throw() {
     VALGRIND_HG_DISABLE_CHECKING(&PAUSE_POINTS, sizeof(PAUSE_POINTS));
-    PAUSE_POINTS = PAUSE_POINTS ^ flag;
+    __sync_fetch_and_xor(&PAUSE_POINTS, flag);
+    //PAUSE_POINTS = PAUSE_POINTS ^ flag;
 }
 
 } // End of namespace.

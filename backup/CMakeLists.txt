@@ -3,7 +3,8 @@ project(HotBackup)
 
 # No implicit templates, since that's how mysql compiles.
 # set(CMAKE_CXX_FLAGS "-fno-implicit-templates  ${CMAKE_CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS "-fsanitize=thread  ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "-fsanitize=thread -fPIE ${CMAKE_CXX_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "-pie ${CMAKE_EXE_LINKER_FLAGS}")
 
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS 
   _FILE_OFFSET_BITS=64 
@@ -31,7 +32,7 @@ set(BACKUP_SOURCES
         MurmurHash3.cc
 )
 
-add_library(HotBackup          SHARED ${BACKUP_SOURCES})
+add_library(HotBackup          STATIC ${BACKUP_SOURCES})
 
 find_program(COVERAGE_COMMAND NAMES gcov47 gcov)
 option(USE_GCOV "Use gcov for test coverage." OFF)
@@ -85,7 +86,7 @@ IF (NOT DEFINED INSTALL_LIBDIR)
   add_subdirectory(tests)
 
   # And a Glassbox version of the library in which the visibility is defaul, not hidden
-  add_library(HotBackupGlassbox      SHARED ${BACKUP_SOURCES})
+  add_library(HotBackupGlassbox      STATIC ${BACKUP_SOURCES})
   IF(NOT APPLE)
     target_link_libraries(HotBackupGlassbox LINK_PUBLIC rt)
   ENDIF()

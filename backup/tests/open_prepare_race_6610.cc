@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
+
+#include "atomics.h"
 #include "backup_test_helpers.h"
 
 static char *src;
@@ -16,7 +18,7 @@ static volatile int n_backups_done = 0;
 static const int n_backups_to_do = 4;
 
 static void* open_close_loop(void * ignore) {
-    while (n_backups_done < n_backups_to_do) {
+    while (atomic_load_strong(&n_backups_done) < n_backups_to_do) {
         int fd = openf(O_RDONLY|O_CREAT, 0777, "%s/file", src);
         check(fd>=0);
         int r = close(fd);

@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <valgrind/helgrind.h>
 
+#include "atomics.h"
 #include "backup_test_helpers.h"
 #include "source_file.h"
 
@@ -19,11 +20,10 @@ static const uint64_t doit_lo = 5, doit_hi = 10;
 static void* doit(void* ignore) {
 
     sf.lock_range(doit_lo, doit_hi);
-    stepa = 1;
+    atomic_store_strong(&stepa, 1);
 
-
-    stepb = 1;
-    while (!stepc)
+    atomic_store_strong(&stepb, 1);
+    while (!atomic_load_strong(&stepc))
         ;
     { int r = sf.unlock_range(doit_lo, doit_hi); check(r==0); }
 
@@ -42,11 +42,11 @@ static void thread_test_block(void) {
         check(r==0);
     }
 
-    while (!stepa); // wait for stepa to finish.
+    while (!atomic_load_strong(&stepa)); // wait for stepa to finish.
     // Now 5,10 is blocked
-    stepc = 1; // let him go ahead and run
+    atomic_store_strong(&stepc, 1); // let him go ahead and run
     sf.lock_range(9,12);
-    check(stepb==1); // must have gotten to stepb in the doit function.(
+    check(atomic_load_strong(&stepb)==1); // must have gotten to stepb in the doit function.(
     
     {
         void *result;
@@ -71,12 +71,12 @@ static void thread_test_noblock(void) {
         int r = pthread_create(&th, NULL, doit, &the_char);
         check(r==0);
     }
-    while (!stepa); // wait for stepa to finish
+    while (!atomic_load_strong(&stepa)); // wait for stepa to finish
     // Now 5,10 is blocked.
     // this will deadlock of the lock blocks.
     sf.lock_range(12,15);
     
-    stepc = 1;
+    atomic_store_strong(&stepc, 1);
     
     {
         void *result;

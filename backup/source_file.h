@@ -45,7 +45,7 @@ public:
     // They must be protected with a mutex.
     void add_reference(void) throw();
     void remove_reference(void) throw();
-    unsigned int get_reference_count(void) const throw();
+    unsigned int get_reference_count(void) throw();
 
     void unlink(void) throw();
 
@@ -62,7 +62,7 @@ private:
     char * m_full_path; // the source_file owns this.
     source_file *m_next;
     pthread_rwlock_t m_name_rwlock;
-    unsigned int m_reference_count;
+    volatile unsigned int m_reference_count;
 
     pthread_mutex_t  m_mutex;
     pthread_cond_t   m_cond;
