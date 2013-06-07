@@ -1,0 +1,4 @@
+We ran sql-bench and concurrent backups and found some locking issues.
+These issues were exposed when running the sql-bench test-create test.
+The test is to run run.test.create.bash and run.backup.bash concurrently
+and see the fireworks.

@@ -55,6 +55,7 @@ set(glassboxtests
   ftruncate                       ## Needs the keep_capturing API
   ftruncate_injection_6480
   copy_files
+  test_dirsum
   disable_race
   end_race_open_6668
   end_race_rename_6668
