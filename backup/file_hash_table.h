@@ -28,7 +28,7 @@ public:
     // These methods rename at least the source_file object and
     // reinsert it into our hash table.  If there is a
     // destination_file object, that file is also renamed.
-    int rename_locked(const char *old_name, const char *new_name, const char *dest) throw();
+    int rename_locked(const char *old_src, const char *new_src, const char *new_dst, const char *dst) throw();
     // Does *not* take ownership of the paths.
     // Return values and errors:: On success return 0, otherwise return error number (not in errno), having reported the error to the manager.
 

@@ -694,6 +694,7 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
             // 4. Both in source directory.
             // Get the new full paths of the destination file.
             // NOTE: This string will be owned by the destination file object.
+            with_object_to_free<char*> full_old_destination_path(m_session->translate_prefix_of_realpath(full_old_path));
             with_object_to_free<char*> full_new_destination_path(m_session->translate_prefix_of_realpath(full_new_path.value));
 
             // If we got to this point, we have called rename on the
@@ -701,7 +702,10 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
             // object with the new name.  We must also update the
             // destination_file object because we are inside of a
             // session.
-            r = m_table.rename_locked(full_old_path, full_new_path.value, full_new_destination_path.value);
+            r = m_table.rename_locked(full_old_path, 
+                                      full_new_path.value,
+                                      full_old_destination_path.value,
+                                      full_new_destination_path.value);
 
             if (r != 0) {
                 // Nothing.  The error has been reported in rename_locked.

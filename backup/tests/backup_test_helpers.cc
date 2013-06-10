@@ -149,7 +149,9 @@ void start_backup_thread_with_funs(pthread_t *thread,
 }
 
 int simple_poll_fun(float progress, const char *progress_string, void *poll_extra) {
-    check(progress>=0 && progress <= 1);
+    printf("progress=%f\n", progress);
+    check(progress>=0);
+    if (0) check(progress <= 1); // This is no longer true.  When files are deleted, the progress could > 1.
     check(progress_string!=NULL);
     check(poll_extra==NULL);
     return 0;

@@ -126,7 +126,7 @@ int copier::do_copy(void) throw() {
         char *msg = malloc_snprintf(strlen(fname)+100, "Backup progress %ld bytes, %ld files.  %ld more files known of. Copying file %s",  m_total_bytes_backed_up, m_total_files_backed_up, n_known, fname);
         // Use n_done/n_files.   We need to do a better estimate involving n_bytes_copied/n_bytes_total
         // This one is very wrongu
-        r = m_calls->poll((double)m_total_bytes_backed_up/(double)m_total_bytes_to_back_up, msg);
+        r = m_calls->poll((double)(m_total_bytes_backed_up+1)/(double)(m_total_bytes_to_back_up+1), msg);
         free(msg);
         if (r != 0) {
             fprintf(stderr, "%s:%d r=%d\n", __FILE__, __LINE__, r);
@@ -493,7 +493,7 @@ int copier::copy_file_data(source_info src_info) throw() {
                      src_info.m_size,
                      src_info.m_path,
                      dest->get_path());
-            r = m_calls->poll((double)m_total_bytes_backed_up/(double)m_total_bytes_to_back_up, poll_string);
+            r = m_calls->poll((double)(m_total_bytes_backed_up+1)/(double)(m_total_bytes_to_back_up+1), poll_string);
             if (r!=0) {
                 m_calls->report_error(r, "User aborted backup");
                 int rr __attribute__((unused)) = file->unlock_range(lock_start, lock_end); // ignore any errors from this, we already have a problem
@@ -543,7 +543,7 @@ int copier::copy_file_data(source_info src_info) throw() {
                          src_info.m_path, 
                          dest->get_path(), 
                          sleep_time);
-                r = m_calls->poll((double)m_total_bytes_backed_up/(double)m_total_bytes_to_back_up, string);
+                r = m_calls->poll((double)(m_total_bytes_backed_up+1)/(double)(m_total_bytes_to_back_up+1), string);
             }
             if (r!=0) {
                 m_calls->report_error(r, "User aborted backup");
