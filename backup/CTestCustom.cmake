@@ -17,6 +17,7 @@ foreach(test
  backup_no_fractal_tree_threaded
  backup_no_ft2
  cannotopen_dest_dir
+ capture_only_rename
  check_check
  check_check2
  closedirfails_dest_dir
