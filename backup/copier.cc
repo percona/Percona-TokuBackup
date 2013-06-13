@@ -477,6 +477,8 @@ int copier::copy_file_data(source_info src_info) throw() {
             break;
         } else if (n_read < 0) {
             r = errno; // Return the error code from the read, not -1.
+            snprintf(poll_string, poll_string_size, "Could not read from %s, errno=%d (%s) at %s:%d", src_info.m_path, r, strerror(r), __FILE__, __LINE__);
+            m_calls->report_error(r, poll_string);
             int rr __attribute__((unused)) = file->unlock_range(lock_start, lock_end); // Ignore any errors from this, we already have a problem.
             goto out;
         }
