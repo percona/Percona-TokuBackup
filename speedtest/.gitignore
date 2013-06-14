@@ -1,2 +1,5 @@
 *_hb
 *_plain
+*~
+*.o
+*.data
