@@ -94,6 +94,7 @@ IF (NOT DEFINED INSTALL_LIBDIR)
     GLASSBOX)
 ENDIF()
 install(TARGETS HotBackup          DESTINATION ${INSTALL_LIBDIR} COMPONENT Server)
+install(FILES backup.h DESTINATION include)
 
 option(BACKUP_HAS_PARENT "Don't set this by hand.  It's used to tell the subcmake not to set things" ON)
 if (BACKUP_HAS_PARENT)
