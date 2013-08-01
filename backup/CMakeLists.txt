@@ -31,7 +31,10 @@ set(BACKUP_SOURCES
         MurmurHash3.cc
 )
 
-add_library(HotBackup          SHARED ${BACKUP_SOURCES})
+set(HOT_BACKUP_LIBNAME HotBackup
+  CACHE STRING "installed name of the hot backup library")
+
+add_library(${HOT_BACKUP_LIBNAME}          SHARED ${BACKUP_SOURCES})
 
 find_program(COVERAGE_COMMAND NAMES gcov47 gcov)
 option(USE_GCOV "Use gcov for test coverage." OFF)
@@ -41,11 +44,11 @@ if (USE_GCOV)
 endif (USE_GCOV)
 
 IF(NOT APPLE)
-  target_link_libraries(HotBackup          LINK_PUBLIC rt)
+  target_link_libraries(${HOT_BACKUP_LIBNAME}          LINK_PUBLIC rt)
 ENDIF()
 
 # If for some reason we go back to static libraries, we'll need these two:
-# set_target_properties(HotBackup          PROPERTIES POSITION_INDEPENDENT_CODE ON)
+# set_target_properties(${HOT_BACKUP_LIBNAME}          PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # set_target_properties(HotBackupGlassbox  PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 function(add_space_separated_property type obj propname val)
@@ -57,20 +60,20 @@ function(add_space_separated_property type obj propname val)
   endif ()
 endfunction(add_space_separated_property)
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto -s")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto -s -UNDEBUG")
 
 ## add a version script and set -fvisibility=hidden for the shared library.
 configure_file(export.map . COPYONLY)
 if (NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
   # Don't need this for the community version, since there's nothing in there except the two functions.
   # And don't need this for glassbox version, since we want everything visible, so we use visibility=default instead of the usual visibility=hidden.
-  add_space_separated_property(TARGET HotBackup COMPILE_FLAGS "-fvisibility=default -fvisibility-inlines-hidden")
-  add_space_separated_property(TARGET HotBackup LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/export.map")
+  add_space_separated_property(TARGET ${HOT_BACKUP_LIBNAME} COMPILE_FLAGS "-fvisibility=default -fvisibility-inlines-hidden")
+  add_space_separated_property(TARGET ${HOT_BACKUP_LIBNAME} LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/export.map")
 
-  #add_space_separated_property(TARGET HotBackup COMPILE_FLAGS "-fvisibility=default -fvisibility-inlines-hidden -flto")
-  #add_space_separated_property(TARGET HotBackup LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/export.map -flto -s")
+  #add_space_separated_property(TARGET ${HOT_BACKUP_LIBNAME} COMPILE_FLAGS "-fvisibility=default -fvisibility-inlines-hidden -flto")
+  #add_space_separated_property(TARGET ${HOT_BACKUP_LIBNAME} LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/export.map -flto -s")
 endif ()
-add_space_separated_property(TARGET HotBackup LINK_FLAGS "${OPTFLAGS}")
+add_space_separated_property(TARGET ${HOT_BACKUP_LIBNAME} LINK_FLAGS "${OPTFLAGS}")
 
 configure_file(CTestCustom.cmake . COPYONLY)
 
@@ -93,12 +96,12 @@ IF (NOT DEFINED INSTALL_LIBDIR)
   set_property(TARGET HotBackupGlassbox APPEND PROPERTY COMPILE_DEFINITIONS
     GLASSBOX)
 ENDIF()
-install(TARGETS HotBackup          DESTINATION ${INSTALL_LIBDIR} COMPONENT Server)
+install(TARGETS ${HOT_BACKUP_LIBNAME}          DESTINATION ${INSTALL_LIBDIR} COMPONENT Server)
 install(FILES backup.h DESTINATION include)
 
 option(BACKUP_HAS_PARENT "Don't set this by hand.  It's used to tell the subcmake not to set things" ON)
 if (BACKUP_HAS_PARENT)
-  set(HOT_BACKUP_LIBS HotBackup PARENT_SCOPE)
+  set(HOT_BACKUP_LIBS ${HOT_BACKUP_LIBNAME} PARENT_SCOPE)
 endif (BACKUP_HAS_PARENT)
 
 option(USE_CTAGS "Build the ctags database." ON)
