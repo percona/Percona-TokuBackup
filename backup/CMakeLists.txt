@@ -96,8 +96,10 @@ IF (NOT DEFINED INSTALL_LIBDIR)
   set_property(TARGET HotBackupGlassbox APPEND PROPERTY COMPILE_DEFINITIONS
     GLASSBOX)
 ENDIF()
-install(TARGETS ${HOT_BACKUP_LIBNAME}          DESTINATION ${INSTALL_LIBDIR} COMPONENT Server)
-install(FILES backup.h DESTINATION include)
+install(TARGETS ${HOT_BACKUP_LIBNAME}          DESTINATION ${INSTALL_LIBDIR} 
+    COMPONENT tokubackup_libs_shared)
+install(FILES backup.h DESTINATION include
+    COMPONENT tokubackup_headers)
 
 option(BACKUP_HAS_PARENT "Don't set this by hand.  It's used to tell the subcmake not to set things" ON)
 if (BACKUP_HAS_PARENT)
