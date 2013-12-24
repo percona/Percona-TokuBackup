@@ -4,8 +4,8 @@
 #ident "$Id$"
 
 #include "backup_debug.h"
+#include "backup_helgrind.h"
 #include <stdio.h>
-#include <valgrind/helgrind.h>
 
 namespace HotBackup {
 
@@ -123,7 +123,7 @@ bool should_pause(int flag) throw() {
 }
 
 void toggle_pause_point(int flag) throw() {
-    VALGRIND_HG_DISABLE_CHECKING(&PAUSE_POINTS, sizeof(PAUSE_POINTS));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&PAUSE_POINTS, sizeof(PAUSE_POINTS));
     PAUSE_POINTS = PAUSE_POINTS ^ flag;
 }
 
