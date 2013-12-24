@@ -9,7 +9,7 @@
   #include <valgrind/helgrind.h>
   #define TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(x, y) VALGRIND_HG_DISABLE_CHECKING(x, y)
 #else
-  #define TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(x, y) ((void) (x, y))
+  #define TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(x, y) ((void) x, (void) y)
 #endif
 
 #endif  /* BACKUP_HELGPIND_H */
