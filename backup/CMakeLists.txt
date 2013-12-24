@@ -62,7 +62,10 @@ function(add_space_separated_property type obj propname val)
   endif ()
 endfunction(add_space_separated_property)
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto -s -UNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto -UNDEBUG")
+if (NOT CMAKE_CXX_COMPILER_ID MATCHES Clang)
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
+endif ()
 
 ## add a version script and set -fvisibility=hidden for the shared library.
 configure_file(export.map . COPYONLY)
