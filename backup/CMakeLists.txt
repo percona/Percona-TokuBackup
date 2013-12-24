@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 2.8.8)
 project(HotBackup)
 
 # No implicit templates, since that's how mysql compiles.
-set(CMAKE_CXX_FLAGS "-fno-implicit-templates  ${CMAKE_CXX_FLAGS}")
+if (NOT CMAKE_CXX_COMPILER_ID MATCHES Clang)
+  set(CMAKE_CXX_FLAGS "-fno-implicit-templates  ${CMAKE_CXX_FLAGS}")
+endif ()
 
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS 
   _FILE_OFFSET_BITS=64 
