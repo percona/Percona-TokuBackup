@@ -452,22 +452,23 @@ int copier::copy_file_data(source_info src_info) throw() {
     source_file * file = src_info.m_file;
     destination_file * dest = file->get_destination();
     TRACE("Copying to file:", dest->get_path());
-    const size_t buf_size = 1024 * 1024;
-    const size_t alignment = 2 << 12;
-    // DirectIO: We need to allocate a mem-aligned buffer.
-    // NOTE: We cannot use operator 'new'
-    char *buf = NULL;
-    r = posix_memalign(&buf, alignment, buf_size);
-    if (r != 0) {
-        goto early_out;
-    }
-
+    // Polling variables.
     ssize_t n_wrote_now = 0;
     size_t poll_string_size = 2000;
     char *poll_string = new char [poll_string_size];
     size_t total_written_this_file = 0;
-
     struct timespec starttime;
+
+    // DirectIO: We need to allocate a mem-aligned buffer.
+    // NOTE: We cannot use operator 'new'
+    const size_t buf_size = 1024 * 1024;
+    const size_t alignment = 2 << 12;
+    char *buf = NULL;
+    r = posix_memalign((void**)&buf, alignment, buf_size);
+    if (r != 0) {
+        goto early_out;
+    }
+
     r = gettime_reporting_error(&starttime, m_calls);
     if (r!=0) goto out;
 
