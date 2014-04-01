@@ -52,7 +52,7 @@ if (USE_GCOV)
 endif (USE_GCOV)
 
 IF(NOT APPLE)
-  target_link_libraries(${HOT_BACKUP_LIBNAME}          LINK_PUBLIC rt)
+  target_link_libraries(${HOT_BACKUP_LIBNAME}          LINK_PUBLIC ${CMAKE_DL_LIBS} rt)
 ENDIF()
 
 # If for some reason we go back to static libraries, we'll need these two:
@@ -101,7 +101,7 @@ IF (NOT DEFINED INSTALL_LIBDIR)
   # And a Glassbox version of the library in which the visibility is defaul, not hidden
   add_library(HotBackupGlassbox      SHARED ${BACKUP_SOURCES})
   IF(NOT APPLE)
-    target_link_libraries(HotBackupGlassbox LINK_PUBLIC rt)
+    target_link_libraries(HotBackupGlassbox LINK_PUBLIC ${CMAKE_DL_LIBS} rt)
   ENDIF()
 
   set_property(TARGET HotBackupGlassbox APPEND PROPERTY COMPILE_DEFINITIONS

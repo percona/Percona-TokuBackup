@@ -312,7 +312,7 @@ out:
 // one to the other.
 //
 int copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size) throw() {
-    int srcfd = call_real_open(source, O_RDONLY);
+    int srcfd = call_real_open(source, O_RDONLY | O_DIRECT);
     if (srcfd < 0) {
         int error = errno;
         if (error == ENOENT) {
