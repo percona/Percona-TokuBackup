@@ -41,6 +41,16 @@ file_hash_table::~file_hash_table() throw() {
 
 ////////////////////////////////////////////////////////
 //
+void file_hash_table::get_or_create_locked(const char * const file_name, source_file **file, const int flags) throw() {
+    this->lock();
+    source_file * source = this->get_or_create(file_name);
+    source->set_flags(flags);
+    this->unlock();
+    *file = source;
+}
+
+////////////////////////////////////////////////////////
+//
 void file_hash_table::get_or_create_locked(const char * const file_name, source_file **file) throw() {
     this->lock();
     source_file * source = this->get_or_create(file_name);

@@ -344,7 +344,7 @@ void manager::disable_descriptions(void) throw() {
 // it may be updated if and when the user updates the original/source
 // copy of the file.
 //
-int manager::open(int fd, const char *file) throw() {
+int manager::open(int fd, const char *file, int flags) throw() {
     TRACE("entering open() with fd = ", fd);
     // Skip the given 'file' if it is not a regular file.
     struct stat buf;
@@ -359,7 +359,7 @@ int manager::open(int fd, const char *file) throw() {
 
     // Create the description and source file objects.  This happens
     // whether we a backup session is in progress or not.
-    int result = this->setup_description_and_source_file(fd, file);
+    int result = this->setup_description_and_source_file(fd, file, flags);
     if (result != 0) {
         // All errors in above function are fatal, just return, it's over.
         return result;
@@ -1034,7 +1034,7 @@ void manager::exit_session_and_unlock_or_die(void) throw() {
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int manager::setup_description_and_source_file(int fd, const char *file) throw() {
+int manager::setup_description_and_source_file(int fd, const char *file, const int flags) throw() {
     int error = 0;
     source_file * source = NULL;
     description * file_description = NULL;
@@ -1051,7 +1051,7 @@ int manager::setup_description_and_source_file(int fd, const char *file) throw()
             goto error_out;
         }
         
-        m_table.get_or_create_locked(full_source_file_path.value, &source);
+        m_table.get_or_create_locked(full_source_file_path.value, &source, flags);
     }
     
     // Now that we have the source file, regardless of whether we had

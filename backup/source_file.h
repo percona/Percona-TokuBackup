@@ -58,6 +58,10 @@ public:
     void try_to_remove_destination(void) throw();
     int try_to_create_destination_file(const char*) throw();
 
+    // This method allows us to change the Direct I/O related flags
+    // on the given source file.
+    void set_flags(const int flags);
+    bool direct_io_flag_is_set(void) const;
 private:
     char * m_full_path; // the source_file owns this.
     source_file *m_next;
@@ -70,6 +74,8 @@ private:
 
     bool m_unlinked;
     destination_file * m_destination_file;
+
+    int m_flags;
 
     friend class with_source_file_name_write_lock;
     friend class with_source_file_name_read_lock;

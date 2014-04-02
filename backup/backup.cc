@@ -58,7 +58,7 @@ extern "C" int open(const char* file, int oflag, ...) {
         the_manager.lock_file_op();
         fd = call_real_open(file, oflag, mode);
         if (fd >= 0 && the_manager.is_alive()) { 
-            int ignore __attribute__((unused)) = the_manager.open(fd, file); // if there's an error in this call, it's been reported.  The application doesn't want to see the error.
+            int ignore __attribute__((unused)) = the_manager.open(fd, file, oflag); // if there's an error in this call, it's been reported.  The application doesn't want to see the error.
         }
 
         the_manager.unlock_file_op();
@@ -73,7 +73,7 @@ extern "C" int open(const char* file, int oflag, ...) {
 
             // TODO: What happens if we can't tell that the file is a FIFO?  Should we just the backup?  Skip this file?
             if (!S_ISFIFO(stats.st_mode) && the_manager.is_alive()) {
-                int ignore __attribute__((unused)) = the_manager.open(fd, file); // if there's an error in the call, it's reported.  The application doesn't want to hear about it.
+                int ignore __attribute__((unused)) = the_manager.open(fd, file, oflag); // if there's an error in the call, it's reported.  The application doesn't want to hear about it.
             }
         }
     }

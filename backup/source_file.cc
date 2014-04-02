@@ -31,7 +31,8 @@ source_file::source_file(const char *path) throw()
    m_next(NULL), 
    m_reference_count(0),
    m_unlinked(false),
-   m_destination_file(NULL)
+   m_destination_file(NULL),
+   m_flags(0)
 {
     {
         int r = pthread_mutex_init(&m_mutex, NULL);
@@ -252,6 +253,25 @@ int source_file::try_to_create_destination_file(const char *full_path) throw() {
 
     m_destination_file = new destination_file(fd, full_path);
     return 0;
+}
+
+////////////////////////////////////////////////////////
+//
+void source_file::set_flags(const int flags)
+{
+    m_flags = flags;
+}
+
+////////////////////////////////////////////////////////
+//
+bool source_file::direct_io_flag_is_set(void) const
+{
+    if (m_flags & O_DIRECT)
+    {
+        return true;
+    }
+
+    return false;
 }
 
 // Instantiate the templates we need

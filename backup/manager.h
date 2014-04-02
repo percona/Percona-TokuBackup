@@ -59,7 +59,7 @@ public:
     int do_backup(const char *source, const char *dest, backup_callbacks *calls) throw();
 
     // Methods used during interposition:
-    int open(int fd, const char *file) throw() __attribute__((warn_unused_result)); // returns 0 on success, error number on failure and it has reported the error to the backup manager.
+    int open(int fd, const char *file, int flags) throw() __attribute__((warn_unused_result)); // returns 0 on success, error number on failure and it has reported the error to the backup manager.
     void close(int fd); // It has reported the error to the backup manager, and the application doesn't care.
     ssize_t write(int fd, const void *buf, size_t nbyte) throw(); // Actually performs the write on fd (so that a lock can be obtained).
     ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset) throw(); // Actually performs the write on fd (so that a lock can be obtained).
@@ -106,7 +106,7 @@ private:
     int prepare_directories_for_backup(backup_session *session, const backtrace bt) throw();
     void disable_descriptions(void) throw();
     void set_error_internal(int errnum, const char *format, va_list ap) throw();
-    int setup_description_and_source_file(int fd, const char *file) throw();
+    int setup_description_and_source_file(int fd, const char *file, const int flags) throw();
 
     friend class with_manager_enter_session_and_lock;
 };
