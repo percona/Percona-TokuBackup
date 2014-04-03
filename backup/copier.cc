@@ -449,6 +449,16 @@ static double tdiff(struct timespec a, struct timespec b) throw()
 //
 int copier::copy_file_data(source_info src_info) throw() {
     int r = 0;
+    // DirectIO: We need to allocate a mem-aligned buffer.
+    // NOTE: We cannot use operator 'new'
+    const size_t buf_size = 1024 * 1024;
+    const size_t alignment = 2 << 12;
+    char *buf = NULL;
+    r = posix_memalign((void**)&buf, alignment, buf_size);
+    if (r != 0) {
+        return r;
+    }    
+
     source_file * file = src_info.m_file;
     destination_file * dest = file->get_destination();
     TRACE("Copying to file:", dest->get_path());
@@ -458,16 +468,6 @@ int copier::copy_file_data(source_info src_info) throw() {
     char *poll_string = new char [poll_string_size];
     size_t total_written_this_file = 0;
     struct timespec starttime;
-
-    // DirectIO: We need to allocate a mem-aligned buffer.
-    // NOTE: We cannot use operator 'new'
-    const size_t buf_size = 1024 * 1024;
-    const size_t alignment = 2 << 12;
-    char *buf = NULL;
-    r = posix_memalign((void**)&buf, alignment, buf_size);
-    if (r != 0) {
-        goto early_out;
-    }
 
     r = gettime_reporting_error(&starttime, m_calls);
     if (r!=0) goto out;
@@ -538,7 +538,6 @@ int copier::copy_file_data(source_info src_info) throw() {
 
 out:
     free(buf);
-early_out:
     delete[] poll_string;
     return r;
 }
