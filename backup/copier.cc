@@ -479,17 +479,56 @@ int copier::copy_file_data(source_info src_info) throw() {
         const ssize_t lock_start = total_written_this_file;
         const ssize_t lock_end   = total_written_this_file + buf_size;
         file->lock_range(lock_start, lock_end);
+        // TODO: Create copy_info struct that holds most of these arguments:
+        n_wrote_now = copy_file_range(src_info,
+                                      buf, 
+                                      buf_size, 
+                                      poll_string, 
+                                      poll_string_size,
+                                      total_written_this_file);
+
+        r = file->unlock_range(lock_start, lock_end); 
+        if (r!=0) goto out;
+
+        // If we hit an error, or have no more bytes to write, 
+        // we are finished and need to return immediately.
+        if (n_wrote_now < 0 || n_wrote_now == 0)
+        {
+            r = n_wrote_now;
+            goto out;
+        }
+
+        PAUSE(HotBackup::COPIER_AFTER_WRITE);
+        r = possibly_sleep_or_abort(src_info, total_written_this_file, dest, starttime);
+        if (r != 0) {
+            goto out;
+        }
+    }
+
+out:
+    free(buf);
+    delete[] poll_string;
+    return r;
+}
+
+ssize_t copier::copy_file_range(source_info src_info,
+                                char * buf, 
+                                size_t buf_size, 
+                                char *poll_string, 
+                                size_t poll_string_size,
+                                size_t & total_written_this_file) throw()
+{
+    ssize_t n_wrote_now = 0;
+    destination_file * dest = src_info.m_file->get_destination();
         ssize_t n_read = call_real_read(src_info.m_fd, buf, buf_size);
         if (n_read == 0) {
-            r = file->unlock_range(lock_start, lock_end);
-            if (r!=0) goto out;
-            break;
+            // SUCCESS! Just return the 0 value.
+            return n_read;
         } else if (n_read < 0) {
-            r = errno; // Return the error code from the read, not -1.
-            snprintf(poll_string, poll_string_size, "Could not read from %s, errno=%d (%s) at %s:%d", src_info.m_path, r, strerror(r), __FILE__, __LINE__);
-            m_calls->report_error(r, poll_string);
-            int rr __attribute__((unused)) = file->unlock_range(lock_start, lock_end); // Ignore any errors from this, we already have a problem.
-            goto out;
+            int read_errno = errno;
+            snprintf(poll_string, poll_string_size, "Could not read from %s, errno=%d (%s) at %s:%d", src_info.m_path, read_errno, strerror(read_errno), __FILE__, __LINE__);
+            m_calls->report_error(read_errno, poll_string);
+            return n_read;
         }
 
         PAUSE(HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);
@@ -504,43 +543,30 @@ int copier::copy_file_data(source_info src_info) throw() {
                      src_info.m_size,
                      src_info.m_path,
                      dest->get_path());
-            r = m_calls->poll((double)(m_total_bytes_backed_up+1)/(double)(m_total_bytes_to_back_up+1), poll_string);
+            int r = m_calls->poll((double)(m_total_bytes_backed_up+1)/(double)(m_total_bytes_to_back_up+1), poll_string);
             if (r!=0) {
                 m_calls->report_error(r, "User aborted backup");
-                int rr __attribute__((unused)) = file->unlock_range(lock_start, lock_end); // ignore any errors from this, we already have a problem
-                goto out;
+                return r;
             }
 
             n_wrote_now = call_real_write(dest->get_fd(),
                                           buf + n_wrote_this_buf,
                                           n_read - n_wrote_this_buf);
             if(n_wrote_now < 0) {
-                r = errno;
-                snprintf(poll_string, poll_string_size, "error write to %s, errno=%d (%s) at %s:%d", dest->get_path(), r, strerror(r), __FILE__, __LINE__);
-                m_calls->report_error(r, poll_string);
-                int rr __attribute__((unused)) = file->unlock_range(lock_start, lock_end); // ignore any errors from this since we already have a problem
-                goto out;
+                int write_errno = errno;
+                snprintf(poll_string, poll_string_size, "error write to %s, errno=%d (%s) at %s:%d", dest->get_path(), write_errno, strerror(write_errno), __FILE__, __LINE__);
+                m_calls->report_error(write_errno, poll_string);
+                return n_wrote_now;
             }
+
             n_wrote_this_buf        += n_wrote_now;
             total_written_this_file += n_wrote_now;
             m_total_bytes_backed_up += n_wrote_now;
         }
 
-        r = file->unlock_range(lock_start, lock_end);
-        if (r!=0) goto out;
-
-        PAUSE(HotBackup::COPIER_AFTER_WRITE);
-        r = possibly_sleep_or_abort(src_info, total_written_this_file, dest, starttime);
-        if (r != 0) {
-            goto out;
-        }
-    }
-
-out:
-    free(buf);
-    delete[] poll_string;
-    return r;
+    return n_wrote_now;
 }
+
 
 int copier::possibly_sleep_or_abort(source_info src_info, ssize_t total_written_this_file, destination_file * dest, struct timespec starttime) throw()
 {

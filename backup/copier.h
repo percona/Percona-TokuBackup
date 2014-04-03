@@ -57,6 +57,7 @@ private:
     int create_destination_and_copy(source_info src_info, const char *dest) throw();
     int add_dir_entries_to_todo(DIR *dir, const char *file) throw() __attribute__((warn_unused_result));
     int possibly_sleep_or_abort(source_info src_info, ssize_t total_written_this_file, destination_file * dest, struct timespec starttime) throw() __attribute__((warn_unused_result));
+    ssize_t copy_file_range(source_info src_info, char * buf, size_t buf_size, char *poll_string, size_t poll_string_size, size_t & total_written_this_file) throw() __attribute__((warn_unused_result));
 public:
     copier(backup_callbacks *calls, file_hash_table * const table) throw();
     void set_directories(const char *source, const char *dest) throw();
