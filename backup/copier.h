@@ -18,6 +18,7 @@
 
 class file_hash_table;
 class source_file;
+class destination_file;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -55,6 +56,7 @@ private:
     int copy_using_source_info(source_info src_info, const char *dest) throw();
     int create_destination_and_copy(source_info src_info, const char *dest) throw();
     int add_dir_entries_to_todo(DIR *dir, const char *file) throw() __attribute__((warn_unused_result));
+    int possibly_sleep_or_abort(source_info src_info, ssize_t total_written_this_file, destination_file * dest, struct timespec starttime) throw() __attribute__((warn_unused_result));
 public:
     copier(backup_callbacks *calls, file_hash_table * const table) throw();
     void set_directories(const char *source, const char *dest) throw();

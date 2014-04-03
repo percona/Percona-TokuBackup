@@ -530,6 +530,22 @@ int copier::copy_file_data(source_info src_info) throw() {
         if (r!=0) goto out;
 
         PAUSE(HotBackup::COPIER_AFTER_WRITE);
+        r = possibly_sleep_or_abort(src_info, total_written_this_file, dest, starttime);
+        if (r != 0) {
+            goto out;
+        }
+    }
+
+out:
+    free(buf);
+early_out:
+    delete[] poll_string;
+    return r;
+}
+
+int copier::possibly_sleep_or_abort(source_info src_info, ssize_t total_written_this_file, destination_file * dest, struct timespec starttime) throw()
+{
+    int r = 0;
         while (1) {
             if (!the_manager.copy_is_enabled()) goto out;
 
@@ -569,12 +585,7 @@ int copier::copy_file_data(source_info src_info) throw() {
             if (!the_manager.copy_is_enabled()) goto out;
 
         }
-    }
-
 out:
-    free(buf);
-early_out:
-    delete[] poll_string;
     return r;
 }
 
