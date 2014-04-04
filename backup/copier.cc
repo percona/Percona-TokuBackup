@@ -312,6 +312,8 @@ out:
 // one to the other.
 //
 int copier::copy_regular_file(const char *source, const char *dest, off_t source_file_size) throw() {
+    int srcfd = -1;
+/**** 
     int srcfd = call_real_open(source, O_RDONLY | O_DIRECT);
     if (srcfd < 0) {
         int error = errno;
@@ -322,18 +324,21 @@ int copier::copy_regular_file(const char *source, const char *dest, off_t source
             return error;
         }
     }
+****/        
 
-    PAUSE(HotBackup::COPIER_AFTER_OPEN_SOURCE);
+    //PAUSE(HotBackup::COPIER_AFTER_OPEN_SOURCE);
 
     source_info src_info = {srcfd, source, source_file_size, NULL};
     int result = this->copy_using_source_info(src_info, dest);
     
+/**** 
     int r = call_real_close(srcfd);
     if (r != 0) {
         r = errno;
         the_manager.backup_error(r, "Could not close %s at %s:%d", source, __FILE__, __LINE__);
         return r;
     }
+****/        
 
     return result;
 }
@@ -508,6 +513,8 @@ out:
     return r;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
 copy_result copier::open_and_lock_file_then_copy_range(source_info src_info, 
                                                        char *buf, 
                                                        size_t buf_size, 
@@ -515,14 +522,62 @@ copy_result copier::open_and_lock_file_then_copy_range(source_info src_info,
                                                        size_t poll_string_size) throw()
 {
     copy_result result;
+    int flags = O_RDONLY;
+    if (src_info.m_file->direct_io_flag_is_set()) {
+        flags |= O_DIRECT;
+    }
+
+    // We have to re-open the source file because the Direct I/O flags                                                                                                                                         
+    // may have changed since we last copied a range.                                                                                                                                                          
+    src_info.m_fd = call_real_open(src_info.m_path, flags);
+    if (src_info.m_fd < 0) {
+        int open_errno = errno;
+        if (open_errno == ENOENT) {
+            return result;
+        } else {
+            the_manager.backup_error(open_errno, "Could not open source file: %s", src_info.m_path);
+            result.m_result = open_errno;
+            return result;
+        }
+    }
+
+    // TODO: Do we need to update the tests now that we open the file later?
+    PAUSE(HotBackup::COPIER_AFTER_OPEN_SOURCE);
+
+    // We have to do a seek because we close and re-open the file between                                                                                                                                      
+    // each range copy.  For host files opened with the O_DIRECT flag,                                                                                                                                         
+    // m_total_written_this_file should line up with the correct offsets and                                                                                                                                   
+    // should not return an error.                                                                                                                                                                             
+    off_t offset = call_real_lseek(src_info.m_fd, m_total_written_this_file, SEEK_SET);
+    if (offset < 0) {
+      int lseek_errno = errno;
+      the_manager.backup_error(lseek_errno, "Could not lseek file: %s", src_info.m_path);
+      result.m_result = lseek_errno;
+      goto out;
+    }
+
     result = copy_file_range(src_info,
                              buf, 
                              buf_size, 
                              poll_string, 
                              poll_string_size);
+
+out:
+    int r = call_real_close(src_info.m_fd);
+    if (r != 0) {
+        // We can clobber any previous error results if close fails, because                                                                                                                                     
+        // any errors in lower calls have already been reported.
+        int close_errno = errno;
+        the_manager.backup_error(close_errno, "Could not close %s at %s:%d", src_info.m_path, __FILE__, __LINE__);
+        result.m_result = close_errno;
+    }
+
     return result;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+//
 copy_result copier::copy_file_range(source_info src_info,
                                     char * buf, 
                                     size_t buf_size, 
