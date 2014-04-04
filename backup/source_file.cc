@@ -46,6 +46,10 @@ source_file::source_file(const char *path) throw()
         int r = pthread_rwlock_init(&m_name_rwlock, NULL);
         check(r==0);
     }
+    {
+        int r = pthread_mutex_init(&m_fd_mutex, NULL);
+        check(r==0);
+    }
 }
 
 source_file::~source_file(void) throw() {
@@ -62,6 +66,10 @@ source_file::~source_file(void) throw() {
         }
         {
             int r = pthread_rwlock_destroy(&m_name_rwlock);
+            check(r==0);
+        }
+        {
+            int r = pthread_mutex_destroy(&m_fd_mutex);
             check(r==0);
         }
     }
@@ -259,6 +267,7 @@ int source_file::try_to_create_destination_file(const char *full_path) throw() {
 //
 void source_file::set_flags(const int flags)
 {
+    with_source_file_fd_lock fdl(this);
     m_flags = flags;
 }
 
@@ -272,6 +281,20 @@ bool source_file::direct_io_flag_is_set(void) const
     }
 
     return false;
+}
+
+////////////////////////////////////////////////////////
+//
+void source_file::fd_lock(void) throw()
+{
+    pmutex_lock(&m_fd_mutex);
+}
+
+////////////////////////////////////////////////////////
+//
+void source_file::fd_unlock(void) throw()
+{
+    pmutex_unlock(&m_fd_mutex);
 }
 
 // Instantiate the templates we need

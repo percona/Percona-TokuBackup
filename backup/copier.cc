@@ -523,6 +523,7 @@ copy_result copier::open_and_lock_file_then_copy_range(source_info src_info,
 {
     copy_result result;
     int flags = O_RDONLY;
+    with_source_file_fd_lock fdl(src_info.m_file);
     if (src_info.m_file->direct_io_flag_is_set()) {
         flags |= O_DIRECT;
     }

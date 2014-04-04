@@ -62,6 +62,10 @@ public:
     // on the given source file.
     void set_flags(const int flags);
     bool direct_io_flag_is_set(void) const;
+private: // Fd locking using RAII-style object with_source_file_fd_lock to grab the lock.
+    void fd_lock(void) throw();
+    void fd_unlock(void) throw();
+
 private:
     char * m_full_path; // the source_file owns this.
     source_file *m_next;
@@ -75,10 +79,12 @@ private:
     bool m_unlinked;
     destination_file * m_destination_file;
 
+    pthread_mutex_t  m_fd_mutex;
     int m_flags;
 
     friend class with_source_file_name_write_lock;
     friend class with_source_file_name_read_lock;
+    friend class with_source_file_fd_lock;
 };
 
 class with_source_file_name_write_lock {
@@ -102,6 +108,18 @@ class with_source_file_name_read_lock {
     }
     ~with_source_file_name_read_lock(void) {
         m_source_file->name_unlock();
+    }
+};
+
+class with_source_file_fd_lock {
+  private:
+    source_file *m_source_file;
+  public:
+    with_source_file_fd_lock(source_file *sf) : m_source_file(sf) {
+        m_source_file->fd_lock();
+    }
+    ~with_source_file_fd_lock(void) {
+        m_source_file->fd_unlock();
     }
 };
 
