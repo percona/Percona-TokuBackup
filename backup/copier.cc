@@ -466,7 +466,7 @@ int copier::copy_file_data(source_info src_info) throw() {
     ssize_t n_wrote_now = 0;
     size_t poll_string_size = 2000;
     char *poll_string = new char [poll_string_size];
-    size_t total_written_this_file = 0;
+    m_total_written_this_file = 0;
     struct timespec starttime;
 
     r = gettime_reporting_error(&starttime, m_calls);
@@ -476,30 +476,27 @@ int copier::copy_file_data(source_info src_info) throw() {
         if (!the_manager.copy_is_enabled()) goto out;
 
         PAUSE(HotBackup::COPIER_BEFORE_READ);
-        const ssize_t lock_start = total_written_this_file;
-        const ssize_t lock_end   = total_written_this_file + buf_size;
+        const ssize_t lock_start = m_total_written_this_file;
+        const ssize_t lock_end   = m_total_written_this_file + buf_size;
         file->lock_range(lock_start, lock_end);
-        // TODO: Create copy_info struct that holds most of these arguments:
-        n_wrote_now = copy_file_range(src_info,
-                                      buf, 
-                                      buf_size, 
-                                      poll_string, 
-                                      poll_string_size,
-                                      total_written_this_file);
+        
+        copy_result result;
+        result = open_and_lock_file_then_copy_range(src_info, buf, buf_size, poll_string, poll_string_size);
+        n_wrote_now = result.m_n_wrote_now;
 
         r = file->unlock_range(lock_start, lock_end); 
         if (r!=0) goto out;
 
         // If we hit an error, or have no more bytes to write, 
         // we are finished and need to return immediately.
-        if (n_wrote_now < 0 || n_wrote_now == 0)
+        if (result.m_result != 0 || n_wrote_now == 0)
         {
-            r = n_wrote_now;
+            r = result.m_result;
             goto out;
         }
 
         PAUSE(HotBackup::COPIER_AFTER_WRITE);
-        r = possibly_sleep_or_abort(src_info, total_written_this_file, dest, starttime);
+        r = possibly_sleep_or_abort(src_info, m_total_written_this_file, dest, starttime);
         if (r != 0) {
             goto out;
         }
@@ -511,24 +508,43 @@ out:
     return r;
 }
 
-ssize_t copier::copy_file_range(source_info src_info,
-                                char * buf, 
-                                size_t buf_size, 
-                                char *poll_string, 
-                                size_t poll_string_size,
-                                size_t & total_written_this_file) throw()
+copy_result copier::open_and_lock_file_then_copy_range(source_info src_info, 
+                                                       char *buf, 
+                                                       size_t buf_size, 
+                                                       char *poll_string, 
+                                                       size_t poll_string_size) throw()
 {
-    ssize_t n_wrote_now = 0;
+    copy_result result;
+    result = copy_file_range(src_info,
+                             buf, 
+                             buf_size, 
+                             poll_string, 
+                             poll_string_size);
+    return result;
+}
+
+copy_result copier::copy_file_range(source_info src_info,
+                                    char * buf, 
+                                    size_t buf_size, 
+                                    char *poll_string, 
+                                    size_t poll_string_size) throw()
+{
+    copy_result result;
+    result.m_result = 0;
+    result.m_n_wrote_now = 0;
     destination_file * dest = src_info.m_file->get_destination();
         ssize_t n_read = call_real_read(src_info.m_fd, buf, buf_size);
         if (n_read == 0) {
-            // SUCCESS! Just return the 0 value.
-            return n_read;
+            // SUCCESS! We are done copying the file.
+            result.m_result = 0;
+            result.m_n_wrote_now = 0;
+            return result;
         } else if (n_read < 0) {
             int read_errno = errno;
             snprintf(poll_string, poll_string_size, "Could not read from %s, errno=%d (%s) at %s:%d", src_info.m_path, read_errno, strerror(read_errno), __FILE__, __LINE__);
             m_calls->report_error(read_errno, poll_string);
-            return n_read;
+            result.m_result = read_errno;
+            return result;
         }
 
         PAUSE(HotBackup::COPIER_AFTER_READ_BEFORE_WRITE);
@@ -539,32 +555,34 @@ ssize_t copier::copy_file_range(source_info src_info,
                      "Backup progress %ld bytes, %ld files.  Copying file: %ld/%ld bytes done of %s to %s.",
                      m_total_bytes_backed_up, 
                      m_total_files_backed_up, 
-                     total_written_this_file, 
+                     m_total_written_this_file, 
                      src_info.m_size,
                      src_info.m_path,
                      dest->get_path());
             int r = m_calls->poll((double)(m_total_bytes_backed_up+1)/(double)(m_total_bytes_to_back_up+1), poll_string);
             if (r!=0) {
                 m_calls->report_error(r, "User aborted backup");
-                return r;
+                result.m_result = r;
+                return result;
             }
 
-            n_wrote_now = call_real_write(dest->get_fd(),
-                                          buf + n_wrote_this_buf,
-                                          n_read - n_wrote_this_buf);
-            if(n_wrote_now < 0) {
+            result.m_n_wrote_now = call_real_write(dest->get_fd(),
+                                                   buf + n_wrote_this_buf,
+                                                   n_read - n_wrote_this_buf);
+            if(result.m_n_wrote_now < 0) {
                 int write_errno = errno;
                 snprintf(poll_string, poll_string_size, "error write to %s, errno=%d (%s) at %s:%d", dest->get_path(), write_errno, strerror(write_errno), __FILE__, __LINE__);
                 m_calls->report_error(write_errno, poll_string);
-                return n_wrote_now;
+                result.m_result = write_errno;
+                return result;
             }
 
-            n_wrote_this_buf        += n_wrote_now;
-            total_written_this_file += n_wrote_now;
-            m_total_bytes_backed_up += n_wrote_now;
+            n_wrote_this_buf          += result.m_n_wrote_now;
+            m_total_written_this_file += result.m_n_wrote_now;
+            m_total_bytes_backed_up   += result.m_n_wrote_now;
         }
 
-    return n_wrote_now;
+    return result;
 }
 
 

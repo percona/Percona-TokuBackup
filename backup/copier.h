@@ -39,6 +39,24 @@ struct source_info {
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// copy_result:
+//
+// Description:
+//
+//   This is a container for the results from copying regions of a file.
+// The 'result' integer represents zero on success, non-zero on failure.
+// The number written is the status of the copy: 0 means finished, positive
+// means more to copy, and negative means an error.  This is essentially a wrapper
+// for setting the return result to errno.
+//
+struct copy_result {
+    copy_result() : m_result(0), m_n_wrote_now(0) {};
+    int m_result;
+    ssize_t m_n_wrote_now;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
 class copier {
   private:
     const char *m_source;
@@ -46,6 +64,7 @@ class copier {
     std::vector<char *> m_todo;
     backup_callbacks *m_calls;
     file_hash_table * const m_table;
+    size_t m_total_written_this_file;
 public:
     static pthread_mutex_t m_todo_mutex; // make this public so that we can grab the mutex when creating a copier.
 private:
@@ -58,6 +77,8 @@ private:
     int add_dir_entries_to_todo(DIR *dir, const char *file) throw() __attribute__((warn_unused_result));
     int possibly_sleep_or_abort(source_info src_info, ssize_t total_written_this_file, destination_file * dest, struct timespec starttime) throw() __attribute__((warn_unused_result));
     ssize_t copy_file_range(source_info src_info, char * buf, size_t buf_size, char *poll_string, size_t poll_string_size, size_t & total_written_this_file) throw() __attribute__((warn_unused_result));
+    copy_result open_and_lock_file_then_copy_range(source_info src_info, char *buf, size_t buf_size,char *poll_string,size_t poll_string_size) throw() __attribute__((warn_unused_result));
+    copy_result copy_file_range(source_info src_info, char * buf, size_t buf_size, char *poll_string, size_t poll_string_size) throw() __attribute__((warn_unused_result));
 public:
     copier(backup_callbacks *calls, file_hash_table * const table) throw();
     void set_directories(const char *source, const char *dest) throw();
