@@ -285,6 +285,25 @@ bool source_file::direct_io_flag_is_set(void) const
 
 ////////////////////////////////////////////////////////
 //
+bool source_file::locked_direct_io_flag_is_set(void)
+{
+    with_source_file_fd_lock fdl(this);
+    return direct_io_flag_is_set();
+}
+
+////////////////////////////////////////////////////////
+//
+bool source_file::given_flags_are_different(const int flags)
+{
+    if ((flags & O_DIRECT) == (m_flags & O_DIRECT)) {
+        return false;
+    }
+
+    return true;
+}
+
+////////////////////////////////////////////////////////
+//
 void source_file::fd_lock(void) throw()
 {
     pmutex_lock(&m_fd_mutex);

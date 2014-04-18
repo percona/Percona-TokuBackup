@@ -62,6 +62,9 @@ public:
     // on the given source file.
     void set_flags(const int flags);
     bool direct_io_flag_is_set(void) const;
+    bool locked_direct_io_flag_is_set(void);
+    bool given_flags_are_different(const int flags);
+
 private: // Fd locking using RAII-style object with_source_file_fd_lock to grab the lock.
     void fd_lock(void) throw();
     void fd_unlock(void) throw();

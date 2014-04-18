@@ -35,6 +35,7 @@ struct source_info {
     const char *m_path;
     off_t m_size;
     source_file * m_file;
+    int m_flags;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,7 +72,7 @@ private:
     uint64_t m_total_bytes_backed_up;
     uint64_t m_total_files_backed_up;
     uint64_t m_total_bytes_to_back_up; // the number of files that we will need to back up. This is used for the polling callback.
-    int copy_regular_file(const char *source, const char *dest, off_t file_size) throw()  __attribute__((warn_unused_result));
+    int copy_regular_file(source_info src_info, const char *dest) throw()  __attribute__((warn_unused_result));
     int copy_using_source_info(source_info src_info, const char *dest) throw();
     int create_destination_and_copy(source_info src_info, const char *dest) throw();
     int add_dir_entries_to_todo(DIR *dir, const char *file) throw() __attribute__((warn_unused_result));
