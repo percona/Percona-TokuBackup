@@ -275,12 +275,7 @@ void source_file::set_flags(const int flags)
 //
 bool source_file::direct_io_flag_is_set(void) const
 {
-    if (m_flags & O_DIRECT)
-    {
-        return true;
-    }
-
-    return false;
+    return (m_flags & O_DIRECT) != 0;
 }
 
 ////////////////////////////////////////////////////////

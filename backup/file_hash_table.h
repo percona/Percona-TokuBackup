@@ -15,6 +15,25 @@ class file_hash_table {
 public:
     file_hash_table() throw();
     ~file_hash_table() throw();
+
+    ///////////////////////////////////////////////////////////////////
+    //
+    // NOTE:
+    //
+    //  The application may open a file in direct mode, then close it,
+    //  then open the same file again in buffered mode.  Hot Backup
+    //  should just use the most recent mode.  
+    //
+    //  On some file systems (XFS), serialized reads and writes will
+    //  not work right when the same file is opened with two file
+    //  descriptors, one of which is buffered, and one of which is
+    //  direct.  That's a bug in the application if it happens, and we
+    //  simply use the most recent mode.
+    //
+    //  We cache the current flag in source_file object for the copier
+    //  to use the most recently set flag/mode.  Hence the extra
+    //  argument to get_or_create_locked.
+    //
     void get_or_create_locked(const char * const file_name, source_file **file, const int flags) throw();
     void get_or_create_locked(const char * const file_name, source_file **file) throw();
     source_file * get_or_create(const char * const file_name);
