@@ -26,6 +26,7 @@ set(BACKUP_SOURCES
 	description.cc
 	destination_file.cc
 	dirsum.cc
+	directory_set.cc
 	file_hash_table.cc
 	fmap.cc
 	manager.cc
