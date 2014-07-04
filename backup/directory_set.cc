@@ -4,16 +4,23 @@
 
 #include "directory_set.h"
 #include "raii-malloc.h"
+#include "manager.h"
+#include "real_syscalls.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <errno.h>
 
 namespace backup {
 
-    Directory_Set(const int count,
+    Directory_Set::Directory_Set(const int count,
                   const char **sources,
                   const char **destinations)
-        :m_count(count), real_path_successful(false)
+        :m_count(count), m_real_path_successful(false)
     {
         m_sources = new const char *[m_count];
         m_destinations = new const char *[m_count];
@@ -23,9 +30,9 @@ namespace backup {
         }
     }
 
-    ~Directory_Set()
+    Directory_Set::~Directory_Set()
     {
-        if (real_path_successful) {
+        if (m_real_path_successful) {
             for (int i = 0; i < m_count; ++i) {
                 free((void*)m_sources[i]);
                 free((void*)m_destinations[i]);
@@ -41,7 +48,7 @@ namespace backup {
         int r = 0;
         int allocated_pairs = 0;
         for (int i = 0; i < m_count; ++i) {
-            r = this->call_realpath_on_index(i);
+            r = this->update_to_real_path_on_index(i);
             allocated_pairs++;
         }
 
@@ -66,47 +73,41 @@ namespace backup {
         int r = 0;
         struct stat sbuf;
         for (int i = 0; i < m_count; ++i) {
-            r = stat(m_destination[i], &sbuf);
+            r = stat(m_destinations[i], &sbuf);
             if (r != 0) {
                 r = errno;
-                backup_error(r, "Problem stat()ing backup directory %s",
-                             m_destination[i]);
+                the_manager.backup_error(r, "Problem stat()ing backup directory %s",
+                             m_destinations[i]);
                 break;
             }
 
             if (!S_ISDIR(sbuf.st_mode)) {
                 r = EINVAL;
-                backup_error(EINVAL, "Backup destination %s is not a directory", 
-                             m_destination[i]);
+                the_manager.backup_error(EINVAL, "Backup destination %s is not a directory", 
+                             m_destinations[i]);
                 break;
             }
         
-            DIR *dir = opendir(m_destination[i]);
+            DIR *dir = opendir(m_destinations[i]);
             if (dir == NULL) {
                 r = errno;
-                backup_error(r, "Problem opening backup directory %s", 
-                             m_destination[i]);
+                the_manager.backup_error(r, "Problem opening backup directory %s", 
+                             m_destinations[i]);
                 break;
             }
 
             r = this->verify_destination_is_empty(i, dir);
-            if (r != 0) {
-                int result = close(dir);
-                break;
-            }
-
-            r = closedir(dir);
-            if (r != 0) {
+            int result = closedir(dir);
+            if (result != 0) {
                 r = errno;
-                backup_error(r, "Problem closedir()ing backup directory %s", 
-                             m_destination[i]);
+                the_manager.backup_error(r, "Problem closedir()ing backup directory %s", 
+                             m_destinations[i]);
                 // The dir is already as closed as I can get it.
                 // Don't call closedir again, just return.
                 break;
             }
         }
 
-    out:
         return r;
     }
 
@@ -129,7 +130,7 @@ namespace backup {
         return m_destinations[index];
     }
 
-    const int Directory_Set::Number_Of_Directories() const {
+    int Directory_Set::Number_Of_Directories() const {
         return m_count;
     }
 
@@ -155,18 +156,17 @@ namespace backup {
                 
                 // This is bad.  The directory should be empty.
                 r = EINVAL;
-                backup_error(r, "Backup directory %s is not empty", 
-                             m_destination[i]);
+                the_manager.backup_error(r, "Backup directory %s is not empty", 
+                             m_destinations[index]);
                 break;
             } else if (errno != 0) {
                 r = errno;
-                backup_error(r, "Problem readdir()ing backup directory %s", 
-                             m_destination[i]);
+                the_manager.backup_error(r, "Problem readdir()ing backup directory %s", 
+                             m_destinations[index]);
                 break;
             }
         } while(e != NULL);
 
-    out:
         return r;
     }
 
@@ -195,11 +195,12 @@ namespace backup {
     // realpath() returns an error.
     //
     int Directory_Set::update_to_real_path_on_index(const int i) {
+        int r = 0;
         const char *src = NULL;
         const char *dest = NULL;
         src = call_real_realpath(m_sources[i], NULL);
         if (src == NULL) {
-            with_object_to_free<char*> str(malloc_snprintf(strlen(source) + 100, "This backup source directory does not exist: %s", source));
+            with_object_to_free<char*> str(malloc_snprintf(strlen(m_sources[i]) + 100, "This backup source directory does not exist: %s", m_sources[i]));
             //TODO: calls->report_error(ENOENT, str.value);
             r = ENOENT;
             goto out;
@@ -207,7 +208,7 @@ namespace backup {
 
         dest = call_real_realpath(m_destinations[i], NULL);
         if (dest == NULL) {
-            with_object_to_free<char*> str(malloc_snprintf(strlen(dest) + 100, "This backup destination directory does not exist: %s", dest));
+            with_object_to_free<char*> str(malloc_snprintf(strlen(m_destinations[i]) + 100, "This backup destination directory does not exist: %s", m_destinations[i]));
             //TODO: calls->report_error(ENOENT, str.value); 
             free((void*)src);
             r = ENOENT;

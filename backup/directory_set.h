@@ -2,6 +2,8 @@
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 
+#include <dirent.h>
+
 namespace backup {
     class Directory_Set {
     public:
@@ -31,7 +33,7 @@ namespace backup {
         // directories.
         const char *Source_Directory_At(const int index) const;
         const char *Destination_Directory_At(const int index) const;
-        const int Number_Of_Directories() const;
+        int Number_Of_Directories() const;
 
     private:
         const char **m_sources;
@@ -41,6 +43,6 @@ namespace backup {
         Directory_Set();
         int verify_destination_is_empty(const int index, DIR *dir) const;
         void handle_realpath_results(const int r, const int allocated_pairs);
-        int update_to_realpath_on_index(const i);
+        int update_to_real_path_on_index(const int i);
     };
 }
