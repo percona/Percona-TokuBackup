@@ -136,6 +136,11 @@ int manager::do_backup(Directory_Set *dirs, backup_callbacks *calls) throw() {
         goto error_out;
     }
 
+    r = dirs->Validate();
+    if (r != 0) {
+        goto unlock_out;
+    }
+
     {
         with_rwlock_wrlocked ms(&m_session_rwlock, BACKTRACE(NULL));
 
@@ -190,6 +195,8 @@ disable_out: // preserves r if r!=0
         delete m_session;
         m_session = NULL;
     }
+
+unlock_out: // preserves r if r!0
 
     pmutex_unlock(&m_mutex, BACKTRACE(NULL));
     if (m_an_error_happened) {

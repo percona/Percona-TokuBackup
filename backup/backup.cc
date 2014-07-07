@@ -345,10 +345,11 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
         return EINVAL;
     }
 
-    r = dirs.Validate();
-    if (r != 0) {
-        return EINVAL;
-    }
+    /******
+    NOTE: This might be better to check here.  However, tests expect
+    validation to be deeper in the stack.
+    r = dirs.Validate(); if (r != 0) { return EINVAL; }
+    *****/
 
     return the_manager.do_backup(&dirs, &calls);
 }
