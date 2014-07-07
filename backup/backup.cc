@@ -19,6 +19,7 @@
 #include "raii-malloc.h"
 #include "real_syscalls.h"
 #include "backup_debug.h"
+#include "directory_set.h"
 
 #if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::InterposeWarn(string, arg);
@@ -296,10 +297,6 @@ int mkdir(const char *pathname, mode_t mode) {
 extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *dest_dirs[], int dir_count,
                                         backup_poll_fun_t poll_fun, void *poll_extra,
                                         backup_error_fun_t error_fun, void *error_extra) throw() {
-    if (dir_count!=1) {
-        error_fun(EINVAL, "Only one source directory may be specified for backup", error_extra);
-        return EINVAL;
-    }
     for (int i=0; i<dir_count; i++) {
         if (source_dirs[i]==NULL) {
             error_fun(EINVAL, "One of the source directories is NULL", error_extra);
@@ -312,7 +309,7 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
         //int r = the_manager.add_directory(source_dirs[i], dest_dirs[i], poll_fun, poll_extra, error_fun, error_extra);
         //if (r!=0) return r;
     }
-    
+
     // Check to make sure that the source and destination directories are
     // actually different.
     {
@@ -335,7 +332,25 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
     }
 
     backup_callbacks calls(poll_fun, poll_extra, error_fun, error_extra, &get_throttle);
-    return the_manager.do_backup(source_dirs[0], dest_dirs[0], &calls);
+
+    // HUGE ASSUMPTION: - There is a 1:1 correspondence between source
+    // and destination directories.
+    Directory_Set dirs(dir_count, source_dirs, dest_dirs);
+
+    // TODO: Possibly change order IF you can't perform Validate() or
+    // dirs that have been realpath()'d.  Or... Put the validate call
+    // deeper into the do_backup stack.
+    int r = dirs.Update_To_Full_Path();
+    if (r != 0) {
+        return EINVAL;
+    }
+
+    r = dirs.Validate();
+    if (r != 0) {
+        return EINVAL;
+    }
+
+    return the_manager.do_backup(&dirs, &calls);
 }
 
 extern "C" void tokubackup_throttle_backup(unsigned long bytes_per_second) throw() {

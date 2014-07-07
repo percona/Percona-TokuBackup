@@ -12,6 +12,7 @@
 #include "real_syscalls.h"
 #include "rwlock.h"
 #include "source_file.h"
+#include "directory_set.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -108,7 +109,7 @@ __thread backup_callbacks *thread_has_backup_calls = NULL;
 //
 //     
 //
-int manager::do_backup(const char *source, const char *dest, backup_callbacks *calls) throw() {
+int manager::do_backup(Directory_Set *dirs, backup_callbacks *calls) throw() {
     thread_has_backup_calls = calls;
 
     int r = 0;
@@ -134,72 +135,13 @@ int manager::do_backup(const char *source, const char *dest, backup_callbacks *c
         fatal_error(r, "mutex_trylock at %s:%d", __FILE__, __LINE__);
         goto error_out;
     }
-    // Complain if
-    //   1) the backup directory cannot be stat'd (perhaps because it doesn't exist), or
-    //   2) The backup directory is not a directory (perhaps because it's a regular file), or
-    //   3) the backup directory can not be opened (maybe permissions?), or
-    //   4) The backpu directory cannot be readdir'd (who knows what that could be), or
-    //   5) The backup directory is not empty (there's a file in there #6542), or
-    //   6) The dir cannot be closedir()'d (who knows...)n
-    {
-        struct stat sbuf;
-        r = stat(dest, &sbuf);
-        if (r!=0) {
-            r = errno;
-            backup_error(r, "Problem stat()ing backup directory %s", dest);
-            pmutex_unlock(&m_mutex, BACKTRACE(NULL));
-            goto error_out;
-        }
-        if (!S_ISDIR(sbuf.st_mode)) {
-            r = EINVAL;
-            backup_error(EINVAL,"Backup destination %s is not a directory", dest);
-            pmutex_unlock(&m_mutex, BACKTRACE(NULL));
-            goto error_out;
-        }
-        {
-            DIR *dir = opendir(dest);
-            if (dir == NULL) {
-                r = errno;
-                backup_error(r, "Problem opening backup directory %s", dest);
-                goto unlock_out;
-            }
-            errno = 0;
-      again:
-            struct dirent const *e = readdir(dir);
-            if (e!=NULL &&
-                (strcmp(e->d_name, ".")==0 ||
-                 strcmp(e->d_name, "..")==0)) {
-                goto again;
-            } else if (e!=NULL) {
-                // That's bad.  The directory should be empty.
-                r = EINVAL;
-                backup_error(r,  "Backup directory %s is not empty", dest);
-                closedir(dir);
-                goto unlock_out;
-            } else if (errno!=0) {
-                r = errno;
-                backup_error(r, "Problem readdir()ing backup directory %s", dest);
-                closedir(dir);
-                goto unlock_out;
-            } else {
-                // e==NULL and errno==0 so that's good.  There are no files, except . and ..
-                r = closedir(dir);
-                if (r!=0) {
-                    r = errno;
-                    backup_error(r, "Problem closedir()ing backup directory %s", dest);
-                    // The dir is already as closed as I can get it.  Don't call closedir again.
-                    goto unlock_out;
-                }
-            }
-        }
-    }
 
     {
         with_rwlock_wrlocked ms(&m_session_rwlock, BACKTRACE(NULL));
 
         {
             with_mutex_locked mt(&copier::m_todo_mutex, BACKTRACE(NULL));
-            m_session = new backup_session(source, dest, calls, &m_table, &r);
+            m_session = new backup_session(dirs, calls, &m_table);
         }
         print_time("Toku Hot Backup: Started:");    
 
@@ -248,8 +190,6 @@ disable_out: // preserves r if r!=0
         delete m_session;
         m_session = NULL;
     }
-
-unlock_out: // preserves r if r!0
 
     pmutex_unlock(&m_mutex, BACKTRACE(NULL));
     if (m_an_error_happened) {

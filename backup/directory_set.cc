@@ -15,11 +15,10 @@
 #include <dirent.h>
 #include <errno.h>
 
-namespace backup {
 
     Directory_Set::Directory_Set(const int count,
-                  const char **sources,
-                  const char **destinations)
+                                 const char **sources,
+                                 const char **destinations)
         :m_count(count), m_real_path_successful(false)
     {
         m_sources = new const char *[m_count];
@@ -76,23 +75,26 @@ namespace backup {
             r = stat(m_destinations[i], &sbuf);
             if (r != 0) {
                 r = errno;
-                the_manager.backup_error(r, "Problem stat()ing backup directory %s",
-                             m_destinations[i]);
+                the_manager.backup_error(r,
+                                         "Problem stat()ing backup directory %s",
+                                         m_destinations[i]);
                 break;
             }
 
             if (!S_ISDIR(sbuf.st_mode)) {
                 r = EINVAL;
-                the_manager.backup_error(EINVAL, "Backup destination %s is not a directory", 
-                             m_destinations[i]);
+                the_manager.backup_error(EINVAL, 
+                                         "Backup destination %s is not a directory", 
+                                         m_destinations[i]);
                 break;
             }
         
             DIR *dir = opendir(m_destinations[i]);
             if (dir == NULL) {
                 r = errno;
-                the_manager.backup_error(r, "Problem opening backup directory %s", 
-                             m_destinations[i]);
+                the_manager.backup_error(r,
+                                         "Problem opening backup directory %s", 
+                                         m_destinations[i]);
                 break;
             }
 
@@ -100,8 +102,9 @@ namespace backup {
             int result = closedir(dir);
             if (result != 0) {
                 r = errno;
-                the_manager.backup_error(r, "Problem closedir()ing backup directory %s", 
-                             m_destinations[i]);
+                the_manager.backup_error(r, 
+                                         "Problem closedir()ing backup directory %s",
+                                         m_destinations[i]);
                 // The dir is already as closed as I can get it.
                 // Don't call closedir again, just return.
                 break;
@@ -109,6 +112,43 @@ namespace backup {
         }
 
         return r;
+    }
+
+    //-----------------------------------------------------------------
+    // Returns the index of a source directory in the current set, if
+    // the given file is in a subdirectory of that respective source
+    // directory.  This will return -1 if the given file is not in any
+    // source directory in the set.
+    //
+    int Directory_Set::Find_Index_Matching_Prefix(const char *file) const {
+        // TODO: We have to compare the incoming dir against the
+        // correct source directory.  The naive implementation
+        // compares the incoming dir against all the currently set
+        // source dirs.  The better implementation would get a
+        // fixed-length prefix of incoming string/path/file, then
+        // instantly look up the hash of that prefix in a hash table
+        // of the currently set source dirs.  The problem: What length
+        // prefix do we pick?  Many users who want to backup more than
+        // one directory will have VERY similary path prefixes.
+        // Moreover, users will probably only ever want two
+        // directories backed up, so it the naive implementation is
+        // probably fine.
+
+        int result = -1;
+        for (int i = 0; i < m_count; ++i) {
+            // TODO: Cache the string length of the full path source dirs.
+            int r = strncmp(m_sources[i],
+                            file,
+                            strlen(m_sources[i]));
+
+            // We found a matching prefix.
+            if (r == 0) {
+                result = i;
+                break;
+            }
+        }
+
+        return result;
     }
 
     //--------------------------
@@ -220,4 +260,17 @@ namespace backup {
     out:
         return r;
     }
-}
+
+    //-----------------------------------------------------
+    // TODO: We need to check the following combinations:
+    // - Each source and destination pair do NOT match.
+    // - No two sources are the same.
+    // - No two destinations are the same.
+    //
+    // Assumption: There are exactly N pairs of source and destination
+    // directories.
+    //
+    int Directory_Set::verify_no_two_directories_are_the_same() {
+        int r = 0;
+        return r;
+    }

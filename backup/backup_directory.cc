@@ -17,48 +17,31 @@
 
 //////////////////////////////////////////////////////////////////////////////
 //
-backup_session::backup_session(const char* source, const char *dest, backup_callbacks *calls, file_hash_table * const file, int *errnum) throw()
-    : m_source_dir(NULL), m_dest_dir(NULL), m_copier(calls, file)
+backup_session::backup_session(Directory_Set *dirs, backup_callbacks *calls, file_hash_table * const file) throw()
+    : m_dirs(dirs), m_copier(calls, file)
 {
-    // TODO: #6541 assert that the directory's are not the same.
-
-    // This code is ugly because we are using a constructor.  We need to do the error propagation now, while we have the source and dest paths,
-    // instead of later in what used to be the set_directories() method.  BTW, the google style guide prohibits using constructors.
-
-    int r = 0;
-    m_source_dir = call_real_realpath(source, NULL);
-    m_dest_dir   = call_real_realpath(dest,   NULL);
-    if (!m_dest_dir) {
-        with_object_to_free<char*> str(malloc_snprintf(strlen(dest) + 100, "This backup destination directory does not exist: %s", dest));
-        calls->report_error(ENOENT, str.value); 
-        r = ENOENT;
-    }
-    if (!m_source_dir) {
-        with_object_to_free<char*> str(malloc_snprintf(strlen(source) + 100, "This backup source directory does not exist: %s", source));
-        calls->report_error(ENOENT, str.value);
-        r = ENOENT;
-    }
-    m_copier.set_directories(m_source_dir, m_dest_dir);
-    *errnum = r;
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 //
 backup_session::~backup_session() throw() {
-    if(m_source_dir) {
-        free((void*)m_source_dir);
-    }
-
-    if(m_dest_dir) {
-        free((void*)m_dest_dir);
-    }    
 }
 
 //////////////////////////////////////////////////////////////////////////////
+// Loop through the directory set, copying one directory at a
+// time.
 //
 int backup_session::do_copy() throw() {
-    int r = m_copier.do_copy();
+    int r = 0;
+    for (int i = 0; i < m_dirs->Number_Of_Directories(); ++i) {
+        m_copier.set_directories(m_dirs->Source_Directory_At(i),
+                                 m_dirs->Destination_Directory_At(i));
+        r = m_copier.do_copy();
+        if (r != 0) {
+            break;
+        }
+    }
+
     return r;
 }
 
@@ -82,7 +65,13 @@ bool backup_session::is_prefix(const char *file) throw() {
 ///////////////////////////////////////////////////////////////////////////////
 //
 bool backup_session::is_prefix_of_realpath(const char *absfile) throw() {
-    return strncmp(m_source_dir, absfile, strlen(m_source_dir)) == 0;
+    bool result = false;
+    const int index = m_dirs->Find_Index_Matching_Prefix(absfile);
+    if (index != -1) {
+        result = true;
+    }
+
+    return result;
 }
 
 static int does_file_exist(const char*) throw();
@@ -192,13 +181,14 @@ char* backup_session::translate_prefix(const char *file) throw() {
 }
 
 char* backup_session::translate_prefix_of_realpath(const char *absfile) throw() {
+    const int index = m_dirs->Find_Index_Matching_Prefix(absfile);
     // TODO: #6543 Should we have a copy of these lengths already?
-    size_t len_op = strlen(m_source_dir);
-    size_t len_np = strlen(m_dest_dir);
+    size_t len_op = strlen(m_dirs->Source_Directory_At(index));
+    size_t len_np = strlen(m_dirs->Destination_Directory_At(index));
     size_t len_s = strlen(absfile);
     size_t new_len = len_s - len_op + len_np +1;
     char *new_string = (char*)malloc(new_len);
-    memcpy(new_string, m_dest_dir, len_np);
+    memcpy(new_string, m_dirs->Destination_Directory_At(index), len_np);
     
     // Copy the file name from the directory with the newline at the end.
     memcpy(new_string + len_np, absfile + len_op, len_s - len_op + 1);

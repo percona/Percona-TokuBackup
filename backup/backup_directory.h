@@ -11,6 +11,7 @@
 #include "fmap.h"
 #include "copier.h"
 #include "backup_callbacks.h"
+#include "directory_set.h"
 
 #include <pthread.h>
 #include <vector>
@@ -21,7 +22,7 @@
 class backup_session
 {
 public:
-    backup_session(const char *source, const char *dest, backup_callbacks *call, file_hash_table * const table, int *errnum) throw(); // returns a nonzero in *errnum if an error callback has occured.
+    backup_session(Directory_Set *dirs, backup_callbacks *call, file_hash_table * const table) throw(); // returns a nonzero in *errnum if an error callback has occured.
     ~backup_session() throw();
     int do_copy() throw() __attribute__((warn_unused_result)); // returns the error code (not in errno)
     int directories_set(backup_callbacks*) throw();
@@ -40,8 +41,7 @@ public:
     void add_to_copy_todo_list(const char *file_path) throw();
     void cleanup(void) throw();
 private:
-    const char *m_source_dir;
-    const char *m_dest_dir;
+    const Directory_Set * const m_dirs;
     copier m_copier;
 };
 
