@@ -95,9 +95,21 @@ void cleanup_dirs(void) {
     }
 }
 
+// Statics and constants for adding mult-directory support.
+static int dir_count = 1;
+const int MAX_DIR_COUNT = 16;
+const char *sources[MAX_DIR_COUNT];
+const char *destinations[MAX_DIR_COUNT];
+
+void set_dir_count(int new_count) {
+    if (new_count >= 1 && new_count <= 16) {
+        dir_count = new_count;
+    }
+}
+
 struct backup_thread_extra_t {
-    char *             src_dir;
-    char *             dst_dir;
+    const char **            src_dirs;
+    const char **            dst_dirs;
     backup_poll_fun_t  poll_fun;
     void*              poll_extra;
     backup_error_fun_t error_fun;
@@ -109,8 +121,8 @@ static volatile bool backup_is_done = false;
 
 static void* start_backup_thread_fun(void *backup_extra_v) {
     backup_thread_extra_t *backup_extra = (backup_thread_extra_t*)backup_extra_v;
-    const char *srcs[1] = {backup_extra->src_dir};
-    const char *dsts[1] = {backup_extra->dst_dir};
+    const char **srcs = {backup_extra->src_dirs};
+    const char **dsts = {backup_extra->dst_dirs};
     int r = tokubackup_create_backup(srcs, dsts, 1,
                                      backup_extra->poll_fun,  backup_extra->poll_extra,
                                      backup_extra->error_fun, backup_extra->error_extra);
@@ -118,8 +130,10 @@ static void* start_backup_thread_fun(void *backup_extra_v) {
         printf("%s:%d Got error %d, Expected %d\n", __FILE__, __LINE__, r, backup_extra->expect_return_result);
     }
     check(r==backup_extra->expect_return_result);
-    if (backup_extra->src_dir) free(backup_extra->src_dir);
-    if (backup_extra->dst_dir) free(backup_extra->dst_dir);
+    for (int i = 0; i < dir_count; ++i) {
+        if (backup_extra->src_dirs[i]) free((void *)backup_extra->src_dirs[i]);
+        if (backup_extra->dst_dirs[i]) free((void*)backup_extra->dst_dirs[i]);
+    }
     backup_is_done = true;
     return backup_extra_v;
 }
@@ -129,14 +143,28 @@ bool backup_thread_is_done(void) {
 }
 
 void start_backup_thread_with_funs(pthread_t *thread,
-                                   char *src_dir, char *dst_dir,
+                                   char *src, char *dst,
+                                   backup_poll_fun_t poll_fun, void *poll_extra,
+                                   backup_error_fun_t error_fun, void *error_extra,
+                                   int expect_return_result) {
+    set_dir_count(1);
+    sources[0] = src;
+    destinations[0] = dst;
+    start_backup_thread_with_funs(thread, sources, destinations, 
+                                  poll_fun, poll_extra,
+                                  error_fun, error_extra,
+                                  expect_return_result);
+}
+
+void start_backup_thread_with_funs(pthread_t *thread,
+                                   const char *src_dirs[], const char *dst_dirs[],
                                    backup_poll_fun_t poll_fun, void *poll_extra,
                                    backup_error_fun_t error_fun, void *error_extra,
                                    int expect_return_result) {
     backup_thread_extra_t *p = new backup_thread_extra_t;
     //    *p = {src_dir, dst_dir, poll_fun, poll_extra, error_fun, error_extra, expect_return_result};
-    p->src_dir = src_dir;
-    p->dst_dir = dst_dir;
+    p->src_dirs = src_dirs;
+    p->dst_dirs = dst_dirs;
     p->poll_fun = poll_fun;
     p->poll_extra = poll_extra;
     p->error_fun = error_fun;
@@ -163,14 +191,18 @@ static void expect_no_error_fun(int error_number, const char *error_string, void
 }
 
 void start_backup_thread(pthread_t *thread) {
-    char *src = get_src();
-    char *dst = get_dst();
-    start_backup_thread_with_funs(thread, src, dst, simple_poll_fun, NULL, expect_no_error_fun, NULL, BACKUP_SUCCESS);
+    for (int i = 0; i < dir_count; ++i) {
+        sources[i] = get_src(i);
+        destinations[i] = get_dst(i);
+    }
+
+    start_backup_thread_with_funs(thread, sources, destinations, simple_poll_fun, NULL, expect_no_error_fun, NULL, BACKUP_SUCCESS);
 }
 
 void start_backup_thread(pthread_t *thread, char* destination) {
-    char *src = get_src();
-    start_backup_thread_with_funs(thread, src, destination, simple_poll_fun, NULL, expect_no_error_fun, NULL, BACKUP_SUCCESS);
+    sources[0] = get_src();
+    destinations[0] = destination;
+    start_backup_thread_with_funs(thread, sources, destinations, simple_poll_fun, NULL, expect_no_error_fun, NULL, BACKUP_SUCCESS);
 }
 
 void finish_backup_thread(pthread_t thread) {
@@ -184,22 +216,22 @@ void finish_backup_thread(pthread_t thread) {
 
 static const char *test_name = NULL;
 
-char *get_dst(void) {
+char *get_dst(int dir_index) {
     check(test_name);
     size_t size = strlen(test_name)+100;
     char s[size];
-    int r = snprintf(s, sizeof(s), "%s.backup", test_name);
+    int r = snprintf(s, sizeof(s), "%s_%d.backup", test_name, dir_index);
     check(r<(int)size);
     char *result = strdup(s);
     check(result);
     return result;
 }
 
-char *get_src(void) {
+char *get_src(int dir_index) {
     check(test_name);
     size_t size = strlen(test_name)+100;
     char s[size];
-    int r = snprintf(s, size, "%s.source", test_name);
+    int r = snprintf(s, size, "%s_%d.source", test_name, dir_index);
     check(r<(int)size);
     char *result = strdup(s);
     check(result);

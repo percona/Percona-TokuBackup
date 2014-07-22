@@ -28,6 +28,11 @@ void start_backup_thread_with_funs(pthread_t *thread,
                                    backup_poll_fun_t poll_fun, void *poll_extra,
                                    backup_error_fun_t error_fun, void *error_extra,
                                    int expect_return_result);
+void start_backup_thread_with_funs(pthread_t *thread,
+                                   const char *src_dir[], const char *dst_dir[],
+                                   backup_poll_fun_t poll_fun, void *poll_extra,
+                                   backup_error_fun_t error_fun, void *error_extra,
+                                   int expect_return_result);
 // Effect: Start doing a backup (on a thread).  The source and dest dirs are as specified.
 //  The poll and error funs are as provided.  Expect the
 //  backup to return the value of expect_return_result.
@@ -52,8 +57,8 @@ bool backup_thread_is_done(void); // Tell me that finish_backup_thread is done.
 int systemf(const char *formatstring, ...) __attribute__((format (printf, 1, 2))); // Effect: run system() on the snprintf of the args.  Return the exit code.
 int openf(int flags, int mode, const char *formatstring, ...)  __attribute__((format(printf, 3, 4))); // Effect: run open(s, flags, mode) where s is gotten by formatting the string.
 
-char *get_src(void); // returns a malloc'd string for the source directory.  If you call twice you get two different strings.  Requires that the main program defined BACKUP_NAME to be something unique across tests.
-char *get_dst(void); // returns a malloc'd string for the destination directory.
+char *get_src(int dir_index = 0); // returns a malloc'd string for the source directory.  If you call twice you get two different strings.  Requires that the main program defined BACKUP_NAME to be something unique across tests.
+char *get_dst(int dir_index = 0); // returns a malloc'd string for the destination directory.
 
 extern int test_main(int, const char *[]); // user code calls this function.
 
