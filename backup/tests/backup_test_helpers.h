@@ -23,6 +23,7 @@ void setup_dirs(void); // fill in data in source.
 void cleanup_dirs(void);
 void read_and_seek(void);
 void test_truncate(void);
+void set_dir_count(int new_count);
 void start_backup_thread_with_funs(pthread_t *thread,
                                    char *src_dir, char *dst_dir,
                                    backup_poll_fun_t poll_fun, void *poll_extra,

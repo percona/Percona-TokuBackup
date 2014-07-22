@@ -20,6 +20,7 @@ set(blackboxtests
   dest_no_permissions_10
   dest_no_permissions_with_open_10
   empty_dest
+  many_directories
   multiple_backups
   open_close_6731
   open_write_close
