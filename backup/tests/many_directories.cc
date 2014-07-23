@@ -14,31 +14,6 @@
 #include "backup.h"
 #include "backup_test_helpers.h"
 
-const int TRIES = 4;
-const int LEN = 26;
-char *dirs[TRIES];
-
-/**** 
-static void setup(void)
-{
-    for (int i = 0; i < TRIES; ++i) {
-        char s[LEN];
-        int r = snprintf(s, sizeof(s), "multiple_backups.backup_%d", i);
-        check(r<(int)sizeof(s));
-        systemf("rm -rf %s", s);
-        dirs[i] = strdup(s);
-        check(dirs[i]);
-    }
-}
-****/
-/**** 
-
-static void breakdown(void)
-{
-    // The backup thread helpers free dirs[i].
-}
-****/
-
 static void write_lots_of_dummy_data(char *src)
 {
     const int SIZE = 100;
@@ -109,48 +84,6 @@ static int check_it(char *dst, char *magic, int size, int count)
     return r;
 }
 
-/**** 
-//
-static int many_directories(void) {
-    setup_source();
-    setup();
-    char * src = get_src();
-    write_lots_of_dummy_data(src);
-
-    int result = 0;
-
-    pthread_t thread;
-    tokubackup_throttle_backup(1L << 22);
-    for (int i = 0; i < TRIES; ++i) {
-        setup_directory(dirs[i]);
-        start_backup_thread(&thread, dirs[i]);
-        const int SIZE = 7;
-        char buf[SIZE] = {0};
-        snprintf(buf, SIZE, "magic%i", i);
-        work_it(src, buf, SIZE);
-        finish_backup_thread(thread);
-        snprintf(buf, SIZE, "magic");
-        int r = check_it(buf, SIZE, i);
-        if (r != 0) {
-            result = -1 * i;
-        }
-    }
-
-    free(src);
-    if(result < 0) {
-        printf("Backup # %d failed.\n", result * -1);
-        fail();
-        result = -1;
-    } else {
-        pass();
-    }
-
-    breakdown();
-
-    return result;
-}
-****/
-
 int many_directories(const int directory_count) {
     int result = 0;
 
@@ -210,6 +143,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         {
             break;
         }
+        printf("PASS: with %d directories backed up.", i);
     }
 
     return r; 
