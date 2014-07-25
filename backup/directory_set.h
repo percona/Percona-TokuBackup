@@ -7,47 +7,47 @@
 
 #include <dirent.h>
 
-    class Directory_Set {
+    class directory_set {
     public:
         //----------------------------------------------------------
         // Allocates memory for storing given directories.
-        Directory_Set(const int count,
+        directory_set(const int count,
                       const char **sources,
                       const char **destinations);
         
         //----------------------------------------------------------
         // De-allocates memory allocated in constructor and realpath()
         // calls.
-        ~Directory_Set();
+        ~directory_set();
 
         //----------------------------------------------------------
         // Creates realpath() versions of currently set directory
         // paths.  Returns an error if realpath() fails.
-        int Update_To_Full_Path(void);
+        int update_to_full_path(void);
 
         //----------------------------------------------------------
         // Returns an error if any of the following criteria are NOT
         // met:
-        int Validate(void) const;
+        int validate(void) const;
 
         //----------------------------------------------------------
         // Returns index of matching source dir, or -1 if given file
         // not in directory set.
-        int Find_Index_Matching_Prefix(const char *file) const;
+        int find_index_matching_prefix(const char *file) const;
 
         //----------------------------------------------------------
         // Accessors for number of, source, and destination
         // directories.
-        const char *Source_Directory_At(const int index) const;
-        const char *Destination_Directory_At(const int index) const;
-        int Number_Of_Directories() const;
+        const char *source_directory_at(const int index) const;
+        const char *destination_directory_at(const int index) const;
+        int number_of_directories() const;
 
     private:
         const char **m_sources;
         const char **m_destinations;
         const int m_count;
         bool m_real_path_successful;
-        Directory_Set();
+        directory_set();
         int verify_destination_is_empty(const int index, DIR *dir) const;
         void handle_realpath_results(const int r, const int allocated_pairs);
         int update_to_real_path_on_index(const int i);

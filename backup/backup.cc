@@ -335,12 +335,12 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
 
     // HUGE ASSUMPTION: - There is a 1:1 correspondence between source
     // and destination directories.
-    Directory_Set dirs(dir_count, source_dirs, dest_dirs);
+    directory_set dirs(dir_count, source_dirs, dest_dirs);
 
     // TODO: Possibly change order IF you can't perform Validate() or
     // dirs that have been realpath()'d.  Or... Put the validate call
     // deeper into the do_backup stack.
-    int r = dirs.Update_To_Full_Path();
+    int r = dirs.update_to_full_path();
     if (r != 0) {
         return EINVAL;
     }
@@ -348,7 +348,7 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
     /******
     NOTE: This might be better to check here.  However, tests expect
     validation to be deeper in the stack.
-    r = dirs.Validate(); if (r != 0) { return EINVAL; }
+    r = dirs.validate(); if (r != 0) { return EINVAL; }
     *****/
 
     return the_manager.do_backup(&dirs, &calls);

@@ -22,7 +22,7 @@
 class backup_session
 {
 public:
-    backup_session(Directory_Set *dirs, backup_callbacks *call, file_hash_table * const table) throw(); // returns a nonzero in *errnum if an error callback has occured.
+    backup_session(directory_set *dirs, backup_callbacks *call, file_hash_table * const table) throw(); // returns a nonzero in *errnum if an error callback has occured.
     ~backup_session() throw();
     int do_copy() throw() __attribute__((warn_unused_result)); // returns the error code (not in errno)
     int directories_set(backup_callbacks*) throw();
@@ -41,7 +41,7 @@ public:
     void add_to_copy_todo_list(const char *file_path) throw();
     void cleanup(void) throw();
 private:
-    const Directory_Set * const m_dirs;
+    const directory_set * const m_dirs;
     copier m_copier;
 };
 

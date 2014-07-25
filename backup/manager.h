@@ -57,7 +57,7 @@ public:
     ~manager(void) throw();
     // N.B. the google style guide requires all references to be either labeled as a const, or declared to be pointers.
     // I see no reason to use reference variables.  They are redundant with pointers.
-    int do_backup(Directory_Set *dirs, backup_callbacks *calls) throw();
+    int do_backup(directory_set *dirs, backup_callbacks *calls) throw();
 
     // Methods used during interposition:
     int open(int fd, const char *file, int flags) throw() __attribute__((warn_unused_result)); // returns 0 on success, error number on failure and it has reported the error to the backup manager.

@@ -109,7 +109,7 @@ __thread backup_callbacks *thread_has_backup_calls = NULL;
 //
 //     
 //
-int manager::do_backup(Directory_Set *dirs, backup_callbacks *calls) throw() {
+int manager::do_backup(directory_set *dirs, backup_callbacks *calls) throw() {
     thread_has_backup_calls = calls;
 
     int r = 0;
@@ -136,7 +136,7 @@ int manager::do_backup(Directory_Set *dirs, backup_callbacks *calls) throw() {
         goto error_out;
     }
 
-    r = dirs->Validate();
+    r = dirs->validate();
     if (r != 0) {
         goto unlock_out;
     }
