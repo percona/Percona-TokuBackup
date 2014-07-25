@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "backup.h"
+#include "backup_internal.h"
 #include "backup_test_helpers.h"
 
 static void write_lots_of_dummy_data(char *src)
@@ -84,7 +85,7 @@ static int check_it(char *dst, char *magic, int size, int count)
     return r;
 }
 
-int many_directories(const int directory_count) {
+int many_directories(const int directory_count, const bool keep_capturing) {
     int result = 0;
 
     // Set up all the directories.
@@ -100,6 +101,10 @@ int many_directories(const int directory_count) {
         write_lots_of_dummy_data(sources[i]);        
     }
 
+    if (keep_capturing) {
+        backup_set_keep_capturing(true);
+    }
+
     pthread_t thread; 
     start_backup_thread(&thread);
     // Do work in each directory.
@@ -111,6 +116,7 @@ int many_directories(const int directory_count) {
         work_it(sources[i], buf, SIZE);
     }
 
+    backup_set_keep_capturing(false);
     finish_backup_thread(thread);
 
     // Check the work done in each directory.
@@ -135,15 +141,19 @@ int many_directories(const int directory_count) {
 
 int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
     int r = 0;
+    bool keep_capture = false;
     const int MAX_DIRS = 8;
-    for (int i = 1; i <= MAX_DIRS; i = i << 1)
+    for (int i = 1; i <= MAX_DIRS; i = i << 1, keep_capture = !keep_capture)
     {
-        r = many_directories(i);
+        // Alternate focusing on copying vs. capturing for each larger
+        // set of directories.
+        r = many_directories(i, keep_capture);
         if (r != 0)
         {
             break;
         }
-        printf("PASS: with %d directories backed up.", i);
+
+        printf("PASS: with %d directories backed up.\n", i);
     }
 
     return r; 

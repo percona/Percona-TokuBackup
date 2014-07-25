@@ -20,7 +20,6 @@ set(blackboxtests
   dest_no_permissions_10
   dest_no_permissions_with_open_10
   empty_dest
-  many_directories
   multiple_backups
   open_close_6731
   open_write_close
@@ -62,6 +61,7 @@ set(glassboxtests
   end_race_open_6668
   end_race_rename_6668
   end_race_rename_6668b
+  many_directories
   range_locks
   realpath_error_injection
   test6415_enospc_injection

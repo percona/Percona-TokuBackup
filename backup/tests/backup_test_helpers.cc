@@ -123,7 +123,7 @@ static void* start_backup_thread_fun(void *backup_extra_v) {
     backup_thread_extra_t *backup_extra = (backup_thread_extra_t*)backup_extra_v;
     const char **srcs = {backup_extra->src_dirs};
     const char **dsts = {backup_extra->dst_dirs};
-    int r = tokubackup_create_backup(srcs, dsts, 1,
+    int r = tokubackup_create_backup(srcs, dsts, dir_count,
                                      backup_extra->poll_fun,  backup_extra->poll_extra,
                                      backup_extra->error_fun, backup_extra->error_extra);
     if (r!=backup_extra->expect_return_result) {
