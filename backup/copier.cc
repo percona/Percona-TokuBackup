@@ -457,9 +457,10 @@ static double tdiff(struct timespec a, struct timespec b) throw()
 int copier::copy_file_data(source_info src_info) throw() {
     int r = 0;
     // For DirectIO: we need to allocate a mem-aligned buffer.
+    const size_t align = 2<<12; // why 8K?
     const size_t buf_size = 1024 * 1024;
-    struct buf_s { char buf[buf_size] __attribute__((aligned(2 << 12))); };
-    struct buf_s *buf = new buf_s;
+    char *buf_base = new char[buf_size + align];
+    char *buf = (char *)(((size_t)buf_base + align) & ~(align-1));
 
     source_file * file = src_info.m_file;
     destination_file * dest = file->get_destination();
@@ -483,7 +484,7 @@ int copier::copy_file_data(source_info src_info) throw() {
         file->lock_range(lock_start, lock_end);
         
         copy_result result;
-        result = open_and_lock_file_then_copy_range(src_info, buf->buf, buf_size, poll_string, poll_string_size);
+        result = open_and_lock_file_then_copy_range(src_info, buf, buf_size, poll_string, poll_string_size);
         n_wrote_now = result.m_n_wrote_now;
 
         r = file->unlock_range(lock_start, lock_end); 
@@ -505,7 +506,7 @@ int copier::copy_file_data(source_info src_info) throw() {
     }
 
 out:
-    delete buf;
+    delete[] buf_base;
     delete[] poll_string;
     return r;
 }
@@ -592,7 +593,7 @@ copy_result copier::copy_file_range(source_info src_info,
             return result;
         } else if (n_read < 0) {
             int read_errno = errno;
-            snprintf(poll_string, poll_string_size, "Could not read from %s, errno=%d (%s) at %s:%d", src_info.m_path, read_errno, strerror(read_errno), __FILE__, __LINE__);
+            snprintf(poll_string, poll_string_size, "Could not read from %s, n_read=%lu errno=%d (%s) fd=%d at %s:%d", src_info.m_path, n_read, read_errno, strerror(read_errno), src_info.m_fd, __FILE__, __LINE__);
             m_calls->report_error(read_errno, poll_string);
             result.m_result = read_errno;
             return result;
