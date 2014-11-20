@@ -113,6 +113,14 @@ install(TARGETS ${HOT_BACKUP_LIBNAME}          DESTINATION ${INSTALL_LIBDIR}
 install(FILES backup.h DESTINATION include
     COMPONENT tokubackup_headers)
 
+if (TOKUMX_ENTERPRISE_CREATE_EXPORTS)
+  file(RELATIVE_PATH _relative_source_dir "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
+  install(TARGETS ${HOT_BACKUP_LIBNAME} DESTINATION "${_relative_source_dir}" COMPONENT tokumx_enterprise_exports EXPORT tokumx_enterprise_exports)
+  install(FILES backup.h DESTINATION "${_relative_source_dir}" COMPONENT tokumx_enterprise_exports)
+  exports_install(${HOT_BACKUP_LIBNAME} "\${INSTALL_LIBDIR}" tokubackup_libs_shared)
+  unset(_relative_source_dir)
+endif ()
+
 option(BACKUP_HAS_PARENT "Don't set this by hand.  It's used to tell the subcmake not to set things" ON)
 if (BACKUP_HAS_PARENT)
   set(HOT_BACKUP_LIBS ${HOT_BACKUP_LIBNAME} PARENT_SCOPE)
