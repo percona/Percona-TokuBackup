@@ -7,6 +7,7 @@
 #ident "Copyright (c) 2012-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
+#define DEBUG_HOTBACKUP 1
 #ifndef DEBUG_HOTBACKUP
 #define DEBUG_HOTBACKUP 0
 #endif

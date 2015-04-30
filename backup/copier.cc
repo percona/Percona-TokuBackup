@@ -129,7 +129,7 @@ int copier::do_copy(void) throw() {
         r = m_calls->poll((double)(m_total_bytes_backed_up+1)/(double)(m_total_bytes_to_back_up+1), msg);
         free(msg);
         if (r != 0) {
-            fprintf(stderr, "%s:%d r=%d\n", __FILE__, __LINE__, r);
+            fprintf(stderr, "%s:%d poll error r=%d\n", __FILE__, __LINE__, r);
             goto out;
         }
 
@@ -139,12 +139,15 @@ int copier::do_copy(void) throw() {
         }
         
         r = this->copy_stripped_file(fname);
-        free((void*)fname);
-        fname = NULL;
         if(r != 0) {
-            fprintf(stderr, "%s:%d r=%d\n", __FILE__, __LINE__, r);
+            fprintf(stderr, "%s:%d copy error fname=%s r=%d\n", __FILE__, __LINE__, fname, r);
+            free((void*)fname);
+            fname = NULL;
             goto out;
         }
+        free((void*)fname);
+        fname = NULL;
+
         m_total_files_backed_up++;
         
         {
@@ -237,7 +240,7 @@ int copier::copy_full_path(const char *source, const char* dest, const char *fil
         }
 
         r = stat_r;
-        char *string = malloc_snprintf(strlen(dest)+100, "error stat(\"%s\"), errno=%d (%s) at %s:%d", dest, r, strerror(r), __FILE__, __LINE__);
+        char *string = malloc_snprintf(strlen(dest)+100, "Could not stat(\"%s\"), errno=%d (%s) at %s:%d", dest, r, strerror(r), __FILE__, __LINE__);
         m_calls->report_error(errno, string);
         free(string);
         goto out;
@@ -257,7 +260,8 @@ int copier::copy_full_path(const char *source, const char* dest, const char *fil
         if(dir == NULL) {
             r = errno;
             // If the directory was deleted from underneath us, just skip it.
-            if (r != ENOENT) { 
+            if (r != ENOENT) {
+                the_manager.backup_error(r, "Could not opendir %s", source);
                 goto out;
             }
         }
