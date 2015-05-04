@@ -32,7 +32,8 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
         const char *dsts[1] = {dst};
         int r = tokubackup_create_backup(srcs, dsts, 1,
                                          simple_poll_fun, NULL,
-                                         expect_eacces_error_fun, NULL);
+                                         expect_eacces_error_fun, NULL,
+                                         NULL, NULL);
         check(r==EACCES);
         check(saw_error);
     }

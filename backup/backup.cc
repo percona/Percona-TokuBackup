@@ -296,7 +296,8 @@ int mkdir(const char *pathname, mode_t mode) {
 
 extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *dest_dirs[], int dir_count,
                                         backup_poll_fun_t poll_fun, void *poll_extra,
-                                        backup_error_fun_t error_fun, void *error_extra) throw() {
+                                        backup_error_fun_t error_fun, void *error_extra,
+                                        backup_exclude_copy_fun_t exclude_copy_fun, void *exclude_copy_extra) throw() {
     for (int i=0; i<dir_count; i++) {
         if (source_dirs[i]==NULL) {
             error_fun(EINVAL, "One of the source directories is NULL", error_extra);
@@ -331,7 +332,7 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
         }
     }
 
-    backup_callbacks calls(poll_fun, poll_extra, error_fun, error_extra, &get_throttle);
+    backup_callbacks calls(poll_fun, poll_extra, error_fun, error_extra, exclude_copy_fun, exclude_copy_extra, &get_throttle);
 
     // HUGE ASSUMPTION: - There is a 1:1 correspondence between source
     // and destination directories.

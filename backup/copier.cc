@@ -227,6 +227,8 @@ out:
 // heirarchy.
 //
 int copier::copy_full_path(const char *source, const char* dest, const char *file) throw() {
+    if (m_calls->exclude_copy(source))
+        return 0;
     int r = 0;
     struct stat sbuf;
     int stat_r = stat(source, &sbuf);

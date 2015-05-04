@@ -20,16 +20,21 @@ public:
                      void *poll_extra, 
                      backup_error_fun_t error_fun, 
                      void *error_extra,
+                     backup_exclude_copy_fun_t exclude_copy_fun,
+                     void *exclude_copy_extra,
                      backup_throttle_fun_t throttle_fun) throw();
     int poll(float progress, const char *progress_string) throw();
     void report_error(int error_number, const char *error_description) throw();
     unsigned long get_throttle(void) throw();
+    int exclude_copy(const char *source) throw();
 private:
     backup_callbacks() throw() {};
     backup_poll_fun_t m_poll_function;
     void *m_poll_extra;
     backup_error_fun_t m_error_function;
     void *m_error_extra;
+    backup_exclude_copy_fun_t m_exclude_copy_function;
+    void *m_exclude_copy_extra;
     backup_throttle_fun_t m_throttle_function;
 };
 

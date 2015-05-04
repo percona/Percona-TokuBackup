@@ -11,11 +11,15 @@ backup_callbacks::backup_callbacks(backup_poll_fun_t poll_fun,
                                    void *poll_extra, 
                                    backup_error_fun_t error_fun, 
                                    void *error_extra,
+                                   backup_exclude_copy_fun_t exclude_copy_fun,
+                                   void *exclude_copy_extra,
                                    backup_throttle_fun_t throttle_fun) throw()
 : m_poll_function(poll_fun), 
 m_poll_extra(poll_extra), 
 m_error_function(error_fun), 
 m_error_extra(error_extra),
+m_exclude_copy_function(exclude_copy_fun),
+m_exclude_copy_extra(exclude_copy_extra),
 m_throttle_function(throttle_fun)
 {}
 
@@ -37,5 +41,12 @@ void backup_callbacks::report_error(int error_number, const char *error_str) thr
 //
 unsigned long backup_callbacks::get_throttle(void) throw() {
     return m_throttle_function();
+}
+
+int backup_callbacks::exclude_copy(const char *source) throw() {
+    int r = 0;
+    if (m_exclude_copy_function)
+        r = m_exclude_copy_function(source, m_exclude_copy_extra);
+    return r;
 }
 
