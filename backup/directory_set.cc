@@ -37,8 +37,8 @@ directory_set::~directory_set()
         }
     }
     
-    delete m_sources;
-    delete m_destinations;
+    delete [] m_sources;
+    delete [] m_destinations;
 }
 
 int directory_set::update_to_full_path(void)
