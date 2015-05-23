@@ -135,6 +135,8 @@ int many_directories(const int directory_count, const bool keep_capturing) {
         free((void*)sources[i]);
         free((void*)destinations[i]);
     }
+    free(sources);
+    free(destinations);
 
     return result;
 }
