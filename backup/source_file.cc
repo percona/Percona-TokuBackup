@@ -73,6 +73,7 @@ source_file::~source_file(void) throw() {
             check(r==0);
         }
     }
+    if (m_destination_file) delete m_destination_file;
 }
 
 ////////////////////////////////////////////////////////
