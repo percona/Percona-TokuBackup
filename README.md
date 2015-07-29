@@ -1,7 +1,7 @@
-Backup-Enterprise
+Percona TokuBackup
 ======
 
-Backup-Enterprise is a C library that allows users to make consistent
+Percona TokuBackup is a C library that allows users to make consistent
 copies of a directory of files, even while the respective files are
 being edited, removed, added, and/or renamed.
 
