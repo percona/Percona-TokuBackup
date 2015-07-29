@@ -15,10 +15,12 @@ This library requires cmake 2.8.8 or greater to create a build
 environment on your target machine.  To create this environment, from
 the top of the repository:
 
+```
 cd backup
 mkdir MAKEDIR
 cd MAKEDIR
 CC=gcc47 CXX=g++47 cmake ..
+```
 
 To build you then simply have to type:
 
