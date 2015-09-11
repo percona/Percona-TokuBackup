@@ -43,7 +43,13 @@ set(BACKUP_SOURCES
 set(HOT_BACKUP_LIBNAME HotBackup
   CACHE STRING "installed name of the hot backup library")
 
-add_library(${HOT_BACKUP_LIBNAME}          SHARED ${BACKUP_SOURCES})
+option(BUILD_STATIC_LIBRARY "Create static hot backup library." OFF)
+if(BUILD_STATIC_LIBRARY)
+  add_library(${HOT_BACKUP_LIBNAME} STATIC ${BACKUP_SOURCES})
+  set_target_properties(${HOT_BACKUP_LIBNAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+else()
+  add_library(${HOT_BACKUP_LIBNAME} SHARED ${BACKUP_SOURCES})
+endif(BUILD_STATIC_LIBRARY)
 
 find_program(COVERAGE_COMMAND NAMES gcov47 gcov)
 option(USE_GCOV "Use gcov for test coverage." OFF)
