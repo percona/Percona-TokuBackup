@@ -41,6 +41,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
   #define TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(x, y) VALGRIND_HG_DISABLE_CHECKING(x, y)
 #else
   #define TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(x, y) ((void) x, (void) y)
+  #define VALGRIND_HG_DISABLE_CHECKING(x, y) ((void) x, (void) y)
 #endif
 
 #endif  /* BACKUP_HELGPIND_H */
