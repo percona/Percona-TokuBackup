@@ -41,7 +41,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
-#include <valgrind/helgrind.h>
+#include "backup_helgrind.h"
 
 #include "backup.h"
 #include "backup_test_helpers.h"

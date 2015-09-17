@@ -54,7 +54,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <valgrind/helgrind.h>
+#include "backup_helgrind.h"
 
 #if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CaptureWarn(string, arg)
