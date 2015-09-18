@@ -120,7 +120,7 @@ char *my_realpath(const char *path, char *result) {
 
 int test_main(int n, const char **p)
 {
-    VALGRIND_HG_DISABLE_CHECKING(&inject_realpath_error, sizeof(inject_realpath_error));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&inject_realpath_error, sizeof(inject_realpath_error));
     original_realpath = register_realpath(my_realpath);
 
     n++;
