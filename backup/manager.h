@@ -62,7 +62,6 @@ private:
     volatile bool m_done_copying;   // Backup manager sets this true when copying is done.  Happens after m_is_captring
 #endif
 
-    volatile bool m_is_dead; // true if some error occured so that the backup system shouldn't try any more.
     volatile bool m_backup_is_running; // true if the backup is running.  This can be accessed without any locks.
 
     fmap m_map;

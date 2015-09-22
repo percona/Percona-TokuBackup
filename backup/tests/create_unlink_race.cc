@@ -42,7 +42,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "backup_test_helpers.h"
 #include "backup_debug.h"
 
-const int N=10;
 const int N_FNAMES = 1;
 
 void* do_backups(void *v) {
