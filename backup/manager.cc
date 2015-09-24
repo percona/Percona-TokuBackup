@@ -111,13 +111,13 @@ manager::manager(void) throw()
       m_errnum(BACKUP_SUCCESS),
       m_errstring(NULL)
 {
-    VALGRIND_HG_DISABLE_CHECKING(&m_backup_is_running, sizeof(m_backup_is_running));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_backup_is_running, sizeof(m_backup_is_running));
 #ifdef GLASSBOX
-    VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
-    VALGRIND_HG_DISABLE_CHECKING(&m_done_copying, sizeof(m_done_copying));
-    VALGRIND_HG_DISABLE_CHECKING(&m_an_error_happened, sizeof(m_an_error_happened));
-    VALGRIND_HG_DISABLE_CHECKING(&m_errnum, sizeof(m_errnum));
-    VALGRIND_HG_DISABLE_CHECKING(&m_errstring, sizeof(m_errstring));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_is_capturing, sizeof(m_is_capturing));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_done_copying, sizeof(m_done_copying));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_an_error_happened, sizeof(m_an_error_happened));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_errnum, sizeof(m_errnum));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_errstring, sizeof(m_errstring));
 #endif
 }
 
@@ -930,7 +930,7 @@ void manager::mkdir(const char *pathname) throw() {
 ///////////////////////////////////////////////////////////////////////////////
 //
 void manager::set_throttle(unsigned long bytes_per_second) throw() {
-    VALGRIND_HG_DISABLE_CHECKING(&m_throttle, sizeof(m_throttle));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_throttle, sizeof(m_throttle));
     m_throttle = bytes_per_second;
 }
 
@@ -1057,12 +1057,12 @@ void manager::unlock_file_op(void)
 #ifdef GLASSBOX
 // Test routines.
 void manager::pause_disable(bool pause) throw() {
-    VALGRIND_HG_DISABLE_CHECKING(&m_pause_disable, sizeof(m_pause_disable));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_pause_disable, sizeof(m_pause_disable));
     m_pause_disable = pause;
 }
 
 void manager::set_keep_capturing(bool keep_capturing) throw() {
-    VALGRIND_HG_DISABLE_CHECKING(&m_keep_capturing, sizeof(m_keep_capturing));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_keep_capturing, sizeof(m_keep_capturing));
     m_keep_capturing = keep_capturing;
 }
 
@@ -1074,7 +1074,7 @@ bool manager::is_capturing(void) throw() {
 }
 
 void manager::set_start_copying(bool start_copying) throw() {
-    VALGRIND_HG_DISABLE_CHECKING(&m_start_copying, sizeof(m_start_copying));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_start_copying, sizeof(m_start_copying));
     m_start_copying = start_copying;
 }
 #endif /*GLASSBOX*/

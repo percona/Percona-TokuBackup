@@ -45,9 +45,9 @@ manager_state::manager_state() throw()
       m_capture_enabled(false),
       m_copy_enabled(false)
 {
-    VALGRIND_HG_DISABLE_CHECKING(&m_is_dead,         sizeof(m_is_dead));
-    VALGRIND_HG_DISABLE_CHECKING(&m_capture_enabled, sizeof(m_capture_enabled));
-    VALGRIND_HG_DISABLE_CHECKING(&m_copy_enabled,    sizeof(m_copy_enabled));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_is_dead,         sizeof(m_is_dead));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_capture_enabled, sizeof(m_capture_enabled));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_copy_enabled,    sizeof(m_copy_enabled));
 }
 
 bool manager_state::is_dead(void) throw() {

@@ -78,7 +78,7 @@ static int write_poll(float progress, const char *progress_string, void *extra) 
 
 //
 static void open_write_close(void) {
-    VALGRIND_HG_DISABLE_CHECKING(&write_done, sizeof(write_done));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&write_done, sizeof(write_done));
 
     setup_source();
     setup_dirs();
