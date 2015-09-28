@@ -122,6 +122,7 @@ public:
     void add_file_to_todo(const char *file) throw();
     int open_both_files(const char *source, const char *dest, int *srcfd, int *destfd) throw();
     void cleanup(void) throw();
+    bool file_should_be_excluded(const char *file) throw();
 };
 
 #endif // End of header guardian.

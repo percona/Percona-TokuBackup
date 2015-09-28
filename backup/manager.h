@@ -139,7 +139,7 @@ private:
     void disable_descriptions(void) throw();
     void set_error_internal(int errnum, const char *format, va_list ap) throw();
     int setup_description_and_source_file(int fd, const char *file, const int flags) throw();
-
+    bool should_capture_unlink_of_file(const char *file) throw();
     friend class with_manager_enter_session_and_lock;
 };
 

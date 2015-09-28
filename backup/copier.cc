@@ -795,3 +795,11 @@ void copier::cleanup(void) throw() {
         m_todo[i] = NULL;
     }
 }
+
+bool copier::file_should_be_excluded(const char *file) throw() {
+    if (m_calls->exclude_copy(file)) {
+        return true;
+    }
+
+    return false;
+}
