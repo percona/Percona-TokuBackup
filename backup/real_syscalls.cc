@@ -40,7 +40,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <valgrind/helgrind.h>
+#include "backup_helgrind.h"
 
 #include "real_syscalls.h"
 #include "mutex.h"
@@ -54,7 +54,7 @@ template <class T> static void dlsym_set(T *ptr, const char *name)
 // Rationale:  There were a whole bunch of these through this code, and they all are the same except the type.  Rather than
 //   programming it with macros, I do it in a type-safe way with templates. -Bradley
 {
-    VALGRIND_HG_DISABLE_CHECKING(ptr, sizeof(*ptr));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(ptr, sizeof(*ptr));
     if (*ptr==NULL) {
         pmutex_lock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.
         if (*ptr==NULL) {
@@ -73,7 +73,7 @@ template <class T> static void dlvsym_set(T *ptr, const char *name, const char *
 // Rationale:  There were a whole bunch of these through this code, and they all are the same except the type.  Rather than
 //   programming it with macros, I do it in a type-safe way with templates. -Bradley
 {
-    VALGRIND_HG_DISABLE_CHECKING(ptr, sizeof(*ptr));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(ptr, sizeof(*ptr));
     if (*ptr==NULL) {
         pmutex_lock(&dlsym_mutex); // if things go wrong, what can we do?  We probably cannot even report it.
         if (*ptr==NULL) {

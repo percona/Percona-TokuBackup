@@ -12,7 +12,7 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
 
 set(CMAKE_CXX_FLAGS "-Werror -W -Wall -Wshadow ${CMAKE_CXX_FLAGS}")
 
-set(USE_VALGRIND ON CACHE BOOL "whether to use valgrind headers")
+set(USE_VALGRIND OFF CACHE BOOL "whether to use valgrind headers")
 if (USE_VALGRIND)
   set_property(DIRECTORY APPEND PROPERTY
     COMPILE_DEFINITIONS BACKUP_USE_VALGRIND=1)

@@ -40,7 +40,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <valgrind/helgrind.h>
+#include "backup_helgrind.h"
 
 #include "backup_test_helpers.h"
 #include "backup_internal.h"
@@ -202,7 +202,7 @@ void start_backup_thread_with_funs(pthread_t *thread,
     p->error_fun = error_fun;
     p->error_extra = error_extra;
     p->expect_return_result = expect_return_result;
-    VALGRIND_HG_DISABLE_CHECKING(&backup_is_done, sizeof(backup_is_done));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&backup_is_done, sizeof(backup_is_done));
     backup_is_done = false;
     int r = pthread_create(thread, NULL, start_backup_thread_fun, p);
     check(r==0);

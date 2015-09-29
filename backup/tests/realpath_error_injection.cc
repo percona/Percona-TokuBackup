@@ -41,7 +41,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <valgrind/helgrind.h>
+#include "backup_helgrind.h"
 
 #include "backup_test_helpers.h"
 #include "real_syscalls.h"
@@ -120,7 +120,7 @@ char *my_realpath(const char *path, char *result) {
 
 int test_main(int n, const char **p)
 {
-    VALGRIND_HG_DISABLE_CHECKING(&inject_realpath_error, sizeof(inject_realpath_error));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&inject_realpath_error, sizeof(inject_realpath_error));
     original_realpath = register_realpath(my_realpath);
 
     n++;

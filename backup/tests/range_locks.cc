@@ -35,7 +35,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <valgrind/helgrind.h>
+#include "backup_helgrind.h"
 
 #include "backup_test_helpers.h"
 #include "source_file.h"
@@ -61,9 +61,9 @@ static void* doit(void* ignore) {
 }
 
 static void thread_test_block(void) {
-    VALGRIND_HG_DISABLE_CHECKING(&stepa, sizeof(stepa));
-    VALGRIND_HG_DISABLE_CHECKING(&stepb, sizeof(stepb));
-    VALGRIND_HG_DISABLE_CHECKING(&stepc, sizeof(stepc));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepa, sizeof(stepa));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepb, sizeof(stepb));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepc, sizeof(stepc));
     stepa = stepb = 0;
     pthread_t th;
     char the_char;
@@ -91,9 +91,9 @@ static void thread_test_block(void) {
 }
 
 static void thread_test_noblock(void) {
-    VALGRIND_HG_DISABLE_CHECKING(&stepa, sizeof(stepa));
-    VALGRIND_HG_DISABLE_CHECKING(&stepb, sizeof(stepb));
-    VALGRIND_HG_DISABLE_CHECKING(&stepc, sizeof(stepc));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepa, sizeof(stepa));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepb, sizeof(stepb));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepc, sizeof(stepc));
     stepa = stepb = stepc = 0;
     pthread_t th;
     char the_char;
