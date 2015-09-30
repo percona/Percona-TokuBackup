@@ -69,10 +69,12 @@ public:
     void get_or_create_locked(const char * const file_name, source_file **file) throw();
     source_file * get_or_create(const char * const file_name);
     source_file* get(const char *full_file_path) const throw();
+private:
     void put(source_file * const file) throw();
     int hash(const char * const file) const throw();
     void insert(source_file * const file, int hash_index) throw(); // you may insert the same file more than once.
     void remove(source_file * const file) throw();
+public:
     void try_to_remove_locked(source_file * const file) throw();
     void try_to_remove(source_file * const file) throw();
 
@@ -84,6 +86,7 @@ public:
     // Return values and errors:: On success return 0, otherwise return error number (not in errno), having reported the error to the manager.
 
   private:
+    void lazily_create_table(void) throw();
     // The rename method (without a lock) is private to the file_hash_table.
     int rename(source_file * const target, const char *new_name, const char *dest) throw(); // On success return 0, otherwise return error number (not in errno).
 

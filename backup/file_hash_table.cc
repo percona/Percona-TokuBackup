@@ -52,22 +52,38 @@ pthread_mutex_t file_hash_table::m_mutex = PTHREAD_MUTEX_INITIALIZER;
 ////////////////////////////////////////////////////////
 //
 file_hash_table::file_hash_table() throw() : m_count(0),
-                                             m_array(new source_file*[1]),
-                                             m_size(1)
+                                             m_array(NULL),//new source_file*[1]),
+                                             m_size(0)//1)
 {
-    m_array[0] = NULL;
+    //m_array = new source_file*[1];
+    //m_array[0] = NULL;
 }
 
 ////////////////////////////////////////////////////////
 //
 file_hash_table::~file_hash_table() throw() {
-    for (size_t i=0; i < m_size; i++) {
-        while (source_file *head = m_array[i]) {
-            m_array[i] = head->next();
-            delete head;
+    if (m_size > 1 && m_array != NULL) {
+        for (size_t i=0; i < m_size; i++) {
+            while (source_file *head = m_array[i]) {
+                m_array[i] = head->next();
+                delete head;
+            }
         }
+
+        delete[] m_array;
     }
-    delete[] m_array;
+}
+
+////////////////////////////////////////////////////////
+// NOTE: Lazy loading of initial array defaults.  With static
+// intiialization, it is helpful to have this outside of the
+// constructor.
+void file_hash_table::lazily_create_table(void) throw() {
+    if (m_size == 0) {
+        m_array = new source_file*[1];
+        m_size = 1;
+        m_array[0] = NULL;
+    }
 }
 
 ////////////////////////////////////////////////////////
@@ -92,6 +108,7 @@ void file_hash_table::get_or_create_locked(const char * const file_name, source_
 ////////////////////////////////////////////////////////
 //
 source_file * file_hash_table::get_or_create(const char * const file_name) {
+    this->lazily_create_table();
     source_file * source = this->get(file_name);
     if (source == NULL) {
         source = new source_file(file_name);
@@ -106,10 +123,11 @@ source_file * file_hash_table::get_or_create(const char * const file_name) {
 //
 source_file* file_hash_table::get(const char * const full_file_path) const throw()
 {
-    int hash_index = this->hash(full_file_path);
-    source_file *file_found = m_array[hash_index];
+    source_file *file_found = NULL;
+    const int hash_index = this->hash(full_file_path);
+    file_found = m_array[hash_index];
     while (file_found != NULL) {
-        int result = strcmp(full_file_path, file_found->name());
+        const int result = strcmp(full_file_path, file_found->name());
         if (result == 0) {
             break;
         }
@@ -129,23 +147,24 @@ void file_hash_table::put(source_file * const file) throw() {
 
 ////////////////////////////////////////////////////////
 //
-int file_hash_table::hash(const char * const file) const  throw() {
+int file_hash_table::hash(const char * const file) const throw() {
     int length = strlen(file);
     uint64_t the_hash[2];
     MurmurHash3_x64_128(file, length, 0, the_hash);
-    return (the_hash[0]+the_hash[1])%m_size;
+    return (the_hash[0] + the_hash[1]) % m_size;
 }
 
 ////////////////////////////////////////////////////////
 //
 void file_hash_table::insert(source_file * const file, int hash_index)  throw()
-        // It's OK to insert the same file repeatedly (in which case the table is not modified)
+// It's OK to insert the same file repeatedly (in which case the table is not modified)
 {
     source_file *current = m_array[hash_index];
     while (current) {
         if (current == file) return;
         current = current->next();
     }
+
     file->set_next(m_array[hash_index]);
     m_array[hash_index] = file;
     m_count++;
@@ -178,6 +197,7 @@ void file_hash_table::maybe_resize(void) throw() {
 ////////////////////////////////////////////////////////
 //
 void file_hash_table::remove(source_file * const file) throw() {
+    this->lazily_create_table();
     int hash_index = this->hash(file->name());
     source_file *current = m_array[hash_index];
     source_file *previous = NULL;
@@ -253,7 +273,7 @@ int file_hash_table::rename(source_file * target, const char *new_source_name, c
         int r = target->rename(new_source_name);
         if (r != 0) {
             // We report our own errors.
-            the_manager.backup_error(r, "Could not do target->rename to %s", new_source_name);
+            the_backup_manager().backup_error(r, "Could not do target->rename to %s", new_source_name);
             return r;
         }
     }
@@ -262,7 +282,7 @@ int file_hash_table::rename(source_file * target, const char *new_source_name, c
     dest_file = target->get_destination();
     int r = dest_file->rename(dest);
     if (r != 0) {
-        the_manager.backup_error(r, "Could not do dest_file->rename to %s", dest);
+        the_backup_manager().backup_error(r, "Could not do dest_file->rename to %s", dest);
         return r;
     }
 
