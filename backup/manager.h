@@ -155,7 +155,7 @@ private:
     friend class with_manager_enter_session_and_lock;
 };
 
-extern manager the_manager;
+extern manager& the_backup_manager();
 
 class with_manager_enter_session_and_lock {
   private:

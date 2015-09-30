@@ -615,7 +615,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
     if (full_old_path == NULL) {
         int error = errno;
         if (error == ENOMEM) {
-            the_manager.backup_error(error, "Could not rename file.");
+            the_backup_manager().backup_error(error, "Could not rename file.");
         }
 
         return call_real_rename(oldpath, newpath);
@@ -707,7 +707,7 @@ void manager::capture_rename(const char * full_old_path, const char * newpath)
     } else {
         error = errno;
         if (error == ENOMEM) {
-            the_manager.backup_error(error, "Could not rename user file: %s", newpath);
+            the_backup_manager().backup_error(error, "Could not rename user file: %s", newpath);
         }
     }
 }
@@ -726,7 +726,7 @@ int manager::unlink(const char *path) throw() {
     if (full_path.value == NULL) {
         int error = errno;
         if (error == ENOMEM) {
-            the_manager.backup_error(error, "Could not unlink path.");
+            the_backup_manager().backup_error(error, "Could not unlink path.");
         }
         user_error = call_real_unlink(path);
         return user_error;
@@ -855,7 +855,7 @@ int manager::truncate(const char *path, off_t length) throw() {
     with_object_to_free<char*> full_path(call_real_realpath(path, NULL));
     if (full_path.value == NULL) {
         error = errno;
-        the_manager.backup_error(error, "Failed to truncate backup file.");
+        the_backup_manager().backup_error(error, "Failed to truncate backup file.");
         return call_real_truncate(path, length);
     }
 
@@ -880,7 +880,7 @@ int manager::truncate(const char *path, off_t length) throw() {
             if (r != 0) {
                 error = errno;
                 if (error != ENOENT) {
-                    the_manager.backup_error(error, "Could not truncate backup file.");
+                    the_backup_manager().backup_error(error, "Could not truncate backup file.");
                 }
             }
         }
@@ -920,7 +920,7 @@ void manager::mkdir(const char *pathname) throw() {
     if(m_session != NULL) {
         int r = m_session->capture_mkdir(pathname);
         if (r != 0) {
-            the_manager.backup_error(r, "failed mkdir creating %s", pathname);
+            the_backup_manager().backup_error(r, "failed mkdir creating %s", pathname);
             // proceed to unlocking below
         }
     }

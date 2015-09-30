@@ -126,10 +126,10 @@ void copier::set_directories(const char *source, const char *dest) throw() {
 
 void copier::update_progress_fields(int known_file_count) throw() {
     double p = (double)(m_total_bytes_backed_up + 1)/(double)(m_total_bytes_to_back_up + 1);
-    the_manager.set_progress(p);
-    the_manager.set_files_to_copy(known_file_count);
-    the_manager.set_files_copied(m_total_files_backed_up);
-    the_manager.set_bytes_copied(m_total_bytes_backed_up);
+    the_backup_manager().set_progress(p);
+    the_backup_manager().set_files_to_copy(known_file_count);
+    the_backup_manager().set_files_copied(m_total_files_backed_up);
+    the_backup_manager().set_bytes_copied(m_total_bytes_backed_up);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +154,7 @@ int copier::do_copy(void) throw() {
     }
     while (n_known != 0) {
 
-        if (!the_manager.copy_is_enabled()) goto out;
+        if (!the_backup_manager().copy_is_enabled()) goto out;
         
         {
             with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
@@ -302,7 +302,7 @@ int copier::copy_full_path(const char *source, const char* dest, const char *fil
             r = errno;
             // If the directory was deleted from underneath us, just skip it.
             if (r != ENOENT) {
-                the_manager.backup_error(r, "Could not opendir %s", source);
+                the_backup_manager().backup_error(r, "Could not opendir %s", source);
                 goto out;
             }
         }
@@ -332,7 +332,7 @@ int copier::copy_full_path(const char *source, const char* dest, const char *fil
         r = closedir(dir);
         if (r!=0) {
             r = errno;
-            the_manager.backup_error(r, "Cannot close dir %s during backup at %s:%d\n", source, __FILE__, __LINE__);
+            the_backup_manager().backup_error(r, "Cannot close dir %s during backup at %s:%d\n", source, __FILE__, __LINE__);
             goto out;
         }
     } else {
@@ -369,7 +369,7 @@ int copier::copy_regular_file(source_info src_info, const char *dest) throw() {
         if (error == ENOENT) {
             return 0;
         } else {
-            the_manager.backup_error(error, "Could not open source file: %s", src_info.m_path);
+            the_backup_manager().backup_error(error, "Could not open source file: %s", src_info.m_path);
             return error;
         }
     }
@@ -383,7 +383,7 @@ int copier::copy_regular_file(source_info src_info, const char *dest) throw() {
     int r = call_real_close(src_info.m_fd);
     if (r != 0) {
         r = errno;
-        the_manager.backup_error(r, "Could not close %s at %s:%d", src_info.m_path, __FILE__, __LINE__);
+        the_backup_manager().backup_error(r, "Could not close %s at %s:%d", src_info.m_path, __FILE__, __LINE__);
         return r;
     }
 
@@ -521,7 +521,7 @@ int copier::copy_file_data(source_info src_info) throw() {
     if (r!=0) goto out;
 
     while (1) {
-        if (!the_manager.copy_is_enabled()) goto out;
+        if (!the_backup_manager().copy_is_enabled()) goto out;
 
         PAUSE(HotBackup::COPIER_BEFORE_READ);
         const ssize_t lock_start = m_total_written_this_file;
@@ -573,7 +573,7 @@ copy_result copier::open_and_lock_file_then_copy_range(source_info src_info,
         int r = call_real_close(src_info.m_fd);
         if (r != 0) {
             int close_errno = errno;
-            the_manager.backup_error(close_errno, "Could not close %s at %s:%d", src_info.m_path, __FILE__, __LINE__);
+            the_backup_manager().backup_error(close_errno, "Could not close %s at %s:%d", src_info.m_path, __FILE__, __LINE__);
             result.m_result = close_errno;
         }
 
@@ -589,7 +589,7 @@ copy_result copier::open_and_lock_file_then_copy_range(source_info src_info,
             if (open_errno == ENOENT) {
                 return result;
             } else {
-                the_manager.backup_error(open_errno, "Could not open source file: %s", src_info.m_path);
+                the_backup_manager().backup_error(open_errno, "Could not open source file: %s", src_info.m_path);
                 result.m_result = open_errno;
                 return result;
             }
@@ -602,7 +602,7 @@ copy_result copier::open_and_lock_file_then_copy_range(source_info src_info,
         off_t offset = call_real_lseek(src_info.m_fd, m_total_written_this_file, SEEK_SET);
         if (offset < 0) {
             int lseek_errno = errno;
-            the_manager.backup_error(lseek_errno, "Could not lseek file: %s", src_info.m_path);
+            the_backup_manager().backup_error(lseek_errno, "Could not lseek file: %s", src_info.m_path);
             result.m_result = lseek_errno;
             return result;
         }
@@ -687,7 +687,7 @@ int copier::possibly_sleep_or_abort(source_info src_info, ssize_t total_written_
 {
     int r = 0;
         while (1) {
-            if (!the_manager.copy_is_enabled()) goto out;
+            if (!the_backup_manager().copy_is_enabled()) goto out;
 
             // Sleep until we've used up enough time.  Be sure to keep polling once per second.
             struct timespec endtime;
@@ -722,7 +722,7 @@ int copier::possibly_sleep_or_abort(source_info src_info, ssize_t total_written_
                 usleep((long)(sleep_time*1e6));
             }
 
-            if (!the_manager.copy_is_enabled()) goto out;
+            if (!the_backup_manager().copy_is_enabled()) goto out;
 
         }
 out:
@@ -744,7 +744,7 @@ int copier::add_dir_entries_to_todo(DIR *dir, const char *file) throw() {
     with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
     struct dirent const *e = NULL;
     while((e = readdir(dir)) != NULL) {
-        if (!the_manager.copy_is_enabled()) break;
+        if (!the_backup_manager().copy_is_enabled()) break;
         if(is_dot(e)) {
             TRACE("skipping: ", e->d_name);
         } else {
@@ -792,10 +792,10 @@ void copier::add_file_to_todo(const char *file) throw() {
 //     This should only be called if there is no future copy work.
 //
 void copier::cleanup(void) throw() {
-    the_manager.set_progress(0.0);
-    the_manager.set_files_to_copy(0);
-    the_manager.set_files_copied(0);
-    the_manager.set_bytes_copied(0);
+    the_backup_manager().set_progress(0.0);
+    the_backup_manager().set_files_to_copy(0);
+    the_backup_manager().set_files_copied(0);
+    the_backup_manager().set_bytes_copied(0);
     with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
     for(std::vector<char *>::size_type i = 0; i < m_todo.size(); ++i) {
         char *file = m_todo[i];

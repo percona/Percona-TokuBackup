@@ -178,7 +178,7 @@ int source_file::unlock_range(uint64_t lo, uint64_t hi) throw() {
         }
     }
     // No such range.
-    the_manager.fatal_error(EINVAL, "Range doesn't exist at %s:%d", __FILE__, __LINE__);
+    the_backup_manager().fatal_error(EINVAL, "Range doesn't exist at %s:%d", __FILE__, __LINE__);
     return EINVAL;
 }
 

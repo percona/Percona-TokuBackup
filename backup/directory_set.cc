@@ -105,7 +105,7 @@ int directory_set::validate(void) const {
         r = stat(m_destinations[i], &sbuf);
         if (r != 0) {
             r = errno;
-            the_manager.backup_error(r,
+            the_backup_manager().backup_error(r,
                                      "Problem stat()ing backup directory %s",
                                          m_destinations[i]);
             break;
@@ -113,7 +113,7 @@ int directory_set::validate(void) const {
 
         if (!S_ISDIR(sbuf.st_mode)) {
             r = EINVAL;
-                the_manager.backup_error(EINVAL, 
+                the_backup_manager().backup_error(EINVAL,
                                          "Backup destination %s is not a directory", 
                                          m_destinations[i]);
                 break;
@@ -122,7 +122,7 @@ int directory_set::validate(void) const {
         DIR *dir = opendir(m_destinations[i]);
         if (dir == NULL) {
             r = errno;
-            the_manager.backup_error(r,
+            the_backup_manager().backup_error(r,
                                      "Problem opening backup directory %s", 
                                          m_destinations[i]);
             break;
@@ -132,7 +132,7 @@ int directory_set::validate(void) const {
         int result = closedir(dir);
         if (result != 0) {
             r = errno;
-            the_manager.backup_error(r, 
+            the_backup_manager().backup_error(r,
                                      "Problem closedir()ing backup directory %s",
                                      m_destinations[i]);
             // The dir is already as closed as I can get it.
@@ -226,12 +226,12 @@ int directory_set::verify_destination_is_empty(const int index,
             
             // This is bad.  The directory should be empty.
             r = EINVAL;
-            the_manager.backup_error(r, "Backup directory %s is not empty", 
+            the_backup_manager().backup_error(r, "Backup directory %s is not empty", 
                                      m_destinations[index]);
             break;
         } else if (errno != 0) {
             r = errno;
-            the_manager.backup_error(r, "Problem readdir()ing backup directory %s", 
+            the_backup_manager().backup_error(r, "Problem readdir()ing backup directory %s", 
                              m_destinations[index]);
             break;
         }

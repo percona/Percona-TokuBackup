@@ -69,7 +69,7 @@ int destination_file::close(void) const throw() {
     int r = call_real_close(m_fd);
     if (r == -1) {
         r = errno;
-        the_manager.backup_error(r, "Trying to close a backup file (fd=%d)", m_fd);
+        the_backup_manager().backup_error(r, "Trying to close a backup file (fd=%d)", m_fd);
     }
 
     return r;
@@ -83,14 +83,14 @@ int destination_file::pwrite(const void *buf, size_t nbyte, off_t offset) const 
         ssize_t wr = call_real_pwrite(m_fd, buf, nbyte, offset);
         if (wr == -1) {
             int r = errno;
-            the_manager.backup_error(r, "Failed to pwrite backup file at %s:%d", __FILE__, __LINE__);
+            the_backup_manager().backup_error(r, "Failed to pwrite backup file at %s:%d", __FILE__, __LINE__);
             return r;
         }
 
         if (wr == 0) {
             // Can this happen?  Don't see how.  If it does happen, treat it as an error.
             int r = -1; // Unknown error
-            the_manager.backup_error(-1, "pwrite inexplicably returned zero at %s:%d", __FILE__, __LINE__);
+            the_backup_manager().backup_error(-1, "pwrite inexplicably returned zero at %s:%d", __FILE__, __LINE__);
             return r;
         }
 
@@ -108,7 +108,7 @@ int destination_file::truncate(off_t length) const throw() {
     r = call_real_ftruncate(m_fd, length);
     if (r != 0) {
         r = errno;
-        the_manager.backup_error(r, "Truncating backup file failed at %s:%d", __FILE__, __LINE__);
+        the_backup_manager().backup_error(r, "Truncating backup file failed at %s:%d", __FILE__, __LINE__);
     }
 
     return r;
@@ -120,7 +120,7 @@ int destination_file::unlink(void) const throw() {
     int r = call_real_unlink(m_path);
     if (r != 0) {
         r = errno;
-        the_manager.backup_error(r, "Failed unlink of backup file %s", m_path);
+        the_backup_manager().backup_error(r, "Failed unlink of backup file %s", m_path);
     }
 
     return r;
@@ -143,7 +143,7 @@ int destination_file::rename(const char *new_path) throw() {
         // original file.
         if (r != ENOENT) {
             free((void*) new_destination_path);
-            the_manager.backup_error(r, "Rename failed on backup file.");
+            the_backup_manager().backup_error(r, "Rename failed on backup file.");
             return r;
         }
     }

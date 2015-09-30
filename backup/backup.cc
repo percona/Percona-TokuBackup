@@ -51,6 +51,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "real_syscalls.h"
 #include "backup_debug.h"
 #include "directory_set.h"
+#include "backup_helgrind.h"
 
 #if DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::InterposeWarn(string, arg);
@@ -62,7 +63,12 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #define ERROR(string,arg)
 #endif
 
-manager the_manager;
+manager& the_backup_manager()
+{
+    static manager m;
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m, sizeof(manager));
+    return m;
+}
 
 //***************************************
 //
@@ -87,13 +93,13 @@ extern "C" int open(const char* file, int oflag, ...) {
         va_start(ap, oflag);
         mode_t mode = va_arg(ap, mode_t);
         va_end(ap);
-        the_manager.lock_file_op();
+        the_backup_manager().lock_file_op();
         fd = call_real_open(file, oflag, mode);
-        if (fd >= 0 && the_manager.is_alive()) { 
-            int ignore __attribute__((unused)) = the_manager.open(fd, file, oflag); // if there's an error in this call, it's been reported.  The application doesn't want to see the error.
+        if (fd >= 0 && the_backup_manager().is_alive()) {
+            int ignore __attribute__((unused)) = the_backup_manager().open(fd, file, oflag); // if there's an error in this call, it's been reported.  The application doesn't want to see the error.
         }
 
-        the_manager.unlock_file_op();
+        the_backup_manager().unlock_file_op();
     } else {
         fd = call_real_open(file, oflag);
         if (fd >= 0) {
@@ -104,8 +110,8 @@ extern "C" int open(const char* file, int oflag, ...) {
             }
 
             // TODO: What happens if we can't tell that the file is a FIFO?  Should we just the backup?  Skip this file?
-            if (!S_ISFIFO(stats.st_mode) && the_manager.is_alive()) {
-                int ignore __attribute__((unused)) = the_manager.open(fd, file, oflag); // if there's an error in the call, it's reported.  The application doesn't want to hear about it.
+            if (!S_ISFIFO(stats.st_mode) && the_backup_manager().is_alive()) {
+                int ignore __attribute__((unused)) = the_backup_manager().open(fd, file, oflag); // if there's an error in the call, it's reported.  The application doesn't want to hear about it.
             }
         }
     }
@@ -127,8 +133,8 @@ out:
 extern "C" int close(int fd) {
     int r = 0;
     TRACE("close() intercepted, fd = ", fd);
-    if (the_manager.is_alive()) {
-        the_manager.close(fd); // The application doesn't want to hear about problems. The backup manager has been notified.
+    if (the_backup_manager().is_alive()) {
+        the_backup_manager().close(fd); // The application doesn't want to hear about problems. The backup manager has been notified.
     }
 
     r = call_real_close(fd);
@@ -149,9 +155,9 @@ extern "C" ssize_t write(int fd, const void *buf, size_t nbyte) {
     TRACE("write() intercepted, fd = ", fd);
 
     ssize_t r = 0;
-    if (the_manager.is_alive()) {
+    if (the_backup_manager().is_alive()) {
         // Moved the write down into manager where a lock can be obtained.
-        r = the_manager.write(fd, buf, nbyte);
+        r = the_backup_manager().write(fd, buf, nbyte);
     } else {
         r = call_real_write(fd, buf, nbyte);
     }
@@ -177,9 +183,9 @@ extern "C" ssize_t write(int fd, const void *buf, size_t nbyte) {
 extern "C" ssize_t read(int fd, void *buf, size_t nbyte) {
     TRACE("read() intercepted, fd = ", fd);
     ssize_t r = 0;
-    if (the_manager.is_alive()) {
+    if (the_backup_manager().is_alive()) {
         // Moved the read down into manager, where a lock can be obtained.
-        r = the_manager.read(fd, buf, nbyte);        
+        r = the_backup_manager().read(fd, buf, nbyte);
     } else {
         r = call_real_read(fd, buf, nbyte);
     }
@@ -200,8 +206,8 @@ extern "C" ssize_t read(int fd, void *buf, size_t nbyte) {
 extern "C" ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset) {
     TRACE("pwrite() intercepted, fd = ", fd);
     ssize_t r = 0;
-    if (the_manager.is_alive()) {
-        r = the_manager.pwrite(fd, buf, nbyte, offset);
+    if (the_backup_manager().is_alive()) {
+        r = the_backup_manager().pwrite(fd, buf, nbyte, offset);
     } else {
         r = call_real_pwrite(fd, buf, nbyte, offset);
     }
@@ -214,8 +220,8 @@ extern "C" ssize_t pwrite(int fd, const void *buf, size_t nbyte, off_t offset) {
 off_t lseek(int fd, off_t offset, int whence) {
     TRACE("lseek() intercepted fd =", fd);
     off_t r = 0;
-    if (the_manager.is_alive()) {
-        r = the_manager.lseek(fd, offset, whence);
+    if (the_backup_manager().is_alive()) {
+        r = the_backup_manager().lseek(fd, offset, whence);
     } else {
         r = call_real_lseek(fd, offset, whence);
     }
@@ -234,8 +240,8 @@ off_t lseek(int fd, off_t offset, int whence) {
 extern "C" int ftruncate(int fd, off_t length) {
     TRACE("ftruncate() intercepted, fd = ", fd);
     int r = 0;
-    if (the_manager.is_alive()) {
-        r = the_manager.ftruncate(fd, length);
+    if (the_backup_manager().is_alive()) {
+        r = the_backup_manager().ftruncate(fd, length);
     } else {
         r = call_real_ftruncate(fd, length);
     }
@@ -255,8 +261,8 @@ extern "C" int ftruncate(int fd, off_t length) {
 extern "C" int truncate(const char *path, off_t length) {
     int r = 0;
     TRACE("truncate() intercepted, path = ", path);
-    if (the_manager.is_alive()) {
-        r = the_manager.truncate(path, length);
+    if (the_backup_manager().is_alive()) {
+        r = the_backup_manager().truncate(path, length);
     } else {
         r = call_real_truncate(path, length);
     }
@@ -274,10 +280,10 @@ extern "C" int truncate(const char *path, off_t length) {
 extern "C" int unlink(const char *path) {
     int r = 0;
     TRACE("unlink() intercepted, path = ", path);
-    if (the_manager.is_alive()) {
-        the_manager.lock_file_op();
-        r = the_manager.unlink(path);
-        the_manager.unlock_file_op();
+    if (the_backup_manager().is_alive()) {
+        the_backup_manager().lock_file_op();
+        r = the_backup_manager().unlink(path);
+        the_backup_manager().unlock_file_op();
     } else {
         r = call_real_unlink(path);
     }
@@ -297,10 +303,10 @@ extern "C" int rename(const char *oldpath, const char *newpath) {
     TRACE("-> oldpath = ", oldpath);
     TRACE("-> newpath = ", newpath);
     
-    if (the_manager.is_alive()) {
-        the_manager.lock_file_op();
-        r = the_manager.rename(oldpath, newpath);
-        the_manager.unlock_file_op();
+    if (the_backup_manager().is_alive()) {
+        the_backup_manager().lock_file_op();
+        r = the_backup_manager().rename(oldpath, newpath);
+        the_backup_manager().unlock_file_op();
     } else {
         r = call_real_rename(oldpath, newpath);
     }
@@ -318,9 +324,9 @@ int mkdir(const char *pathname, mode_t mode) {
     int r = 0;
     TRACE("mkidr() intercepted", pathname);
     r = call_real_mkdir(pathname, mode);
-    if (r == 0 && the_manager.is_alive()) {
+    if (r == 0 && the_backup_manager().is_alive()) {
         // Don't try to write if there was an error in the application.
-        the_manager.mkdir(pathname);
+        the_backup_manager().mkdir(pathname);
     }
     return r;
 }
@@ -338,7 +344,7 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
             error_fun(EINVAL, "One of the destination directories is NULL", error_extra);
             return EINVAL;
         }
-        //int r = the_manager.add_directory(source_dirs[i], dest_dirs[i], poll_fun, poll_extra, error_fun, error_extra);
+        //int r = the_backup_manager().add_directory(source_dirs[i], dest_dirs[i], poll_fun, poll_extra, error_fun, error_extra);
         //if (r!=0) return r;
     }
 
@@ -383,15 +389,15 @@ extern "C" int tokubackup_create_backup(const char *source_dirs[], const char *d
     r = dirs.validate(); if (r != 0) { return EINVAL; }
     *****/
 
-    return the_manager.do_backup(&dirs, &calls);
+    return the_backup_manager().do_backup(&dirs, &calls);
 }
 
 extern "C" void tokubackup_throttle_backup(unsigned long bytes_per_second) throw() {
-    the_manager.set_throttle(bytes_per_second);
+    the_backup_manager().set_throttle(bytes_per_second);
 }
 
 unsigned long get_throttle(void) throw() {
-    return the_manager.get_throttle();
+    return the_backup_manager().get_throttle();
 }
 
 char *malloc_snprintf(size_t size, const char *format, ...) throw() {
@@ -407,22 +413,22 @@ const char *tokubackup_version_string = "tokubackup 1.2 $Revision: 56100 $";
 
 #ifdef GLASSBOX
 void backup_pause_disable(bool b) throw() {
-    the_manager.pause_disable(b);
+    the_backup_manager().pause_disable(b);
 }
 
 void backup_set_keep_capturing(bool b) throw()
 // Effect: see backup_internal.h
 {
-    the_manager.set_keep_capturing(b);
+    the_backup_manager().set_keep_capturing(b);
 }
 bool backup_is_capturing(void) throw() {
-    return the_manager.is_capturing();
+    return the_backup_manager().is_capturing();
 }
 bool backup_done_copying(void) throw() {
-    return the_manager.is_done_copying();
+    return the_backup_manager().is_done_copying();
 }
 void backup_set_start_copying(bool b) throw() {
-    the_manager.set_start_copying(b);
+    the_backup_manager().set_start_copying(b);
 }
 #endif
 

@@ -41,7 +41,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 void check_fun(long predicate, const char *expr, const backtrace bt) throw() {
     if (!predicate) {
-        the_manager.kill();
+        the_backup_manager().kill();
         int e = errno;
         fprintf(stderr, "check(%s) failed\n", expr);
         fprintf(stderr, "errno=%d\n", e);
