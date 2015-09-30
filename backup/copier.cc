@@ -124,6 +124,14 @@ void copier::set_directories(const char *source, const char *dest) throw() {
     m_dest = dest;
 }
 
+void copier::update_progress_fields(int known_file_count) throw() {
+    double p = (double)(m_total_bytes_backed_up + 1)/(double)(m_total_bytes_to_back_up + 1);
+    the_manager.set_progress(p);
+    the_manager.set_files_to_copy(known_file_count);
+    the_manager.set_files_copied(m_total_files_backed_up);
+    the_manager.set_bytes_copied(m_total_bytes_backed_up);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // start_copy() -
@@ -153,7 +161,7 @@ int copier::do_copy(void) throw() {
             fname = m_todo.back();
         }
         TRACE("Copying: ", fname);
-        
+        this->update_progress_fields(n_known);
         char *msg = malloc_snprintf(strlen(fname)+100, "Backup progress %ld bytes, %ld files.  %ld more files known of. Copying file %s",  m_total_bytes_backed_up, m_total_files_backed_up, n_known, fname);
         // Use n_done/n_files.   We need to do a better estimate involving n_bytes_copied/n_bytes_total
         // This one is very wrongu
@@ -784,6 +792,10 @@ void copier::add_file_to_todo(const char *file) throw() {
 //     This should only be called if there is no future copy work.
 //
 void copier::cleanup(void) throw() {
+    the_manager.set_progress(0.0);
+    the_manager.set_files_to_copy(0);
+    the_manager.set_files_copied(0);
+    the_manager.set_bytes_copied(0);
     with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
     for(std::vector<char *>::size_type i = 0; i < m_todo.size(); ++i) {
         char *file = m_todo[i];

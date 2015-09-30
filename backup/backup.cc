@@ -425,3 +425,19 @@ void backup_set_start_copying(bool b) throw() {
     the_manager.set_start_copying(b);
 }
 #endif
+
+float tokubackup_get_progress() throw() {
+    return 0.0;
+}
+
+long tokubackup_get_bytes_copied() throw() {
+    return 0;
+}
+
+int tokubackup_get_files_copied() throw() {
+    return 0;
+}
+
+int tokubackup_get_files_to_copy() throw() {
+    return 0;
+}

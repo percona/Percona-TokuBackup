@@ -940,6 +940,42 @@ unsigned long manager::get_throttle(void) const throw() {
     return m_throttle;
 }
 
+void manager::set_progress(float progress) throw() {
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_progress, sizeof(m_progress));
+    m_progress = progress;
+}
+
+float manager::get_progress(void) const throw() {
+    return m_progress;
+}
+
+void manager::set_files_copied(unsigned int files_copied) throw() {
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_files_copied, sizeof(m_files_copied));
+    m_files_copied = files_copied;
+}
+
+unsigned int manager::get_files_copied(void) const throw() {
+    return m_files_copied;
+}
+
+void manager::set_files_to_copy(unsigned int files_to_copy) throw() {
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_files_to_copy, sizeof(m_files_to_copy));
+    m_files_to_copy = files_to_copy;
+}
+
+unsigned int manager::get_files_to_copy(void) const throw() {
+    return m_files_to_copy;
+}
+
+void manager::set_bytes_copied(unsigned long bytes_copied) throw() {
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_bytes_copied, sizeof(m_bytes_copied));
+    m_bytes_copied = bytes_copied;
+}
+
+unsigned long manager::get_bytes_copied(void) const throw() {
+    return m_bytes_copied;
+}
+
 void manager::backup_error_ap(int errnum, const char *format_string, va_list ap) throw() {
     this->disable_capture();
     this->disable_copy();

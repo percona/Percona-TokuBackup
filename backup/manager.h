@@ -76,6 +76,10 @@ private:
     static pthread_rwlock_t m_session_rwlock;
 
     volatile unsigned long m_throttle;
+    volatile float m_progress;
+    volatile unsigned long m_bytes_copied;
+    volatile unsigned int m_files_copied;
+    volatile unsigned int m_files_to_copy;
 
     // Error handling.
     static pthread_mutex_t m_error_mutex;     // When testing errors grab this mutex. 
@@ -105,6 +109,14 @@ public:
     
     void set_throttle(unsigned long bytes_per_second) throw(); // This is thread-safe.
     unsigned long get_throttle(void) const throw();                 // This is thread-safe.
+    void set_progress(float progress) throw();
+    float get_progress(void) const throw();
+    void set_files_copied(unsigned int files_copied) throw();
+    unsigned int get_files_copied(void) const throw();
+    void set_files_to_copy(unsigned int files_to_copy) throw();
+    unsigned int get_files_to_copy(void) const throw();
+    void set_bytes_copied (unsigned long files_to_copy) throw();
+    unsigned long get_bytes_copied(void) const throw();
 
     void fatal_error(int errnum, const char *format, ...) throw() __attribute__((format(printf,3,4)));
     void backup_error(int errnum, const char *format, ...) throw() __attribute__((format(printf,3,4)));
