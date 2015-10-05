@@ -85,9 +85,9 @@ static void thread_test_block(void) {
         check(result==&the_char);
     }
     { int r = sf.unlock_range(9,12);           check(r==0); }
-    VALGRIND_HG_ENABLE_CHECKING(&stepa, sizeof(stepa));
-    VALGRIND_HG_ENABLE_CHECKING(&stepb, sizeof(stepb));
-    VALGRIND_HG_ENABLE_CHECKING(&stepc, sizeof(stepc));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepa, sizeof(stepa));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepb, sizeof(stepb));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepc, sizeof(stepc));
 }
 
 static void thread_test_noblock(void) {
@@ -116,9 +116,9 @@ static void thread_test_noblock(void) {
     }
 
     { int r = sf.unlock_range(12,15);           check(r==0); }
-    VALGRIND_HG_ENABLE_CHECKING(&stepa, sizeof(stepa));
-    VALGRIND_HG_ENABLE_CHECKING(&stepb, sizeof(stepb));
-    VALGRIND_HG_ENABLE_CHECKING(&stepc, sizeof(stepc));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepa, sizeof(stepa));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepb, sizeof(stepb));
+    TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&stepc, sizeof(stepc));
 }
 
 int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
