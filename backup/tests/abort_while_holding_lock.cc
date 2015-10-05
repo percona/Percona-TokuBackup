@@ -83,18 +83,20 @@ int test_main(int argc __attribute__((unused)), const char *argv[] __attribute__
     setup_source();
     char *src = get_src();
     size_t len = strlen(src)+100;
-    A = (char*)malloc(len); { int r = snprintf(A, len, "%s/A", src); assert(size_t(r)<len); }
-    B = (char*)malloc(len); { int r = snprintf(B, len, "%s/B", src); assert(size_t(r)<len); }
-    C = (char*)malloc(len); { int r = snprintf(A, len, "%s/C", src); assert(size_t(r)<len); }
-    D = (char*)malloc(len); { int r = snprintf(B, len, "%s/D", src); assert(size_t(r)<len); }
+    int r = 0;
+    A = (char*)malloc(len); { r = snprintf(A, len, "%s/A", src); assert(size_t(r)<len); }
+    B = (char*)malloc(len); { r = snprintf(B, len, "%s/B", src); assert(size_t(r)<len); }
+    C = (char*)malloc(len); { r = snprintf(A, len, "%s/C", src); assert(size_t(r)<len); }
+    D = (char*)malloc(len); { r = snprintf(B, len, "%s/D", src); assert(size_t(r)<len); }
     {
         int fd = open(A, O_WRONLY | O_CREAT, 0777);
         assert(fd>=0);
-        int r = close(fd);
+        r = close(fd);
         assert(r==0);
     }
     {
-        int r = rename(A, B);
+        r = rename(A, B);
+        printf("Could not rename file, error:%d\n", r);
         assert(r==0);
     }
     cleanup_dirs();

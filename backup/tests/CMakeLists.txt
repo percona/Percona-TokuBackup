@@ -3,7 +3,10 @@ project(BackupTests)
 include_directories(..)
 find_package( Threads )
 
-option(USE_GRIND "Use helgrind and valgrind." ON)
+option(USE_GRIND "Use helgrind and valgrind." OFF)
+if (USE_VALGRIND)
+  set(USE_GRIND ON)
+endif()
 
 function(add_valgrind_tool_test tool test)
   add_test(
