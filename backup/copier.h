@@ -116,6 +116,7 @@ public:
     void set_directories(const char *source, const char *dest) throw();
     void set_error(int error) throw();
     void update_progress_fields(int) throw();
+    void update_progress_fields(void) throw();
     int do_copy(void) throw() __attribute__((warn_unused_result)) __attribute__((warn_unused_result)); // Returns the error code (not in errno)
     int copy_stripped_file(const char *file) throw() __attribute__((warn_unused_result)); // Returns the error code (not in errno)
     int copy_full_path(const char *source, const char* dest, const char *file) throw() __attribute__((warn_unused_result)); // Returns the error code (not in errno)

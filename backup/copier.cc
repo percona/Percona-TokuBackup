@@ -125,9 +125,13 @@ void copier::set_directories(const char *source, const char *dest) throw() {
 }
 
 void copier::update_progress_fields(int known_file_count) throw() {
+    the_backup_manager().set_files_to_copy(known_file_count);
+    this->update_progress_fields();
+}
+
+void copier::update_progress_fields(void) throw() {
     double p = (double)(m_total_bytes_backed_up + 1)/(double)(m_total_bytes_to_back_up + 1);
     the_backup_manager().set_progress(p);
-    the_backup_manager().set_files_to_copy(known_file_count);
     the_backup_manager().set_files_copied(m_total_files_backed_up);
     the_backup_manager().set_bytes_copied(m_total_bytes_backed_up);
 }
@@ -656,6 +660,7 @@ copy_result copier::copy_file_range(source_info src_info,
                      src_info.m_size,
                      src_info.m_path,
                      dest->get_path());
+            this->update_progress_fields();
             int r = m_calls->poll((double)(m_total_bytes_backed_up+1)/(double)(m_total_bytes_to_back_up+1), poll_string);
             if (r!=0) {
                 m_calls->report_error(r, "User aborted backup");
@@ -677,6 +682,7 @@ copy_result copier::copy_file_range(source_info src_info,
             n_wrote_this_buf          += result.m_n_wrote_now;
             m_total_written_this_file += result.m_n_wrote_now;
             m_total_bytes_backed_up   += result.m_n_wrote_now;
+            this->update_progress_fields();
         }
 
     return result;
@@ -710,6 +716,7 @@ int copier::possibly_sleep_or_abort(source_info src_info, ssize_t total_written_
                          src_info.m_path, 
                          dest->get_path(), 
                          sleep_time);
+                this->update_progress_fields();
                 r = m_calls->poll((double)(m_total_bytes_backed_up+1)/(double)(m_total_bytes_to_back_up+1), string);
             }
             if (r!=0) {
