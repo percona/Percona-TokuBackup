@@ -12,10 +12,9 @@
     tokubackup_create_backup;
     tokubackup_sql_suffix;
     tokubackup_throttle_backup;
-    tokubackup_get_progress;
+    tokubackup_backup_is_in_progress;
     tokubackup_get_bytes_copied;
     tokubackup_get_files_copied;
-    tokubackup_get_files_to_copy;
     tokubackup_version_string;
     truncate64; truncate;
     unlink;

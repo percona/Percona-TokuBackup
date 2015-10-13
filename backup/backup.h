@@ -111,13 +111,11 @@ void tokubackup_throttle_backup(unsigned long bytes_per_second) throw() __attrib
 //   at a high rate, then the destination directory will receive those modifications
 //   at the same rate, plus receive the throttled read data from the source.
 
-float tokubackup_get_progress() throw() __attribute__((visibility("default")));
+bool tokubackup_backup_is_in_progress() throw() __attribute__((visibility("default")));
 long tokubackup_get_bytes_copied() throw() __attribute__((visibility("default")));
 int tokubackup_get_files_copied() throw() __attribute__((visibility("default")));
-int tokubackup_get_files_to_copy() throw() __attribute__((visibility("default")));
 // Effect: If there is a backup in progress these functions will
-// return information about how much data has been copied and how many
-// files are left to copy.
+// return information about how much data has been copied.
 
 const extern char *tokubackup_version_string  __attribute__((visibility("default")));
 

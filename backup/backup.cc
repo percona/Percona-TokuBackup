@@ -432,8 +432,8 @@ void backup_set_start_copying(bool b) throw() {
 }
 #endif
 
-float tokubackup_get_progress() throw() {
-    return the_backup_manager().get_progress();
+bool tokubackup_backup_is_in_progress() throw() {
+    return the_backup_manager().backup_is_in_progress();
 }
 
 long tokubackup_get_bytes_copied() throw() {
@@ -442,8 +442,4 @@ long tokubackup_get_bytes_copied() throw() {
 
 int tokubackup_get_files_copied() throw() {
     return the_backup_manager().get_files_copied();
-}
-
-int tokubackup_get_files_to_copy() throw() {
-    return the_backup_manager().get_files_to_copy();
 }

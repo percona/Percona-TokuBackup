@@ -124,14 +124,7 @@ void copier::set_directories(const char *source, const char *dest) throw() {
     m_dest = dest;
 }
 
-void copier::update_progress_fields(int known_file_count) throw() {
-    the_backup_manager().set_files_to_copy(known_file_count);
-    this->update_progress_fields();
-}
-
 void copier::update_progress_fields(void) throw() {
-    double p = (double)(m_total_bytes_backed_up + 1)/(double)(m_total_bytes_to_back_up + 1);
-    the_backup_manager().set_progress(p);
     the_backup_manager().set_files_copied(m_total_files_backed_up);
     the_backup_manager().set_bytes_copied(m_total_bytes_backed_up);
 }
@@ -165,7 +158,6 @@ int copier::do_copy(void) throw() {
             fname = m_todo.back();
         }
         TRACE("Copying: ", fname);
-        this->update_progress_fields(n_known);
         char *msg = malloc_snprintf(strlen(fname)+100, "Backup progress %ld bytes, %ld files.  %ld more files known of. Copying file %s",  m_total_bytes_backed_up, m_total_files_backed_up, n_known, fname);
         // Use n_done/n_files.   We need to do a better estimate involving n_bytes_copied/n_bytes_total
         // This one is very wrongu
@@ -192,7 +184,7 @@ int copier::do_copy(void) throw() {
         fname = NULL;
 
         m_total_files_backed_up++;
-        
+        this->update_progress_fields();
         {
             with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
             n_known = m_todo.size();
@@ -774,7 +766,7 @@ int copier::add_dir_entries_to_todo(DIR *dir, const char *file) throw() {
             TRACE("~~~Added this file to todo list:", new_name);
         }
     }
-    
+
 out:
     return error;
 }
@@ -799,8 +791,6 @@ void copier::add_file_to_todo(const char *file) throw() {
 //     This should only be called if there is no future copy work.
 //
 void copier::cleanup(void) throw() {
-    the_backup_manager().set_progress(0.0);
-    the_backup_manager().set_files_to_copy(0);
     the_backup_manager().set_files_copied(0);
     the_backup_manager().set_bytes_copied(0);
     with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
