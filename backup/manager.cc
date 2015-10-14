@@ -239,6 +239,7 @@ unlock_out: // preserves r if r!0
 
 error_out:
     thread_has_backup_calls = NULL;
+    m_backup_is_running = false;
     return r;
 }
 
