@@ -86,13 +86,13 @@ static void work_it(char *src, char *magic, int size)
 
     // 6.  Write magic to the file.
     lseek(fd, size, SEEK_SET);
-    write(fd, magic, size);
+    r = write(fd, magic, size);
 
     // 7.  pwrite magic to the file.
-    pwrite(fd, magic, size, size * 3);
+    r = pwrite(fd, magic, size, size * 3);
 
     // 8.  ftruncate magic from the file.
-    ftruncate(fd, size * 3);
+    r = ftruncate(fd, size * 3);
 
     // close the file.
     close(fd);
@@ -104,10 +104,10 @@ static int check_it(char *dst, char *magic, int size, int count)
     int r = 0;
     int backup_fd = openf(O_RDONLY, 0, "%s/magic%d", dst, count);
     char backup_buf[20] = {0};
-    pread(backup_fd, backup_buf, size, 0);
+    int result = pread(backup_fd, backup_buf, size, 0);
     char magic_buf[20] = {0};
     snprintf(magic_buf, size, "%s%d", magic, count);
-    int result = strcmp(backup_buf, magic_buf);
+    result = strcmp(backup_buf, magic_buf);
     if (result != 0) {
         printf("Couldn't match: source:%s vs backup:%s\n", magic_buf, backup_buf);
         r = -1;

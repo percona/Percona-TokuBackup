@@ -39,8 +39,10 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #if BACKUP_USE_VALGRIND
   #include <valgrind/helgrind.h>
   #define TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(x, y) VALGRIND_HG_DISABLE_CHECKING(x, y)
+  #define TOKUBACKUP_VALGRIND_HG_ENABLE_CHECKING(x, y) VALGRIND_HG_ENABLE_CHECKING(x, y)
 #else
   #define TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(x, y) ((void) x, (void) y)
+  #define TOKUBACKUP_VALGRIND_HG_ENABLE_CHECKING(x, y) ((void) x, (void) y)
 #endif
 
 #endif  /* BACKUP_HELGPIND_H */
