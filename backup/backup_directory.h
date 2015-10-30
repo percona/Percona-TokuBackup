@@ -71,6 +71,7 @@ public:
     int capture_mkdir(const char *pathname) throw() __attribute__((warn_unused_result)); // return 0 on success, error otherwise.
     void add_to_copy_todo_list(const char *file_path) throw();
     void cleanup(void) throw();
+    bool file_is_excluded(const char *) throw();
 private:
     const directory_set * const m_dirs;
     copier m_copier;

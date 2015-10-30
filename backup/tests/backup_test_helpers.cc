@@ -145,6 +145,8 @@ struct backup_thread_extra_t {
     void*              poll_extra;
     backup_error_fun_t error_fun;
     void*              error_extra;
+    backup_exclude_copy_fun_t exclude_fun;
+    void*                     exclude_extra;
     int                expect_return_result;
 };
 
@@ -157,7 +159,7 @@ static void* start_backup_thread_fun(void *backup_extra_v) {
     int r = tokubackup_create_backup(srcs, dsts, dir_count,
                                      backup_extra->poll_fun,  backup_extra->poll_extra,
                                      backup_extra->error_fun, backup_extra->error_extra,
-                                     NULL, NULL);
+                                     backup_extra->exclude_fun, backup_extra->exclude_extra);
     if (r!=backup_extra->expect_return_result) {
         printf("%s:%d Got error %d, Expected %d\n", __FILE__, __LINE__, r, backup_extra->expect_return_result);
     }
@@ -188,11 +190,16 @@ void start_backup_thread_with_funs(pthread_t *thread,
                                   expect_return_result);
 }
 
-void start_backup_thread_with_funs(pthread_t *thread,
-                                   const char *src_dirs[], const char *dst_dirs[],
-                                   backup_poll_fun_t poll_fun, void *poll_extra,
-                                   backup_error_fun_t error_fun, void *error_extra,
-                                   int expect_return_result) {
+void start_backup_thread_with_error_poll_and_exclude_funs(pthread_t *thread,
+                                                          const char *src_dirs[],
+                                                          const char *dst_dirs[],
+                                                          backup_poll_fun_t poll_fun,
+                                                          void *poll_extra,
+                                                          backup_error_fun_t error_fun,
+                                                          void *error_extra,
+                                                          backup_exclude_copy_fun_t exclude_fun,
+                                                          void *exclude_extra,
+                                                          int expect_return_result) {
     backup_thread_extra_t *p = new backup_thread_extra_t;
     //    *p = {src_dir, dst_dir, poll_fun, poll_extra, error_fun, error_extra, expect_return_result};
     p->src_dirs = src_dirs;
@@ -203,9 +210,27 @@ void start_backup_thread_with_funs(pthread_t *thread,
     p->error_extra = error_extra;
     p->expect_return_result = expect_return_result;
     TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&backup_is_done, sizeof(backup_is_done));
+    p->exclude_fun = exclude_fun;
+    p->exclude_extra = exclude_extra;
     backup_is_done = false;
     int r = pthread_create(thread, NULL, start_backup_thread_fun, p);
     check(r==0);
+}
+void start_backup_thread_with_funs(pthread_t *thread,
+                                   const char *src_dirs[], const char *dst_dirs[],
+                                   backup_poll_fun_t poll_fun, void *poll_extra,
+                                   backup_error_fun_t error_fun, void *error_extra,
+                                   int expect_return_result) {
+    start_backup_thread_with_error_poll_and_exclude_funs(thread,
+                                                         src_dirs,
+                                                         dst_dirs,
+                                                         poll_fun,
+                                                         poll_extra,
+                                                         error_fun,
+                                                         error_extra,
+                                                         NULL,
+                                                         NULL,
+                                                         expect_return_result);
 }
 
 int simple_poll_fun(float progress, const char *progress_string, void *poll_extra) {
@@ -220,6 +245,24 @@ int simple_poll_fun(float progress, const char *progress_string, void *poll_extr
 static void expect_no_error_fun(int error_number, const char *error_string, void *backup_extra __attribute__((__unused__))) {
     fprintf(stderr, "Error, I expected no error function to run, but received error #%d: %s\n", error_number, error_string);
     abort();
+}
+
+void start_backup_thread_with_exclusion_callback(pthread_t *thread, backup_exclude_copy_fun_t fun, void* extra) {
+    for (int i = 0; i < dir_count; ++i) {
+        sources[i] = get_src(i);
+        destinations[i] = get_dst(i);
+    }
+
+    start_backup_thread_with_error_poll_and_exclude_funs(thread,
+                                                         sources,
+                                                         destinations,
+                                                         simple_poll_fun,
+                                                         NULL,
+                                                         expect_no_error_fun,
+                                                         NULL,
+                                                         fun,
+                                                         extra,
+                                                         BACKUP_SUCCESS);
 }
 
 void start_backup_thread(pthread_t *thread) {

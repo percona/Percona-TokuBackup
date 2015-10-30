@@ -264,6 +264,10 @@ int manager::prepare_directories_for_backup(backup_session *session, backtrace b
         }
 
         with_object_to_free<char*> file_name(session->translate_prefix_of_realpath(source->name()));
+        if(session->file_is_excluded(file_name.value)) {
+            goto out;
+        }
+
         r = open_path(file_name.value);
         if (r != 0) {
             backup_error(r, "Failed to open path");
@@ -746,7 +750,7 @@ int manager::unlink(const char *path) throw() {
         with_rwlock_rdlocked ms(&m_session_rwlock);
         with_file_hash_table_mutex mtl(&m_table);
 
-        if (m_session != NULL && this->capture_is_enabled() && m_session->is_prefix_of_realpath(full_path.value)) {
+        if (this->should_capture_unlink_of_file(full_path.value)) {
             // 1. Find source file, unlink it.
             // 2. Get destination file from source file.
             destination_file * dest = source->get_destination();
@@ -1052,6 +1056,17 @@ void manager::lock_file_op(void)
 void manager::unlock_file_op(void)
 {
     pmutex_unlock(&m_atomic_file_op_mutex);
+}
+
+bool manager::should_capture_unlink_of_file(const char *file) throw() {
+    if (m_session != NULL &&
+        this->capture_is_enabled() &&
+        m_session->is_prefix_of_realpath(file) &&
+        !m_session->file_is_excluded(file)) {
+        return true;
+    }
+
+    return false;
 }
 
 #ifdef GLASSBOX

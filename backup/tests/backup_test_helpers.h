@@ -78,6 +78,11 @@ void start_backup_thread(pthread_t *thread, char* destination);
 // Effect: start doing backup on a seperate thread, creating the
 // backup in the given destination directory.
 
+void start_backup_thread_with_exclusion_callback(pthread_t *thread, backup_exclude_copy_fun_t fun, void *extra);
+// Effect: start doing backup on a separate thread, but this function
+// allows user to also set custom exclusion callback for skipping
+// files during a backup operation.
+
 int simple_poll_fun(float progress, const char *progress_string, void *poll_extra);
 // A simple polling function.
 

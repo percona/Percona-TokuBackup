@@ -51,6 +51,7 @@ set(glassboxtests
   create_rename_race
   create_unlink_race
   debug_coverage
+  exclude_all_files
   failed_rename_kills_backup_6703 ## Needs the keep_capturing API
   failed_unlink_kills_backup_6704 ## Needs the keep_capturing API
   ftruncate                       ## Needs the keep_capturing API

@@ -260,6 +260,11 @@ int backup_session::capture_open(const char *file, char **result) throw() {
     }
     
     char *backup_file_name = this->translate_prefix(file);
+    if (this->file_is_excluded(backup_file_name)) {
+        free(backup_file_name);
+        return -1;
+    }
+
     int r = open_path(backup_file_name);
     if (r != 0) {
         // The error has been reported.  Propagate it.
@@ -293,4 +298,8 @@ void backup_session::add_to_copy_todo_list(const char *file_path) throw() {
 //
 void backup_session::cleanup(void) throw() {
     m_copier.cleanup();
+}
+
+bool backup_session::file_is_excluded(const char *backup_file) throw() {
+    return m_copier.file_should_be_excluded(backup_file);
 }
