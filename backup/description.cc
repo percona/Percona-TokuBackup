@@ -83,13 +83,13 @@ source_file * description::get_source_file(void) const throw()
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void description::lock(const backtrace bt) throw() {
+void description::lock(const backtrace &bt) throw() {
     pmutex_lock(&m_mutex, BACKTRACE(&bt));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-void description::unlock(const backtrace bt) throw() {
+void description::unlock(const backtrace &bt) throw() {
     pmutex_unlock(&m_mutex, BACKTRACE(&bt));
 }
 

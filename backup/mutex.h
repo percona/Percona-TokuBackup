@@ -50,8 +50,8 @@ extern int pthread_mutex_unlock(pthread_mutex_t *) __attribute__((deprecated));
 extern void pmutex_lock(pthread_mutex_t *) throw();
 extern void pmutex_unlock(pthread_mutex_t *) throw();
 
-extern void pmutex_lock(pthread_mutex_t *, const backtrace) throw();
-extern void pmutex_unlock(pthread_mutex_t *, const backtrace) throw();
+extern void pmutex_lock(pthread_mutex_t *, const backtrace &) throw();
+extern void pmutex_unlock(pthread_mutex_t *, const backtrace &) throw();
 
 class with_mutex_locked {
   private:
@@ -62,7 +62,7 @@ class with_mutex_locked {
     with_mutex_locked(pthread_mutex_t *m): m_mutex(m), m_have_backtrace(false) {
         pmutex_lock(m_mutex);
     }
-    with_mutex_locked(pthread_mutex_t *m, const backtrace bt): m_mutex(m), m_have_backtrace(true), m_backtrace(bt) {
+    with_mutex_locked(pthread_mutex_t *m, const backtrace &bt): m_mutex(m), m_have_backtrace(true), m_backtrace(bt) {
         pmutex_lock(m_mutex, m_backtrace);
     }
     ~with_mutex_locked(void) {

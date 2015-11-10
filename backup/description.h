@@ -60,8 +60,8 @@ public:
     //  Return 0 on success, otherwise inform the backup manager of the error (fatal_error or backup_error) and return the error code.
     void set_source_file(source_file *file) throw();
     source_file * get_source_file(void) const throw();
-    void lock(const backtrace bt) throw();
-    void unlock(const backtrace bt) throw();
+    void lock(const backtrace &bt) throw();
+    void unlock(const backtrace &bt) throw();
 
     void lseek(off_t new_offset) throw();        
     void increment_offset(ssize_t nbyte) throw();

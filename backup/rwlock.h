@@ -40,9 +40,9 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 extern void prwlock_rdlock(pthread_rwlock_t *) throw();
 extern void prwlock_wrlock(pthread_rwlock_t *) throw();
 extern void prwlock_unlock(pthread_rwlock_t *) throw();
-extern void prwlock_rdlock(pthread_rwlock_t *, const backtrace) throw();
-extern void prwlock_wrlock(pthread_rwlock_t *, const backtrace) throw();
-extern void prwlock_unlock(pthread_rwlock_t *, const backtrace) throw();
+extern void prwlock_rdlock(pthread_rwlock_t *, const backtrace &) throw();
+extern void prwlock_wrlock(pthread_rwlock_t *, const backtrace &) throw();
+extern void prwlock_unlock(pthread_rwlock_t *, const backtrace &) throw();
 
 class with_rwlock_rdlocked {
   private:
@@ -53,7 +53,7 @@ class with_rwlock_rdlocked {
     with_rwlock_rdlocked(pthread_rwlock_t *rw): m_rwlock(rw), m_have_backtrace(false) {
         prwlock_rdlock(m_rwlock);
     }
-    with_rwlock_rdlocked(pthread_rwlock_t *m, const backtrace bt): m_rwlock(m), m_have_backtrace(true), m_backtrace(bt) {
+    with_rwlock_rdlocked(pthread_rwlock_t *m, const backtrace &bt): m_rwlock(m), m_have_backtrace(true), m_backtrace(bt) {
         prwlock_rdlock(m_rwlock, m_backtrace);
     }
     ~with_rwlock_rdlocked(void) {
@@ -74,7 +74,7 @@ class with_rwlock_wrlocked {
     with_rwlock_wrlocked(pthread_rwlock_t *rw): m_rwlock(rw), m_have_backtrace(false) {
         prwlock_wrlock(m_rwlock);
     }
-    with_rwlock_wrlocked(pthread_rwlock_t *m, const backtrace bt): m_rwlock(m), m_have_backtrace(true), m_backtrace(bt) {
+    with_rwlock_wrlocked(pthread_rwlock_t *m, const backtrace &bt): m_rwlock(m), m_have_backtrace(true), m_backtrace(bt) {
         prwlock_wrlock(m_rwlock, m_backtrace);
     }
     ~with_rwlock_wrlocked(void) {

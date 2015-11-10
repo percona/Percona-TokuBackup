@@ -86,7 +86,7 @@ fmap::~fmap() throw() {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Description:  See fmap.h.
-void fmap::get(int fd, description** resultp, const backtrace bt) throw() {
+void fmap::get(int fd, description **resultp, const backtrace &bt) throw() {
     if (HotBackup::MAP_DBG) { 
         printf("get() called with fd = %d \n", fd);
     }
@@ -125,7 +125,7 @@ void fmap::put(int fd, description *file) throw() {
 //
 // Requires: the fd is something currently mapped.
 
-int fmap::erase(int fd, const backtrace bt) throw() {
+int fmap::erase(int fd, const backtrace &bt) throw() {
     with_fmap_locked ml(BACKTRACE(&bt));
     if ((size_t)fd  >= m_map.size()) {
         return 0;
@@ -177,11 +177,11 @@ void fmap::grow_array(int fd) throw() {
     }
 }
 
-void fmap::lock_fmap(const backtrace bt) throw() {
+void fmap::lock_fmap(const backtrace &bt) throw() {
     pmutex_lock(&get_put_mutex, BACKTRACE(&bt));
 }
 
-void fmap::unlock_fmap(const backtrace bt) throw() {
+void fmap::unlock_fmap(const backtrace &bt) throw() {
     pmutex_unlock(&get_put_mutex, BACKTRACE(&bt));
 }
 

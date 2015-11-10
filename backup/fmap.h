@@ -53,7 +53,7 @@ public:
     fmap() throw();
     ~fmap() throw();
 
-    void get(int fd, description**result, const backtrace bt) throw();
+    void get(int fd, description **result, const backtrace &bt) throw();
     // Effect:   Returns pointer (in *result) to the file description object that matches the
     //   given file descriptor.  This will return NULL if the given file
     //   descriptor has not been added to this map.
@@ -63,15 +63,15 @@ public:
     // Effect: adds given description pointer to array (acquires a lock)
 
     description* get_unlocked(int fd) throw(); // use this one instead of get() when you already have the lock.
-    int erase(int fd, const backtrace bt) throw() __attribute__((warn_unused_result)); // returns 0 or an error number.
+    int erase(int fd, const backtrace &bt) throw() __attribute__((warn_unused_result)); // returns 0 or an error number.
     int size(void) throw();
 private:
     void grow_array(int fd) throw();
     
     // Global locks used when the file descriptor map is updated.   Sometimes the backup system needs to hold the lock for several operations.
     // No errors are countenanced.
-    static void lock_fmap(backtrace bt) throw();
-    static void unlock_fmap(backtrace bt) throw();
+    static void lock_fmap(const backtrace &bt) throw();
+    static void unlock_fmap(const backtrace &bt) throw();
     friend class with_fmap_locked;
 
     friend class fmap_unit_test;
@@ -83,7 +83,7 @@ class with_fmap_locked {
   private:
     const backtrace m_bt;
   public:
-    with_fmap_locked(backtrace bt): m_bt(bt) {
+    with_fmap_locked(const backtrace &bt): m_bt(bt) {
         fmap::lock_fmap(m_bt);
     }
     ~with_fmap_locked(void) {

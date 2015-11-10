@@ -42,7 +42,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "mutex.h"
 #include "check.h"
 
-void pmutex_lock(pthread_mutex_t *mutex, const backtrace bt) throw() {
+void pmutex_lock(pthread_mutex_t *mutex, const backtrace &bt) throw() {
     int r = pthread_mutex_lock(mutex);
     if (r != 0) {
         printf("HotBackup::pmutex_lock() failed, r = %d", r);
@@ -50,7 +50,7 @@ void pmutex_lock(pthread_mutex_t *mutex, const backtrace bt) throw() {
     check_bt(r==0, bt);
 }
 
-void pmutex_unlock(pthread_mutex_t *mutex, const backtrace bt) throw() {
+void pmutex_unlock(pthread_mutex_t *mutex, const backtrace &bt) throw() {
     int r = pthread_mutex_unlock(mutex);
     if (r != 0) {
         printf("HotBackup::pmutex_unlock() failed, r = %d", r);

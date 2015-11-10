@@ -40,7 +40,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include "backtrace.h"
 
-void check_fun(long predicate, const char *expr, const backtrace bt) throw();
+void check_fun(long predicate, const char *expr, const backtrace &bt) throw();
 
 // Like assert, except it doesn't go away under NDEBUG.
 // Do this with a function so that we don't get false answers on branch coverage.
