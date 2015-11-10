@@ -244,7 +244,7 @@ error_out:
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-int manager::prepare_directories_for_backup(backup_session *session, backtrace bt) throw() {
+int manager::prepare_directories_for_backup(backup_session *session, const backtrace &bt) throw() {
     int r = 0;
     // Loop through all the current file descriptions and prepare them
     // for backup.

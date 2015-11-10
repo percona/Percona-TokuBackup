@@ -135,7 +135,7 @@ private:
     void capture_rename(const char *, const char *);
     bool try_to_enter_session_and_lock(void) throw();
     void exit_session_and_unlock_or_die(void) throw();
-    int prepare_directories_for_backup(backup_session *session, const backtrace bt) throw();
+    int prepare_directories_for_backup(backup_session *session, const backtrace &bt) throw();
     void disable_descriptions(void) throw();
     void set_error_internal(int errnum, const char *format, va_list ap) throw();
     int setup_description_and_source_file(int fd, const char *file, const int flags) throw();

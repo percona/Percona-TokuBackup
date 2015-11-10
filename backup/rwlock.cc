@@ -40,17 +40,17 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "mutex.h"
 #include "rwlock.h"
 
-void prwlock_rdlock(pthread_rwlock_t *lock, const backtrace bt) throw() {
+void prwlock_rdlock(pthread_rwlock_t *lock, const backtrace &bt) throw() {
     int r = pthread_rwlock_rdlock(lock);
     check_bt(r==0, bt);
 }
 
-void prwlock_wrlock(pthread_rwlock_t *lock, const backtrace bt) throw() {
+void prwlock_wrlock(pthread_rwlock_t *lock, const backtrace &bt) throw() {
     int r = pthread_rwlock_wrlock(lock);
     check_bt(r==0, bt);
 }
 
-void prwlock_unlock(pthread_rwlock_t *lock, const backtrace bt) throw() {
+void prwlock_unlock(pthread_rwlock_t *lock, const backtrace &bt) throw() {
     int r = pthread_rwlock_unlock(lock);
     check_bt(r==0, bt);
 }

@@ -39,7 +39,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "check.h"
 #include "manager.h"
 
-void check_fun(long predicate, const char *expr, const backtrace bt) throw() {
+void check_fun(long predicate, const char *expr, const backtrace &bt) throw() {
     if (!predicate) {
         the_manager.kill();
         int e = errno;
