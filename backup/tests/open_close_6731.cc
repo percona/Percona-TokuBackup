@@ -115,7 +115,7 @@ static void* do_client(void *v) {
         do_client_once(&fds);
         if (RUNNING_ON_VALGRIND) { fprintf(stderr, "."); } // For some reason, printing something makes drd stop getting stuck. 
     }
-    fprintf(stderr, "Client %d done, doing more work till the others are done (fds.size=%ld)\n", me, fds.size());
+    fprintf(stderr, "Client %d done, doing more work till the others are done (fds.size=%lu)\n", me, fds.size());
     __sync_fetch_and_add(&counter, -1);
     while (counter>0) {
         do_client_once(&fds);

@@ -121,7 +121,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
             check(r==0);
 
             if (sbuf.st_size > (ssize_t)max_expected_size) {
-                printf("size of dest = %ld, but should have been at most %ld\n", sbuf.st_size, max_expected_size);
+                printf("size of dest = %ld, but should have been at most %lu\n", sbuf.st_size, max_expected_size);
                 abort();
             }
         }
