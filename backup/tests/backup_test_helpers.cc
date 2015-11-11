@@ -80,6 +80,7 @@ int openf(int flags, int mode, const char *formatstring, ...) {
         int r = vsnprintf(string, PATH_MAX, formatstring, ap);
         check(r<=PATH_MAX);
     }
+    va_end(ap);
     int r = open(string, flags, mode);
     free(string);
     return r;
