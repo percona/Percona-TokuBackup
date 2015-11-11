@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(HotBackup)
 
-# No implicit templates, since that's how mysql compiles.
-if (NOT CMAKE_CXX_COMPILER_ID MATCHES Clang)
+# No implicit templates, since that's how mysql compiles. mysql defines INSTALL_LIBDIR
+if (DEFINED INSTALL_LIBDIR)
   set(CMAKE_CXX_FLAGS "-fno-implicit-templates  ${CMAKE_CXX_FLAGS}")
 endif ()
 
@@ -10,7 +10,7 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
   _FILE_OFFSET_BITS=64 
   _LARGEFILE64_SOURCE)
 
-set(CMAKE_CXX_FLAGS "-Werror -W -Wall -Wshadow ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "-std=c++11 -Werror -W -Wall -Wshadow ${CMAKE_CXX_FLAGS}")
 
 set(USE_VALGRIND OFF CACHE BOOL "whether to use valgrind headers")
 if (USE_VALGRIND)
