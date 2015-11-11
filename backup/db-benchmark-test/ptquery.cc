@@ -29,7 +29,7 @@ static int nqueries = 1000000;
 static int nthreads = 1;
 static const char *log_dir = NULL;
 
-static long long set_count = 0;
+static unsigned long long set_count = 0;
 
 static void pt_query_setup (void) {
     int r;

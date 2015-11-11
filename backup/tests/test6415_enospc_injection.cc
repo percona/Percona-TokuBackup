@@ -53,7 +53,7 @@ static ssize_t my_pwrite(int fd, const void *buf, size_t nbyte, off_t offset) {
 
 static write_fun_t  original_write;
 static ssize_t my_write(int fd, const void *buf, size_t nbyte) {
-    fprintf(stderr, "Doing write(%d, %p, %ld)\n", fd, buf, nbyte); // ok to do a write, since we aren't further interposing writes in this test.
+    fprintf(stderr, "Doing write(%d, %p, %lu)\n", fd, buf, nbyte); // ok to do a write, since we aren't further interposing writes in this test.
     errno = ENOSPC;
     return -1;
     //return original_write(fd, buf, nbyte);

@@ -79,7 +79,7 @@ static ssize_t my_pwrite(int fd, const void *buf, size_t nbyte, off_t offset) {
 
 static write_fun_t  original_write;
 static ssize_t my_write(int fd, const void *buf, size_t nbyte) {
-    fprintf(stderr, "Doing write(%d, %p, %ld)\n", fd, buf, nbyte); // ok to do a write, since we aren't further interposing writes in this test.
+    fprintf(stderr, "Doing write(%d, %p, %lu)\n", fd, buf, nbyte); // ok to do a write, since we aren't further interposing writes in this test.
     if (inject_this_time(fd)) {
         fprintf(stderr, "%s:%d Injecting error\n", __FILE__, __LINE__);
         errno = ENOSPC;
