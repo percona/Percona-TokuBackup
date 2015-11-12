@@ -192,9 +192,9 @@ int manager::do_backup(directory_set *dirs, backup_callbacks *calls) throw() {
     }
 
     WHEN_GLASSBOX( ({
-                m_done_copying = false;
-                m_is_capturing = true;
-                while (!m_start_copying) sched_yield();
+                set_done_copying(false);
+                set_is_capturing(true);
+                while (!get_start_copying()) sched_yield();
             }) );
 
     r = m_session->do_copy();
@@ -207,9 +207,9 @@ int manager::do_backup(directory_set *dirs, backup_callbacks *calls) throw() {
 disable_out: // preserves r if r!=0
 
     WHEN_GLASSBOX( ({
-        m_done_copying = true;
+        set_done_copying(true);
         // If the client asked us to keep capturing till they tell us to stop, then do what they said.
-        while (m_keep_capturing) sched_yield();
+        while (keep_capturing()) sched_yield();
             }) );
 
     {
@@ -1076,20 +1076,38 @@ void manager::pause_disable(bool pause) throw() {
     m_pause_disable = pause;
 }
 
-void manager::set_keep_capturing(bool keep_capturing) throw() {
+void manager::set_keep_capturing(bool new_keep_capturing) throw() {
     TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_keep_capturing, sizeof(m_keep_capturing));
-    m_keep_capturing = keep_capturing;
+    m_keep_capturing = new_keep_capturing;
+}
+
+bool manager::keep_capturing(void) throw() {
+    return m_keep_capturing;
 }
 
 bool manager::is_done_copying(void) throw() {
     return m_done_copying;
 }
+
+void manager::set_done_copying(bool done_copying) throw() {
+    m_done_copying = done_copying;
+}
+
 bool manager::is_capturing(void) throw() {
     return m_is_capturing;
+}
+
+void manager::set_is_capturing(bool new_is_capturing) throw() {
+    m_is_capturing = new_is_capturing;
 }
 
 void manager::set_start_copying(bool start_copying) throw() {
     TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_start_copying, sizeof(m_start_copying));
     m_start_copying = start_copying;
 }
+
+bool manager::get_start_copying(void) throw() {
+    return m_start_copying;
+}
+
 #endif /*GLASSBOX*/

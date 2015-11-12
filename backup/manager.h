@@ -121,10 +121,14 @@ public:
     // TODO: #6537 Factor the test interface out of the main class, cleanly.
     // Test interface.  We'd probably like to compile all this stuff away in production code.
     void pause_disable(bool pause) throw();
-    void set_keep_capturing(bool keep_capturing) throw();    // Tell the manager to keep capturing until told not to. This is thread safe.
+    void set_keep_capturing(bool new_keep_capturing) throw();    // Tell the manager to keep capturing until told not to. This is thread safe.
+    bool keep_capturing(void) throw();
     bool is_capturing(void) throw();                         // Is the manager capturing?
+    void set_is_capturing(bool) throw();
     bool is_done_copying(void) throw();                      // Is the manager done copying (true sometime after is_capturing)
-    void set_start_copying(bool start_copying) throw();     // Tell the manager not to start copying (by passing false) and then to start copying (by passing true). This is thread safe.
+    void set_done_copying(bool) throw();
+    void set_start_copying(bool new_start_copying) throw();     // Tell the manager not to start copying (by passing false) and then to start copying (by passing true). This is thread safe.
+    bool get_start_copying(void) throw();
     // end of test interface
     void lock_file_op(void);
     void unlock_file_op(void);
