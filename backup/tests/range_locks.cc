@@ -32,6 +32,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #ident "$Id$"
 
+#include <atomic>
 #include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -42,9 +43,9 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 class source_file sf("hello");
 
-volatile int stepa = 0;
-volatile int stepb = 0;
-volatile int stepc = 0;
+std::atomic_int stepa (0);
+std::atomic_int stepb (0);
+std::atomic_int stepc (0);
 
 static const uint64_t doit_lo = 5, doit_hi = 10;
 static void* doit(void* ignore) {
@@ -54,7 +55,7 @@ static void* doit(void* ignore) {
 
 
     stepb = 1;
-    while (!stepc);
+    while (!stepc) {};
     { int r = sf.unlock_range(doit_lo, doit_hi); check(r==0); }
 
     return ignore;

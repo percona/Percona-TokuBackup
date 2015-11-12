@@ -149,8 +149,10 @@ int manager::do_backup(directory_set *dirs, backup_callbacks *calls) throw() {
         backup_error(r, "Backup system is dead");
         goto error_out;
     }
+    pmutex_lock(&m_error_mutex, BACKTRACE(NULL));
     m_an_error_happened = false;
     m_backup_is_running = true;
+    pmutex_unlock(&m_error_mutex, BACKTRACE(NULL));
     r = calls->poll(0, "Preparing backup");
     if (r != 0) {
         backup_error(r, "User aborted backup");
@@ -192,9 +194,9 @@ int manager::do_backup(directory_set *dirs, backup_callbacks *calls) throw() {
     }
 
     WHEN_GLASSBOX( ({
-                m_done_copying = false;
-                m_is_capturing = true;
-                while (!m_start_copying) sched_yield();
+                set_done_copying(false);
+                set_is_capturing(true);
+                while (!get_start_copying()) sched_yield();
             }) );
 
     r = m_session->do_copy();
@@ -207,15 +209,18 @@ int manager::do_backup(directory_set *dirs, backup_callbacks *calls) throw() {
 disable_out: // preserves r if r!=0
 
     WHEN_GLASSBOX( ({
-        m_done_copying = true;
+        set_done_copying(true);
         // If the client asked us to keep capturing till they tell us to stop, then do what they said.
-        while (m_keep_capturing) sched_yield();
+        while (keep_capturing()) sched_yield();
             }) );
 
     {
         with_rwlock_wrlocked ms(&m_session_rwlock, BACKTRACE(NULL));
 
+        pmutex_lock(&m_error_mutex, BACKTRACE(NULL));
         m_backup_is_running = false;
+        pmutex_unlock(&m_error_mutex, BACKTRACE(NULL));
+
         this->disable_capture();
         this->disable_descriptions();
         WHEN_GLASSBOX(m_is_capturing = false);
@@ -230,12 +235,18 @@ disable_out: // preserves r if r!=0
 unlock_out: // preserves r if r!0
 
     pmutex_unlock(&m_mutex, BACKTRACE(NULL));
+    pmutex_lock(&m_error_mutex, BACKTRACE(NULL));
     if (m_an_error_happened) {
-        calls->report_error(m_errnum, m_errstring);
+        int errnum = m_errnum;
+        char *errstring = strdup(m_errstring);
+        pmutex_unlock(&m_error_mutex, BACKTRACE(NULL));
+        calls->report_error(errnum, errstring);
         if (r==0) {
-            r = m_errnum; // if we already got an error then keep it.
+            r = errnum; // if we already got an error then keep it.
         }
-    }
+        free(errstring);
+    } else
+        pmutex_unlock(&m_error_mutex, BACKTRACE(NULL));
 
 error_out:
     thread_has_backup_calls = NULL;
@@ -980,8 +991,8 @@ void manager::backup_error(int errnum, const char *format_string, ...)  throw() 
 ///////////////////////////////////////////////////////////////////////////////
 //
 void manager::set_error_internal(int errnum, const char *format_string, va_list ap) throw() {
-    m_backup_is_running = false;
     pmutex_lock(&m_error_mutex, BACKTRACE(NULL));
+    m_backup_is_running = false;
     if (!m_an_error_happened) {
         int len = 2*PATH_MAX + strlen(format_string) + 1000; // should be big enough for all our errors
         char *string = (char*)malloc(len);
@@ -1076,20 +1087,38 @@ void manager::pause_disable(bool pause) throw() {
     m_pause_disable = pause;
 }
 
-void manager::set_keep_capturing(bool keep_capturing) throw() {
+void manager::set_keep_capturing(bool new_keep_capturing) throw() {
     TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_keep_capturing, sizeof(m_keep_capturing));
-    m_keep_capturing = keep_capturing;
+    m_keep_capturing = new_keep_capturing;
+}
+
+bool manager::keep_capturing(void) throw() {
+    return m_keep_capturing;
 }
 
 bool manager::is_done_copying(void) throw() {
     return m_done_copying;
 }
+
+void manager::set_done_copying(bool done_copying) throw() {
+    m_done_copying = done_copying;
+}
+
 bool manager::is_capturing(void) throw() {
     return m_is_capturing;
+}
+
+void manager::set_is_capturing(bool new_is_capturing) throw() {
+    m_is_capturing = new_is_capturing;
 }
 
 void manager::set_start_copying(bool start_copying) throw() {
     TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&m_start_copying, sizeof(m_start_copying));
     m_start_copying = start_copying;
 }
+
+bool manager::get_start_copying(void) throw() {
+    return m_start_copying;
+}
+
 #endif /*GLASSBOX*/

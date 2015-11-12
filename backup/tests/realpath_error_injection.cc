@@ -34,6 +34,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #ident "$Id$"
 
+#include <atomic>
 #include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -108,7 +109,7 @@ void call_unlink(const char * const file)
 }
 
 static realpath_fun_t original_realpath = NULL;
-volatile static bool inject_realpath_error = false;
+static std::atomic_bool inject_realpath_error (false);
 char *my_realpath(const char *path, char *result) {
     if (inject_realpath_error) {
         errno = realpath_error_to_inject;
