@@ -150,7 +150,7 @@ int copier::do_copy(void) throw() {
         
         {
             with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
-            fname = m_todo.back();
+            fname = m_todo.front();
         }
         TRACE("Copying: ", fname);
         
@@ -166,7 +166,10 @@ int copier::do_copy(void) throw() {
 
         {
             with_mutex_locked tm(&m_todo_mutex, BACKTRACE(NULL));
-            m_todo.pop_back();
+            if (strcmp(fname, m_todo.front()) != 0) {
+                fprintf(stderr, "%s:%u %s %s %s\n", __FILE__, __LINE__, __FUNCTION__, fname, m_todo.back());
+            }
+            m_todo.pop_front();
         }
         
         r = this->copy_stripped_file(fname);
