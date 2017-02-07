@@ -212,6 +212,7 @@ disable_out: // preserves r if r!=0
         while (m_keep_capturing) sched_yield();
             }) );
 
+    calls->before_stop_capt_call();
     {
         with_rwlock_wrlocked ms(&m_session_rwlock, BACKTRACE(NULL));
 
@@ -226,6 +227,7 @@ disable_out: // preserves r if r!=0
         delete m_session;
         m_session = NULL;
     }
+    calls->after_stop_capt_call();
 
 unlock_out: // preserves r if r!0
 

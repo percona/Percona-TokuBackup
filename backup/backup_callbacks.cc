@@ -38,20 +38,29 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 //////////////////////////////////////////////////////////////////////////////
 //
-backup_callbacks::backup_callbacks(backup_poll_fun_t poll_fun, 
-                                   void *poll_extra, 
-                                   backup_error_fun_t error_fun, 
+backup_callbacks::backup_callbacks(backup_poll_fun_t poll_fun,
+                                   void *poll_extra,
+                                   backup_error_fun_t error_fun,
                                    void *error_extra,
                                    backup_exclude_copy_fun_t exclude_copy_fun,
                                    void *exclude_copy_extra,
-                                   backup_throttle_fun_t throttle_fun) throw()
-: m_poll_function(poll_fun), 
-m_poll_extra(poll_extra), 
-m_error_function(error_fun), 
+                                   backup_throttle_fun_t throttle_fun,
+                                   backup_before_stop_capt_fun_t bsc_fun,
+                                   void *bsc_extra,
+                                   backup_after_stop_capt_fun_t asc_fun,
+                                   void *asc_extra
+) throw()
+: m_poll_function(poll_fun),
+m_poll_extra(poll_extra),
+m_error_function(error_fun),
 m_error_extra(error_extra),
 m_exclude_copy_function(exclude_copy_fun),
 m_exclude_copy_extra(exclude_copy_extra),
-m_throttle_function(throttle_fun)
+m_throttle_function(throttle_fun),
+m_bsc_fun(bsc_fun),
+m_bsc_extra(bsc_extra),
+m_asc_fun(asc_fun),
+m_asc_extra(asc_extra)
 {}
 
 //////////////////////////////////////////////////////////////////////////////
@@ -80,4 +89,3 @@ int backup_callbacks::exclude_copy(const char *source) throw() {
         r = m_exclude_copy_function(source, m_exclude_copy_extra);
     return r;
 }
-
