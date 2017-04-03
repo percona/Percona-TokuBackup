@@ -38,6 +38,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <pthread.h>
 #include <malloc.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "source_file.h"
 #include "file_hash_table.h"
@@ -130,6 +131,7 @@ void file_hash_table::put(source_file * const file) throw() {
 ////////////////////////////////////////////////////////
 //
 int file_hash_table::hash(const char * const file) const  throw() {
+    assert(m_size);
     int length = strlen(file);
     uint64_t the_hash[2];
     MurmurHash3_x64_128(file, length, 0, the_hash);
@@ -157,6 +159,7 @@ void file_hash_table::maybe_resize(void) throw() {
         source_file **old_array = m_array;
         size_t old_size = m_size;
         m_size = m_size + m_count;
+        assert(m_size);
         m_array = new source_file*[m_size];
         for (size_t i=0; i<m_size; i++) {
             m_array[i] = NULL;
@@ -191,7 +194,7 @@ void file_hash_table::remove(source_file * const file) throw() {
             } else {
                 m_array[hash_index] = next;
             }
-
+            assert(m_count);
             m_count--;
             break;
         }
