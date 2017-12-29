@@ -54,10 +54,10 @@ public:
                      backup_exclude_copy_fun_t exclude_copy_fun,
                      void *exclude_copy_extra,
                      backup_throttle_fun_t throttle_fun,
-                     backup_before_stop_capt_fun_t bsc_fun,
-                     void *bsc_extra,
-                     backup_after_stop_capt_fun_t asc_fun,
-                     void *asc_extra) throw();
+                     backup_before_stop_capt_fun_t bsc_fun = 0,
+                     void *bsc_extra = 0,
+                     backup_after_stop_capt_fun_t asc_fun = 0,
+                     void *asc_extra = 0) throw();
     int poll(float progress, const char *progress_string) throw();
     void report_error(int error_number, const char *error_description) throw();
     unsigned long get_throttle(void) throw();
