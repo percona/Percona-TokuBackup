@@ -3,12 +3,17 @@ project(HotBackup)
 
 # pick language dialect
 include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag(-std=c++03 HAVE_STDCXX03)
-if (HAVE_STDCXX03)
-  set(CMAKE_CXX_FLAGS "-std=c++03 -Wno-deprecated-declarations ${CMAKE_CXX_FLAGS}")
+check_cxx_compiler_flag(-std=c++11 HAVE_STDCXX11)
+if (HAVE_STDCXX11)
+  set(CMAKE_CXX_FLAGS "-std=c++11 -Wno-deprecated-declarations ${CMAKE_CXX_FLAGS}")
 else ()
-  message(FATAL_ERROR "${CMAKE_CXX_COMPILER} doesn't support -std=c++03, you need one that does.")
-endif ()
+  check_cxx_compiler_flag(-std=c++03 HAVE_STDCXX03)
+  if (HAVE_STDCXX03)
+    set(CMAKE_CXX_FLAGS "-std=c++03 -Wno-deprecated-declarations ${CMAKE_CXX_FLAGS}")
+  else ()
+    message(FATAL_ERROR "${CMAKE_CXX_COMPILER} doesn't support -std=c++03, you need one that does.")
+  endif ()
+endif()
 
 # No implicit templates, since that's how mysql compiles.
 if (NOT CMAKE_CXX_COMPILER_ID MATCHES Clang)
