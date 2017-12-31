@@ -108,7 +108,7 @@ void call_unlink(const char * const file)
 }
 
 static realpath_fun_t original_realpath = NULL;
-volatile static bool inject_realpath_error = false;
+static std::atomic_bool inject_realpath_error = {false};
 char *my_realpath(const char *path, char *result) {
     if (inject_realpath_error) {
         errno = realpath_error_to_inject;
