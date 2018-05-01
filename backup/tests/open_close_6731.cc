@@ -175,5 +175,3 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     }
     return 0;
 }
-
-template class std::vector<int>;

@@ -1,19 +1,6 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(HotBackup)
 
-# pick language dialect
-check_cxx_compiler_flag(-std=c++03 HAVE_STDCXX03)
-if (HAVE_STDCXX03)
-  set(CMAKE_CXX_FLAGS "-std=c++03 -Wno-deprecated-declarations ${CMAKE_CXX_FLAGS}")
-else ()
-  message(FATAL_ERROR "${CMAKE_CXX_COMPILER} doesn't support -std=c++03, you need one that does.")
-endif ()
-
-# No implicit templates, since that's how mysql compiles.
-if (NOT CMAKE_CXX_COMPILER_ID MATCHES Clang)
-  set(CMAKE_CXX_FLAGS "-fno-implicit-templates  ${CMAKE_CXX_FLAGS}")
-endif ()
-
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS 
   _FILE_OFFSET_BITS=64 
   _LARGEFILE64_SOURCE)

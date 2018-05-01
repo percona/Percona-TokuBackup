@@ -48,7 +48,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <vector>
 
 class file_description;
-template class std::vector<file_description *>;
 
 // This mutx protects the file descriptor map
 static pthread_mutex_t get_put_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -184,6 +183,3 @@ void fmap::lock_fmap(const backtrace bt) throw() {
 void fmap::unlock_fmap(const backtrace bt) throw() {
     pmutex_unlock(&get_put_mutex, BACKTRACE(&bt));
 }
-
-// Instantiate the templates we need
-template class std::vector<description*>;
