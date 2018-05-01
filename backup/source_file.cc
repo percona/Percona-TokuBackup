@@ -341,6 +341,3 @@ void source_file::fd_unlock(void) throw()
 {
     pmutex_unlock(&m_fd_mutex);
 }
-
-// Instantiate the templates we need
-template class std::vector<range>;
