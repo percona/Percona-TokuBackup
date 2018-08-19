@@ -36,7 +36,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #ifndef BACKUP_HELGRIND_H
 #define BACKUP_HELGRIND_H
 
-#if BACKUP_USE_VALGRIND
+#if defined(BACKUP_USE_VALGRIND)
   #include <valgrind/helgrind.h>
   #define TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(x, y) VALGRIND_HG_DISABLE_CHECKING(x, y)
   #define TOKUBACKUP_VALGRIND_HG_ENABLE_CHECKING(x, y) VALGRIND_HG_ENABLE_CHECKING(x, y)

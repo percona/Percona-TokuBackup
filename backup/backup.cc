@@ -51,7 +51,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "backup_debug.h"
 #include "directory_set.h"
 
-#if DEBUG_HOTBACKUP
+#if defined(DEBUG_HOTBACKUP)
 #define WARN(string, arg) HotBackup::InterposeWarn(string, arg);
 #define TRACE(string, arg) HotBackup::InterposeTrace(string, arg);
 #define ERROR(string, arg) HotBackup::InterposeError(string, arg);

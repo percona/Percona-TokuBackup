@@ -116,7 +116,7 @@ public:
     //  If this function is called on the backup thread, the errors are reported immediately.
     //  If this function is called on another thread, the error is saved for later so that the backup thread can report it.
   private:
-    void backup_error_ap(int errnum, const char *format, va_list ap) throw(); // This is the internal shared part of those two functions.
+    void backup_error_ap(int errnum, const char *format, va_list ap) throw() __attribute((format(printf,3,0))); // This is the internal shared part of those two functions.
 
   public:
     // TODO: #6537 Factor the test interface out of the main class, cleanly.
@@ -137,7 +137,7 @@ private:
     void exit_session_and_unlock_or_die(void) throw();
     int prepare_directories_for_backup(backup_session *session, const backtrace bt) throw();
     void disable_descriptions(void) throw();
-    void set_error_internal(int errnum, const char *format, va_list ap) throw();
+    void set_error_internal(int errnum, const char *format, va_list ap) throw() __attribute__((format(printf,3,0)));
     int setup_description_and_source_file(int fd, const char *file, const int flags) throw();
     bool should_capture_unlink_of_file(const char *file) throw();
     friend class with_manager_enter_session_and_lock;
