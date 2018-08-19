@@ -58,7 +58,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 template class std::vector<char *>;
 
-#if DEBUG_HOTBACKUP
+#if defined(DEBUG_HOTBACKUP)
 #define WARN(string, arg) HotBackup::CopyWarn(string, arg)
 #define TRACE(string, arg) HotBackup::CopyTrace(string, arg)
 #define ERROR(string, arg) HotBackup::CopyError(string, arg)
@@ -68,7 +68,7 @@ template class std::vector<char *>;
 #define ERROR(string, arg) 
 #endif
 
-#if PAUSE_POINTS_ON
+#if defined(PAUSE_POINTS_ON)
 #define PAUSE(int) while(HotBackup::should_pause(int)) { sched_yield(); }
 #else
 #define PAUSE(int)

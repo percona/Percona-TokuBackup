@@ -56,7 +56,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <unistd.h>
 #include "backup_helgrind.h"
 
-#if DEBUG_HOTBACKUP
+#if defined(DEBUG_HOTBACKUP)
 #define WARN(string, arg) HotBackup::CaptureWarn(string, arg)
 #define TRACE(string, arg) HotBackup::CaptureTrace(string, arg)
 #define ERROR(string, arg) HotBackup::CaptureError(string, arg)
@@ -66,7 +66,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #define ERROR(string, arg) 
 #endif
 
-#if PAUSE_POINTS_ON
+#if defined(PAUSE_POINTS_ON)
 #define PAUSE(number) while(HotBackup::should_pause(number)) { sleep(2); } //printf("Resuming from Pause Point.\n");
 #else
 #define PAUSE(number)

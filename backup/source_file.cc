@@ -49,7 +49,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "rwlock.h"
 #include "source_file.h"
 
-#if PAUSE_POINTS_ON
+#if defined(PAUSE_POINTS_ON)
 #define PAUSE(number) while(HotBackup::should_pause(number)) { sleep(2); } //printf("Resuming from Pause Point.\n");
 #else
 #define PAUSE(number)
