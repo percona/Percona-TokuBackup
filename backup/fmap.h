@@ -45,6 +45,8 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 class backup_directory;
 
+extern template class std::vector<description *>;
+
 class fmap
 {
 private:

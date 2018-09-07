@@ -47,9 +47,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <string.h>
 #include <vector>
 
-class file_description;
-template class std::vector<file_description *>;
-
 // This mutx protects the file descriptor map
 static pthread_mutex_t get_put_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -72,7 +69,7 @@ fmap::fmap() throw() {}
 //     Destructor.
 //
 fmap::~fmap() throw() {
-    for(std::vector<file_description *>::size_type i = 0; i < m_map.size(); ++i)
+    for(std::vector<description *>::size_type i = 0; i < m_map.size(); ++i)
     {
         description *file = m_map[i];
         if (file == NULL) {
@@ -186,4 +183,4 @@ void fmap::unlock_fmap(const backtrace bt) throw() {
 }
 
 // Instantiate the templates we need
-template class std::vector<description*>;
+template class std::vector<description *>;
