@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.8)
 project(HotBackup)
 
 # pick language dialect
-check_cxx_compiler_flag(-std=c++11 HAVE_STDCXX03)
+check_cxx_compiler_flag(-std=c++11 HAVE_STDCXX11)
 if (HAVE_STDCXX11)
   set(CMAKE_CXX_FLAGS "-std=c++11 -Wno-deprecated-declarations ${CMAKE_CXX_FLAGS}")
 else ()
