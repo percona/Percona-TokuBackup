@@ -58,7 +58,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 template class std::vector<char *>;
 
-#if defined(DEBUG_HOTBACKUP)
+#if defined(DEBUG_HOTBACKUP) && DEBUG_HOTBACKUP
 #define WARN(string, arg) HotBackup::CopyWarn(string, arg)
 #define TRACE(string, arg) HotBackup::CopyTrace(string, arg)
 #define ERROR(string, arg) HotBackup::CopyError(string, arg)
