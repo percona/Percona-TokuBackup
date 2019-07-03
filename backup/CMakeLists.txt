@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 2.8.8)
+
+if (POLICY CMP0048)
+  cmake_policy(SET CMP0048 NEW)
+endif (POLICY CMP0048)
+
 project(HotBackup)
+
 
 # pick language dialect
 check_cxx_compiler_flag(-std=c++11 HAVE_STDCXX11)
