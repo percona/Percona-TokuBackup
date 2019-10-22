@@ -55,7 +55,7 @@ destination_file::destination_file(const int opened_fd, const char * full_path) 
 //
 destination_file::~destination_file() throw() {
     if (m_path != NULL) {
-        free((void*)m_path);
+        free(const_cast<char*>(m_path));
     }
 }
 
@@ -148,7 +148,7 @@ int destination_file::rename(const char *new_path) throw() {
         }
     }
 
-    free((void*)m_path);
+    free(const_cast<char*>(m_path));
     m_path = new_destination_path;
     return r;
 }
