@@ -637,7 +637,7 @@ int manager::rename(const char *oldpath, const char *newpath) throw() {
         }
     }
 
-    free((void*)full_old_path);
+    free(const_cast<char*>(full_old_path));
     TRACE("rename() exiting...", oldpath);
     return user_error;
 }

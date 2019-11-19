@@ -63,8 +63,8 @@ directory_set::~directory_set()
 {
     if (m_real_path_successful) {
         for (int i = 0; i < m_count; ++i) {
-            free((void*)m_sources[i]);
-            free((void*)m_destinations[i]);
+            free(const_cast<char*>(m_sources[i]));
+            free(const_cast<char*>(m_destinations[i]));
         }
     }
     
@@ -249,8 +249,8 @@ void directory_set::handle_realpath_results(const int r,
     if (r != 0) {
         // free() the successful realpath() calls.
         for (int i = allocated_pairs; i > 0; --i) {
-            free((void*)m_sources[i - 1]);
-            free((void*)m_destinations[i - 1]);
+            free(const_cast<char*>(m_sources[i - 1]));
+            free(const_cast<char*>(m_destinations[i - 1]));
         }
         
         m_real_path_successful = false;
@@ -280,7 +280,7 @@ int directory_set::update_to_real_path_on_index(const int i) {
     if (dest == NULL) {
         with_object_to_free<char*> str(malloc_snprintf(strlen(m_destinations[i]) + 100, "This backup destination directory does not exist: %s", m_destinations[i]));
         //TODO: calls->report_error(ENOENT, str.value); 
-        free((void*)src);
+        free(const_cast<char*>(src));
         r = ENOENT;
         goto out;
     }
