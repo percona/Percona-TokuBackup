@@ -63,10 +63,10 @@ int tokubackup_create_backup(const char *source_dirs[],
                              void *error_extra,
                              backup_exclude_copy_fun_t check_fun,
                              void *exclude_copy_extra,
-                             backup_before_stop_capt_fun_t bsc_fun,
-                             void *bsc_extra,
-                             backup_after_stop_capt_fun_t asc_fun,
-                             void *asc_extra)
+                             backup_before_stop_capt_fun_t bsc_fun = nullptr,
+                             void *bsc_extra = nullptr,
+                             backup_after_stop_capt_fun_t asc_fun = nullptr,
+                             void *asc_extra = nullptr)
     throw() __attribute__((visibility("default")));
 // Effect: Backup the directories in source_dirs into correspnding dest_dirs.
 // Periodically call poll_fun.

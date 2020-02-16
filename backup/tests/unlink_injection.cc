@@ -48,8 +48,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "backup_test_helpers.h"
 #include "real_syscalls.h"
 
-static const int ERRORS_TO_CHECK = 1;
-
 static volatile int iteration = 0;
 
 static unlink_fun_t original_unlink;
