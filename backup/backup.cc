@@ -36,6 +36,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include <stdio.h> // rename(),
 #include <fcntl.h> // open()
+#include <unistd.h> // close(), write(), read(), unlink(), truncate(), etc.
 #include <sys/stat.h> // mkdir()
 #include <errno.h>
 #include <dlfcn.h>
