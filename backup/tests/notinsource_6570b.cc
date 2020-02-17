@@ -198,7 +198,7 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
     size_t slen = strlen(src);
     const char N_EXTRA_BYTES = 10;
     not_src = (char*)malloc(slen+N_EXTRA_BYTES);
-    strncpy(not_src, src, slen+N_EXTRA_BYTES);
+    strcpy(not_src, src);
     const char go_back_n_bytes = 7;
     printf("backed up =%s\n",not_src+slen-go_back_n_bytes);
     check(0==strcmp(not_src+slen-go_back_n_bytes, ".source"));

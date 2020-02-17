@@ -127,7 +127,7 @@ static int check_it(char *magic, int size, int count)
         char backup_buf[20] = {0};
         int result = pread(backup_fd, backup_buf, size, 0);
         char magic_buf[20] = {0};
-        snprintf(magic_buf, size, "%s%d", magic, i);
+        { int magic_size = snprintf(magic_buf, size, "%s%d", magic, i); check(magic_size < size); }
         result = strcmp(backup_buf, magic_buf);
         if (result != 0) {
             printf("Couldn't match: source:%s vs backup:%s\n", magic_buf, backup_buf);
