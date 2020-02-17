@@ -40,7 +40,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <vector>
 #include <valgrind/valgrind.h>
 #include <algorithm>
-
 #include "backup_test_helpers.h"
 
 static const int N=10;
@@ -48,7 +47,7 @@ static int N_BACKUP_ITERATIONS = 100;
 static int N_OP_ITERATIONS = 1000000;
 static const int N_FNAMES = 8;
 
-static volatile long counter = N+1;
+static std::atomic_long counter = {N+1};
 
 static void* do_backups(void *v) {
     check(v==NULL);
@@ -58,7 +57,7 @@ static void* do_backups(void *v) {
         start_backup_thread(&thread);
         finish_backup_thread(thread);
     }
-    __sync_fetch_and_add(&counter, -1);
+    counter.fetch_add(-1);
     while (counter>0) {
         fprintf(stderr, "Doing a backup waiting for clients\n");
         setup_destination();
@@ -116,7 +115,7 @@ static void* do_client(void *v) {
         if (RUNNING_ON_VALGRIND) { fprintf(stderr, "."); } // For some reason, printing something makes drd stop getting stuck. 
     }
     fprintf(stderr, "Client %d done, doing more work till the others are done (fds.size=%ld)\n", me, fds.size());
-    __sync_fetch_and_add(&counter, -1);
+    counter.fetch_add(-1);
     while (counter>0) {
         do_client_once(&fds);
         if (RUNNING_ON_VALGRIND) sched_yield(); // do some more resting to ease up on the valgrind time.

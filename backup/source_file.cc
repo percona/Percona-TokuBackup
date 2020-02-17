@@ -221,7 +221,7 @@ int source_file::rename(const char * new_name) throw() {
 ////////////////////////////////////////////////////////
 //
 void source_file::add_reference(void) throw() {
-    __sync_fetch_and_add(&m_reference_count, 1);
+    m_reference_count.fetch_add(1);
 }
 
 ////////////////////////////////////////////////////////
@@ -229,7 +229,7 @@ void source_file::add_reference(void) throw() {
 void source_file::remove_reference(void) throw() {
     // TODO.  How can the code that decremented a reference count only if it was positive be right?  Under what conditions could someone be decrementing a refcount when they don't know that it's positive?
     check(m_reference_count>0);
-    __sync_fetch_and_add(&m_reference_count, -1);
+    m_reference_count.fetch_add(-1);
 }
 
 ////////////////////////////////////////////////////////

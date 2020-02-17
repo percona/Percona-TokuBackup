@@ -43,7 +43,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 static char *src;
 
-static volatile int n_backups_done = 0;
+static std::atomic_int n_backups_done = {0};
 static const int n_backups_to_do = 4;
 
 static void* open_close_loop(void * ignore) {
@@ -72,7 +72,7 @@ int test_main(int argc, const char *argv[] __attribute__((__unused__))) {
         setup_destination();
         start_backup_thread(&bth);
         finish_backup_thread(bth);
-        __sync_fetch_and_add(&n_backups_done, 1);
+        n_backups_done.fetch_add(1);
     }
     {
         void *result;

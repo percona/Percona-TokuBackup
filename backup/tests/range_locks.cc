@@ -42,9 +42,9 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 class source_file sf("hello");
 
-volatile int stepa = 0;
-volatile int stepb = 0;
-volatile int stepc = 0;
+std::atomic_int stepa = {0};
+std::atomic_int stepb = {0};
+std::atomic_int stepc = {0};
 
 static const uint64_t doit_lo = 5, doit_hi = 10;
 static void* doit(void* ignore) {
@@ -55,7 +55,7 @@ static void* doit(void* ignore) {
 
     stepb = 1;
     while (!stepc)
-      ;
+        sched_yield();
     { int r = sf.unlock_range(doit_lo, doit_hi); check(r==0); }
 
     return ignore;
@@ -73,7 +73,7 @@ static void thread_test_block(void) {
         check(r==0);
     }
 
-    while (!stepa); // wait for stepa to finish.
+    while (!stepa) sched_yield(); // wait for stepa to finish.
     // Now 5,10 is blocked
     stepc = 1; // let him go ahead and run
     sf.lock_range(9,12);
@@ -102,7 +102,7 @@ static void thread_test_noblock(void) {
         int r = pthread_create(&th, NULL, doit, &the_char);
         check(r==0);
     }
-    while (!stepa); // wait for stepa to finish
+    while (!stepa) sched_yield(); // wait for stepa to finish
     // Now 5,10 is blocked.
     // this will deadlock of the lock blocks.
     sf.lock_range(12,15);

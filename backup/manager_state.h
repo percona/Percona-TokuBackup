@@ -38,6 +38,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #ident "$Id$"
 
 #include <pthread.h>
+#include <atomic>
 
 class manager_state {
 public:
@@ -53,9 +54,9 @@ protected:
     void enable_copy(void) throw();
     void disable_copy(void) throw();
 private:
-    volatile bool m_is_dead;
-    volatile bool m_capture_enabled;
-    volatile bool m_copy_enabled;
+    std::atomic_bool m_is_dead;
+    std::atomic_bool m_capture_enabled;
+    std::atomic_bool m_copy_enabled;
 };
 
 #endif // End of header guardian.

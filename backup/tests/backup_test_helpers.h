@@ -41,6 +41,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "backup_internal.h"
 #include <pthread.h>
 #include <time.h>
+#include <atomic>
 
 int systemf(const char formatstring, ...); // Effect: run system on the snprintf of the format string and args.
 

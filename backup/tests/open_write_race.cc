@@ -40,7 +40,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include "backup_test_helpers.h"
 
-volatile long counter = 2; // so we know that all the work is done.
+std::atomic_long counter = {2}; // so we know that all the work is done.
 
 char *src; 
 
@@ -69,7 +69,7 @@ void* do_writes(void *v) {
         wcount++;
         printf(".");
     }
-    __sync_fetch_and_add(&counter, -1); // let do_backups know we finished.
+    counter.fetch_add(-1); // let do_backups know we finished.
     return v;
 }    
 
@@ -87,7 +87,7 @@ void* do_opens(void *v) {
         int r = close(fds[i]);
         check(r==0);
     }
-    __sync_fetch_and_add(&counter, -1); // done doing the opens
+    counter.fetch_add(-1); // done doing the opens
     return v;
 }
 

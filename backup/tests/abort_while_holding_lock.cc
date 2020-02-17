@@ -39,7 +39,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 // running abort(), or some signal handler that abort might call, an
 // I/O happens that might try to grab that lock if the backup system
 // is running.  This is covered in git issue #24.
-
+#undef NDEBUG
 #include <assert.h>
 #include <fcntl.h>
 #include <signal.h>
