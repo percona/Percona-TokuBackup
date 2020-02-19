@@ -367,8 +367,9 @@ int manager::open(int fd, const char *file, int flags) throw() {
     // First, get the description and source_file objects associated
     // with the given fd.
     m_map.get(fd, &description, BACKTRACE(NULL));
-    
     source = description->get_source_file();
+
+    with_file_hash_table_mutex mtl(&m_table);
     with_source_file_name_read_lock sfl(source);
 
     // Next, determine the full path of the backup file.
