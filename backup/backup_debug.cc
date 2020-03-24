@@ -37,6 +37,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "backup_debug.h"
 #include "backup_helgrind.h"
 #include <stdio.h>
+#include <atomic>
 
 namespace HotBackup {
 
@@ -117,7 +118,7 @@ void InterposeError(const char *s, const char *arg) throw() {
     }
 }
 
-static int PAUSE_POINTS = 0x00;
+static std::atomic_int PAUSE_POINTS = { 0x00 };
 
 bool should_pause(int flag) throw() {
     bool result = false;
@@ -155,7 +156,7 @@ bool should_pause(int flag) throw() {
 
 void toggle_pause_point(int flag) throw() {
     TOKUBACKUP_VALGRIND_HG_DISABLE_CHECKING(&PAUSE_POINTS, sizeof(PAUSE_POINTS));
-    PAUSE_POINTS = PAUSE_POINTS ^ flag;
+    PAUSE_POINTS ^= flag;
 }
 
 } // End of namespace.

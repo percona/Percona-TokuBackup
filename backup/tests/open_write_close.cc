@@ -42,7 +42,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <unistd.h>
 #include <string.h>
 #include "backup_helgrind.h"
-
 #include "backup.h"
 #include "backup_test_helpers.h"
 
@@ -63,7 +62,7 @@ static int verify(void)
     return r;
 }
 
-volatile int write_done = 0;
+std::atomic_int write_done = {0};
 
 static int write_poll(float progress, const char *progress_string, void *extra) {
     check(0<=progress && progress<1);

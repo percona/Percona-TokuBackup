@@ -38,6 +38,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #define SOURCE_FILE_H
 
 #include <stdint.h>
+#include <atomic>
 
 #include "destination_file.h"
 #include "description.h"
@@ -104,7 +105,7 @@ private:
     char * m_full_path; // the source_file owns this.
     source_file *m_next;
     pthread_rwlock_t m_name_rwlock;
-    unsigned int m_reference_count;
+    std::atomic_uint m_reference_count;
 
     pthread_mutex_t  m_mutex;
     pthread_cond_t   m_cond;

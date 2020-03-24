@@ -43,7 +43,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include <stdint.h>
 #include <sys/types.h>
-#include <vector>
+#include <deque>
 #include <dirent.h>
 #include <pthread.h>
 
@@ -93,7 +93,7 @@ class copier {
   private:
     const char *m_source;
     const char *m_dest;
-    std::vector<char *> m_todo;
+    std::deque<char *> m_todo;
     backup_callbacks *m_calls;
     file_hash_table * const m_table;
     size_t m_total_written_this_file;

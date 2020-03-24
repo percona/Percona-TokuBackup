@@ -150,7 +150,7 @@ struct backup_thread_extra_t {
     int                expect_return_result;
 };
 
-static volatile bool backup_is_done = false;
+static std::atomic_bool backup_is_done = {false};
 
 static void* start_backup_thread_fun(void *backup_extra_v) {
     backup_thread_extra_t *backup_extra = (backup_thread_extra_t*)backup_extra_v;
@@ -350,6 +350,7 @@ int main (int argc, const char *argv[]) {
             argnum++;
         } else {
             new_argv[new_argc++] = argv[argnum];
+            argnum++;
         }
     }
     if (test_name==NULL) test_name=argv[0]; // make the function work with no arguments.

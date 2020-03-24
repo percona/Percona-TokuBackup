@@ -39,7 +39,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 // running abort(), or some signal handler that abort might call, an
 // I/O happens that might try to grab that lock if the backup system
 // is running.  This is covered in git issue #24.
-
+#undef NDEBUG
 #include <assert.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -85,8 +85,8 @@ int test_main(int argc __attribute__((unused)), const char *argv[] __attribute__
     size_t len = strlen(src)+100;
     A = (char*)malloc(len); { int r = snprintf(A, len, "%s/A", src); check(size_t(r)<len); }
     B = (char*)malloc(len); { int r = snprintf(B, len, "%s/B", src); check(size_t(r)<len); }
-    C = (char*)malloc(len); { int r = snprintf(A, len, "%s/C", src); check(size_t(r)<len); }
-    D = (char*)malloc(len); { int r = snprintf(B, len, "%s/D", src); check(size_t(r)<len); }
+    C = (char*)malloc(len); { int r = snprintf(C, len, "%s/C", src); check(size_t(r)<len); }
+    D = (char*)malloc(len); { int r = snprintf(D, len, "%s/D", src); check(size_t(r)<len); }
     {
         int fd = open(A, O_WRONLY | O_CREAT, 0777);
         check(fd>=0);

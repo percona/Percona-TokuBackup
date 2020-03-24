@@ -34,6 +34,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #ident "$Id$"
 
+#undef NDEBUG
 #include <assert.h>
 #include <errno.h>
 #include <sys/stat.h>

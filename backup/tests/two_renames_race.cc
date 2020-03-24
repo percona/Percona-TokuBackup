@@ -82,7 +82,7 @@ void* do_rename(void *p) {
     return p;
 }
 
-int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+int test_two_renames(void) {
     int r = 0;
     setup_source();
     setup_destination();
@@ -156,5 +156,21 @@ int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribu
 
     //    cleanup_dirs();
     free((void*)src);
+    return r;
+}
+
+int test_main(int argc, const char *argv[]) {
+    int ntests = 1;
+    for (int i=1; i<argc; i++) {
+        if (strcmp(argv[i], "--ntests") == 0 && i+1 < argc) {
+            ntests = atoi(argv[++i]);
+        }
+    }
+    int r = 0;
+    for (int i=0; i<ntests; i++) {
+        r = test_two_renames();
+        if (r != 0)
+            break;
+    }
     return r;
 }
