@@ -106,7 +106,7 @@ static int check_it(char *dst, char *magic, int size, int count)
     char backup_buf[20] = {0};
     int result = pread(backup_fd, backup_buf, size, 0);
     char magic_buf[20] = {0};
-    snprintf(magic_buf, size, "%s%d", magic, count);
+    { int magic_size = snprintf(magic_buf, size, "%s%d", magic, count); check(magic_size < size); }
     result = strcmp(backup_buf, magic_buf);
     if (result != 0) {
         printf("Couldn't match: source:%s vs backup:%s\n", magic_buf, backup_buf);
@@ -139,7 +139,7 @@ int many_directories(const int directory_count, const bool keep_capturing) {
     pthread_t thread; 
     start_backup_thread(&thread);
     // Do work in each directory.
-    const int SIZE = 7;
+    const int SIZE = 16;
     char buf[SIZE] = {0};
     for (int i = 0; i < directory_count; ++i)
     {

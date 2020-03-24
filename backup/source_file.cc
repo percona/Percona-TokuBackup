@@ -104,6 +104,11 @@ source_file::~source_file(void) throw() {
             check(r==0);
         }
     }
+
+    if (m_destination_file != NULL) {
+        delete m_destination_file;
+        m_destination_file = NULL;
+    }
 }
 
 ////////////////////////////////////////////////////////

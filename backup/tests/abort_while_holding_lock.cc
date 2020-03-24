@@ -83,19 +83,19 @@ int test_main(int argc __attribute__((unused)), const char *argv[] __attribute__
     setup_source();
     char *src = get_src();
     size_t len = strlen(src)+100;
-    A = (char*)malloc(len); { int r = snprintf(A, len, "%s/A", src); assert(size_t(r)<len); }
-    B = (char*)malloc(len); { int r = snprintf(B, len, "%s/B", src); assert(size_t(r)<len); }
-    C = (char*)malloc(len); { int r = snprintf(A, len, "%s/C", src); assert(size_t(r)<len); }
-    D = (char*)malloc(len); { int r = snprintf(B, len, "%s/D", src); assert(size_t(r)<len); }
+    A = (char*)malloc(len); { int r = snprintf(A, len, "%s/A", src); check(size_t(r)<len); }
+    B = (char*)malloc(len); { int r = snprintf(B, len, "%s/B", src); check(size_t(r)<len); }
+    C = (char*)malloc(len); { int r = snprintf(A, len, "%s/C", src); check(size_t(r)<len); }
+    D = (char*)malloc(len); { int r = snprintf(B, len, "%s/D", src); check(size_t(r)<len); }
     {
         int fd = open(A, O_WRONLY | O_CREAT, 0777);
-        assert(fd>=0);
+        check(fd>=0);
         int r = close(fd);
-        assert(r==0);
+        check(r==0);
     }
     {
         int r = rename(A, B);
-        assert(r==0);
+        check(r==0);
     }
     cleanup_dirs();
     free(src);

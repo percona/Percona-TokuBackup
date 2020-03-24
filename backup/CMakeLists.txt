@@ -8,6 +8,7 @@ project(HotBackup)
 
 
 # pick language dialect
+include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag(-std=c++11 HAVE_STDCXX11)
 if (HAVE_STDCXX11)
   set(CMAKE_CXX_FLAGS "-std=c++11 -Wno-deprecated-declarations ${CMAKE_CXX_FLAGS}")

@@ -55,7 +55,7 @@ const int N = 16;
 static int fd_array[N] = {0};
 
 static void* write_ones(void *p) {
-    const int * const nth_ptr = (const int * const)p;
+    const int * const nth_ptr = reinterpret_cast<const int *>(p);
     const int nth_fd = *nth_ptr;
     char data[SIZE] = {ONE};
     int pwrite_r = write(fd_array[nth_fd], data, SIZE);

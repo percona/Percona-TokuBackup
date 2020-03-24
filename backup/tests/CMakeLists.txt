@@ -83,6 +83,9 @@ set(glassboxtests
   unlink_during_copy_test6515c
   unlink_injection
   write_race
+  lseek_write
+  open_lseek_write
+  pwrite_during_backup
   )
 
 set(glassboxtests_no_grind

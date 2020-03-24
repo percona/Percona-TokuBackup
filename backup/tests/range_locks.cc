@@ -54,7 +54,8 @@ static void* doit(void* ignore) {
 
 
     stepb = 1;
-    while (!stepc);
+    while (!stepc)
+      ;
     { int r = sf.unlock_range(doit_lo, doit_hi); check(r==0); }
 
     return ignore;
