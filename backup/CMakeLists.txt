@@ -22,6 +22,10 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
 
 set(CMAKE_CXX_FLAGS "-Werror -W -Wall -Wshadow ${CMAKE_CXX_FLAGS}")
 
+IF(CMAKE_COMPILER_IS_GNUCXX)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wimplicit-fallthrough=3")
+ENDIF()
+
 set(USE_VALGRIND OFF CACHE BOOL "whether to use valgrind headers")
 if (USE_VALGRIND)
   set_property(DIRECTORY APPEND PROPERTY
